@@ -165,3 +165,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** harness green — service A → service B with real pg write + real ledger append on a throwaway DB: **five spans, one trace ID**, B's server span parented to A's client span; logger test proves trace_id/span_id injection and `refresh_token → [Redacted]` with no secret in the serialised line. Workspace build/test/lint exit 0.
 
 **Deviations (recorded):** explicit propagation + span helpers instead of the plan's "auto-instrumentation for http, fastify, pg, ioredis" — ESM auto-instrumentation needs loader hooks in every app boot and is nondeterministic under vitest; the explicit pattern is what the demo trace needs and auto-instr can be layered later without contract changes. Sentry ships as a lazy optional import rather than a hard dependency.
+
+---
+
+## TRIO-3 — apps/trio scaffold · ✅ 2026-07-04
+
+**Built:** Fastify host (`createTrioServer`) with timing-safe `X-Merited-Service-Token` gate on every route except /healthz (SYN-24; mTLS/signed tokens land with PH1-25); OTel tracing joined via `@merited/otel` (`registerTracing`); `Clock` port (constructor-injected — SYN-30: no env/test backdoors in the trio); migration `0000_trio_tables` creating the full §7 table set (`commitments`, `commitment_terminations`, `minted_tokens` with the SYN-8 snapshot columns, `consumed_jtis` with the SYN-9 per-qid unique, `entry_sets`/`entry_lines`, `counters`, `idempotency_keys`) with explicit REVOKE on the four append-only tables; FND-9's runner generalised (`pkgRoot`/`schema` options) so trio reuses it — root `pnpm db:migrate` now runs events then trio in topological order.
+
+**Tests:** 5/5 integration on a fresh DB — boot + /healthz; full table set present; **UPDATE and DELETE on trio.commitments as merited_app → 42501**; auth 401/401/200; a caller's span is the parent of the server span (traceparent joined). Workspace test/lint exit 0; compose-DB migrations no-op on re-run.
+
+**Deviations:** trio's migration runner is a thin wrapper over the generalised FND-9 runner (less duplication than the plan's per-package copy). Fixed in-test: route registration moved before first inject (Fastify freezes routes on ready); span assertion disambiguated from earlier requests.
+
+**Security self-review (trio zone — P3):** service-token compare is timing-safe and /healthz is the only open route; append-only proven at the DB for the commitment/replay/ledger tables; the per-qid unique constraint (SYN-9) is now structural; no clock or TTL backdoor exists in the trio — deterministic time enters only via the constructor port; secrets (service token) never logged.

@@ -11,6 +11,15 @@
   "references": [
     {
       "path": "../../packages/contracts"
+    },
+    {
+      "path": "../../packages/events"
+    },
+    {
+      "path": "../../packages/signing"
+    },
+    {
+      "path": "../../packages/otel"
     }
   ]
 }

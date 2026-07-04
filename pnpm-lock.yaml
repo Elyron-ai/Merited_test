@@ -153,10 +153,31 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@merited/otel':
+        specifier: workspace:*
+        version: link:../../packages/otel
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
+      fastify:
+        specifier: 'catalog:'
+        version: 5.9.0
+      pg:
+        specifier: 'catalog:'
+        version: 8.22.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.20.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
