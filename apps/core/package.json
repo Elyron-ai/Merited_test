@@ -17,6 +17,7 @@
     "db:check": "node ../../packages/events/scripts/check-migrations.mjs"
   },
   "devDependencies": {
+    "@merited/fake-aurora": "workspace:*",
     "@merited/trio": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
