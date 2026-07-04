@@ -104,12 +104,13 @@ export class GradeBOrderProcessor implements OrderProcessor {
 
     const verdict = await this.submitToTrio(claim);
     await this.deps.pool.query(
-      `UPDATE core.claims_intake SET verdict = $2, reason_code = $3, updated_at = now()
+      `UPDATE core.claims_intake SET verdict = $2, reason_code = $3, entries_preview = $4::jsonb, updated_at = now()
         WHERE claim_id = $1`,
       [
         claim.claim_id,
         verdict.verdict,
         verdict.verdict === 'rejected' ? verdict.reason_code : null,
+        verdict.verdict === 'verified' ? JSON.stringify(verdict.entries_preview) : null,
       ],
     );
 

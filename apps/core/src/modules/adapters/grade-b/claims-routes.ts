@@ -94,8 +94,9 @@ export const registerClaimsRoutes = (app: FastifyInstance, deps: ClaimsApiDeps):
       qid: string | null;
       verdict: 'pending' | 'verified' | 'rejected';
       reason_code: string | null;
+      entries_preview: unknown | null;
     }>(
-      `SELECT claim_id, merchant_id, qid, verdict, reason_code
+      `SELECT claim_id, merchant_id, qid, verdict, reason_code, entries_preview
          FROM core.claims_intake WHERE claim_id = $1`,
       [claimId],
     );
@@ -126,6 +127,7 @@ export const registerClaimsRoutes = (app: FastifyInstance, deps: ClaimsApiDeps):
       status: row.verdict,
       ...(row.verdict !== 'pending' ? { verdict: row.verdict } : {}),
       ...(row.reason_code ? { reason_code: row.reason_code } : {}),
+      ...(row.entries_preview ? { entries_preview: row.entries_preview } : {}),
     };
   });
 };

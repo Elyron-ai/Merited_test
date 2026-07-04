@@ -131,9 +131,11 @@ describe('SDK (CORE-13 accept) — the full Act-1 call sequence', () => {
     );
     expect(submitted).toEqual({ claim_id: base.claim_id, verdict: 'verified' });
 
-    // 5 — getClaim as the agent + quote flips to converted
+    // 5 — getClaim as the agent + quote flips to converted; the verified
+    // claim carries the balanced settlement preview (VAL-7's CLI print)
     const status = await client.getClaim(base.claim_id);
-    expect(status).toEqual({ claim_id: base.claim_id, status: 'verified', verdict: 'verified' });
+    expect(status).toMatchObject({ claim_id: base.claim_id, status: 'verified', verdict: 'verified' });
+    expect(status.entries_preview?.lines.map((l) => l.amount.amount)).toEqual([1200, 720, 240, 240]);
     expect((await client.getQuote(quote.quote_id)).status).toBe('converted');
   });
 

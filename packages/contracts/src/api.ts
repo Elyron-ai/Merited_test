@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Id } from './ids.js';
 import { OfferQuote } from './quote.js';
 import { RejectionReasonCode } from './reasons.js';
+import { EntrySet } from './trio/index.js';
 
 /**
  * Public REST wire shapes not already covered by richer contracts
@@ -40,5 +41,8 @@ export const ClaimStatusResponse = z.object({
   status: z.enum(['pending', 'verified', 'rejected']),
   verdict: z.enum(['verified', 'rejected']).optional(),
   reason_code: RejectionReasonCode.optional(),
+  /** Balanced settlement lines from the verdict (§10 step 6/B18) — present
+   * once verified; the trio's ledger remains the source of truth. */
+  entries_preview: EntrySet.optional(),
 });
 export type ClaimStatusResponse = z.infer<typeof ClaimStatusResponse>;

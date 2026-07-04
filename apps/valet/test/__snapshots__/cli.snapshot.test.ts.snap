@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`valet CLI (VAL-7 accept — B18 end-to-end with snapshot output) > brief → quote → checkout → verdict → settlement lines, snapshot with volatile fields normalised 1`] = `
+"Errand <ern> briefed: "spa day under £120"
+BRIEFED → SEARCHING
+SEARCHING → QUOTED
+Quote <qte>
+  list  8450 pence (£84.50)
+  final 8450 pence (£84.50)
+  expires <timestamp>
+Token claims
+  jti <atk>
+  cid <com>
+  qid <qte>
+  aid <agt>
+  tier T1
+  sid <hash>
+  apr null
+QUOTED → APPROVED
+APPROVED → EXECUTING
+EXECUTING → CONFIRMED
+Verdict: verified
+Settlement lines
+  merchant −£12.00
+  agent    +£7.20
+  Merited  +£2.40
+  reserve  £2.40
+Errand finished in state CONFIRMED."
+`;

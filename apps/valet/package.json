@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "valet": "tsx src/cli.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -23,12 +24,16 @@
     "@merited/core": "workspace:*",
     "@merited/trio": "workspace:*",
     "@merited/fake-aurora": "workspace:*",
-    "fastify": "catalog:"
+    "fastify": "catalog:",
+    "tsx": "^4.23.0"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "pg": "catalog:",
     "@merited/events": "workspace:*",
     "@merited/sdk": "workspace:*"
+  },
+  "bin": {
+    "valet": "./dist/cli.js"
   }
 }

@@ -141,6 +141,7 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
       status: claim.verdict,
       ...(claim.verdict === 'pending' ? {} : { verdict: claim.verdict }),
       ...(claim.reason_code ? { reason_code: claim.reason_code } : {}),
+      ...(claim.entries_preview ? { entries_preview: claim.entries_preview } : {}),
     });
   });
 };

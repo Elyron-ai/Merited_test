@@ -206,13 +206,21 @@ export class QuoteService {
     claim_id: string;
     verdict: 'pending' | 'verified' | 'rejected';
     reason_code: string | null;
+    entries_preview: unknown | null;
   } | null> {
     const { rows } = await this.deps.pool.query(
-      `SELECT claim_id, verdict, reason_code FROM core.claims_intake
+      `SELECT claim_id, verdict, reason_code, entries_preview FROM core.claims_intake
         WHERE qid = $1 ORDER BY created_at DESC, claim_id DESC LIMIT 1`,
       [quoteId],
     );
-    return (rows[0] as { claim_id: string; verdict: 'pending' | 'verified' | 'rejected'; reason_code: string | null } | undefined) ?? null;
+    return (
+      (rows[0] as {
+        claim_id: string;
+        verdict: 'pending' | 'verified' | 'rejected';
+        reason_code: string | null;
+        entries_preview: unknown | null;
+      } | undefined) ?? null
+    );
   }
 
   /** Quotes are promises: live until expiry, converted when the ledger says so. */
