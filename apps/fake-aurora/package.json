@@ -19,6 +19,8 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@merited/contracts": "workspace:*"
+    "@merited/contracts": "workspace:*",
+    "fastify": "catalog:",
+    "zod": "catalog:"
   }
 }

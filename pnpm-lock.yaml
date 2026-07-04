@@ -166,6 +166,12 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      fastify:
+        specifier: 'catalog:'
+        version: 5.9.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

@@ -11,6 +11,16 @@ export const IDEMPOTENCY_KEY_HEADER = 'idempotency-key';
 export const WEBHOOK_TIMESTAMP_MAX_SKEW_S = 300;
 
 /**
+ * The byte layout both sides HMAC-SHA256 over (hex digest in the signature
+ * header): `${unix-seconds-timestamp}.${raw-request-body}`. The timestamp
+ * binding defeats replay-with-old-signature; the raw body (never a re-parse)
+ * is what MER-3 verifies. Contracts pins the LAYOUT only — the HMAC itself
+ * lives with each side's crypto (this package stays dependency-free).
+ */
+export const webhookSignaturePayload = (timestampS: number, rawBody: string): string =>
+  `${timestampS}.${rawBody}`;
+
+/**
  * FakeShop's NATIVE order payload — deliberately shaped differently from
  * `OrderConfirmed` (nested minor-unit money, raw order number, basket
  * lines) so MER-4's normaliser is genuinely exercised: the basket is
