@@ -6,6 +6,13 @@ import { AURORA_COMMERCIAL, AURORA_MEMBERS, AURORA_MERCHANT_ID, AURORA_OFFERS } 
 export interface SeedOptions {
   /** merited_app connection string — events+core+trio schemas migrated. */
   databaseUrl: string;
+  /** `--reset` (VAL-10): truncate the non-ledger seed targets first, then
+   * reseed. Requires `resetDatabaseUrl` — the app role deliberately holds
+   * no DELETE anywhere in core, so resetting is an operator action under
+   * the migrate role, never something runtime credentials can do. */
+  reset?: boolean;
+  /** merited_migrate connection string, used ONLY for the reset truncate. */
+  resetDatabaseUrl?: string;
   serviceToken?: string;
   signerSecret?: string;
   log?: (line: string) => void;
@@ -22,6 +29,38 @@ export interface SeedResult {
 const formatPence = (amount: number): string => `£${(amount / 100).toFixed(2)}`;
 
 /**
+ * The non-ledger seed targets (VAL-10): the tables the seed writes, plus the
+ * runtime tables that hold state DERIVED from those entities (and whose
+ * foreign keys would otherwise block the truncate). One statement so
+ * Postgres resolves the FK graph itself. `events.*` and every `trio.*`
+ * table are NEVER named here — the ledger is append-only (§8) and a reset
+ * must leave the recorded history fully intact and verifiable.
+ */
+const RESET_TARGETS = [
+  'core.claims_intake',
+  'core.idempotency_keys',
+  'core.quotes',
+  'core.offer_counters',
+  'core.offer_commitments',
+  'core.offers',
+  'core.merchant_signing_keys',
+  'core.merchant_api_keys',
+  'core.merchant_webhook_secrets',
+  'core.merchants',
+  'core.aurora_club_members',
+] as const;
+
+const resetSeedTargets = async (resetDatabaseUrl: string): Promise<void> => {
+  const client = new pg.Client({ connectionString: resetDatabaseUrl });
+  await client.connect();
+  try {
+    await client.query(`TRUNCATE ${RESET_TARGETS.join(', ')}`);
+  } finally {
+    await client.end();
+  }
+};
+
+/**
  * Aurora Experiences seed (VAL-9, B22). Everything goes through the REAL
  * platform surfaces — merchants service, offers service, publish path →
  * trio commitment simulator (in-process over real HTTP) — never back-door
@@ -34,6 +73,14 @@ export const runSeed = async (options: SeedOptions): Promise<SeedResult> => {
   const log = options.log ?? ((line: string) => console.log(line));
   const serviceToken = options.serviceToken ?? 'seed-local';
   const signerSecret = options.signerSecret ?? 'trio-dev-secret';
+
+  if (options.reset) {
+    if (!options.resetDatabaseUrl) {
+      throw new Error('--reset needs the migrate-role connection (resetDatabaseUrl / RESET_DATABASE_URL)');
+    }
+    await resetSeedTargets(options.resetDatabaseUrl);
+    log('Reset: seed targets truncated (ledger untouched — events and trio history kept).');
+  }
 
   const pool = new pg.Pool({ connectionString: options.databaseUrl, max: 5 });
   pool.on('error', () => {});

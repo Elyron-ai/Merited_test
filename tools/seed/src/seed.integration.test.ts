@@ -18,6 +18,7 @@ const dbName = `merited_seed_${Date.now().toString(36)}`;
 
 let admin: pg.Client;
 let pool: pg.Pool;
+let appUrl: string;
 let result: SeedResult;
 const logLines: string[] = [];
 
@@ -29,7 +30,7 @@ beforeAll(async () => {
   await migrate(adminUrl);
   await migrateCore(adminUrl);
   await migrateTrio(adminUrl);
-  const appUrl = `postgres://merited_app:merited_app_dev@localhost:5432/${dbName}`;
+  appUrl = `postgres://merited_app:merited_app_dev@localhost:5432/${dbName}`;
   pool = new pg.Pool({ connectionString: appUrl, max: 5 });
   pool.on('error', () => {});
   result = await runSeed({ databaseUrl: appUrl, log: (line) => logLines.push(line) });
@@ -112,5 +113,79 @@ describe('pnpm seed (VAL-9 accept)', () => {
     const summary = logLines.join('\n');
     expect(summary).toContain('£12.00');
     expect(summary).toContain('Aurora Experiences');
+  });
+});
+
+/** The fixture-sourced columns — what "byte-identical" is measured over.
+ * Runtime-generated values (COR ids, timestamps) are legitimately fresh
+ * per publish; the FIXTURES must come back identical. */
+const fixtureSnapshot = async (pool: pg.Pool): Promise<string> => {
+  const merchants = await pool.query(
+    `SELECT merchant_id, name, slug, status, commercial, signing_key_ref
+       FROM core.merchants ORDER BY merchant_id`,
+  );
+  const members = await pool.query(
+    `SELECT member_ref, sub_hash, loyalty_tier, status, consumer_ref
+       FROM core.aurora_club_members ORDER BY member_ref`,
+  );
+  const offers = await pool.query(
+    `SELECT offer_id, merchant_id, title, description, mechanics, sku_scope,
+            identity_tiers, stacking_group, status, valid_from, valid_until
+       FROM core.offers ORDER BY offer_id`,
+  );
+  return JSON.stringify({ merchants: merchants.rows, members: members.rows, offers: offers.rows });
+};
+
+const coreRowCounts = async (pool: pg.Pool): Promise<Record<string, number>> => {
+  const tables = ['merchants', 'aurora_club_members', 'offers', 'offer_commitments', 'merchant_signing_keys'];
+  const counts: Record<string, number> = {};
+  for (const table of tables) {
+    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM core.${table}`);
+    counts[table] = rows[0].n;
+  }
+  return counts;
+};
+
+describe('seed idempotency + reset (VAL-10 accept)', () => {
+  it('seed twice → row counts identical, zero duplicates, no new ledger events', async () => {
+    const before = await coreRowCounts(pool);
+    const eventsBefore = await pool.query(`SELECT count(*)::int AS n FROM events.events`);
+    const rerun = await runSeed({ databaseUrl: appUrl });
+    expect(rerun.offers_published).toBe(0); // everything already live — a no-op
+    expect(await coreRowCounts(pool)).toEqual(before);
+    const eventsAfter = await pool.query(`SELECT count(*)::int AS n FROM events.events`);
+    expect(eventsAfter.rows[0].n).toBe(eventsBefore.rows[0].n);
+  });
+
+  it('--reset then seed → byte-identical fixture rows; ledger untouched and chain still verifies', async () => {
+    const fixturesBefore = await fixtureSnapshot(pool);
+    const ledgerBefore = await pool.query(`SELECT seq, this_hash FROM events.events ORDER BY seq`);
+
+    const reseeded = await runSeed({
+      databaseUrl: appUrl,
+      reset: true,
+      resetDatabaseUrl: `postgres://merited_migrate:merited_migrate_dev@localhost:5432/${dbName}`,
+    });
+    expect(reseeded.offers_published).toBe(6); // truncate really happened
+
+    // fixture rows come back byte-for-byte (fixed IDs, D6)
+    expect(await fixtureSnapshot(pool)).toBe(fixturesBefore);
+
+    // the ledger was NEVER touched: every pre-reset event survives with its
+    // seq and hash intact (reseeding APPENDS new history; it rewrites none)
+    const ledgerAfter = await pool.query(`SELECT seq, this_hash FROM events.events ORDER BY seq`);
+    expect(ledgerAfter.rows.slice(0, ledgerBefore.rows.length)).toEqual(ledgerBefore.rows);
+    expect(ledgerAfter.rows.length).toBe(ledgerBefore.rows.length + 7); // 6 publishes + 1 COR
+
+    const client = await pool.connect();
+    try {
+      expect(await verifyChain(client)).toMatchObject({ ok: true });
+    } finally {
+      client.release();
+    }
+  });
+
+  it('reset without the migrate-role connection is refused (app role holds no DELETE)', async () => {
+    await expect(runSeed({ databaseUrl: appUrl, reset: true })).rejects.toThrow(/migrate-role/);
   });
 });

@@ -11,9 +11,16 @@ export {
 } from './fixtures/aurora.js';
 
 const DEV_DATABASE_URL = 'postgres://merited_app:merited_app_dev@localhost:5432/merited';
+const DEV_RESET_DATABASE_URL = 'postgres://merited_migrate:merited_migrate_dev@localhost:5432/merited';
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
-  runSeed({ databaseUrl: process.env['DATABASE_URL'] ?? DEV_DATABASE_URL }).catch((error) => {
+  const reset = process.argv.includes('--reset');
+  runSeed({
+    databaseUrl: process.env['DATABASE_URL'] ?? DEV_DATABASE_URL,
+    ...(reset
+      ? { reset, resetDatabaseUrl: process.env['RESET_DATABASE_URL'] ?? DEV_RESET_DATABASE_URL }
+      : {}),
+  }).catch((error) => {
     console.error('seed failed:', error instanceof Error ? error.message : error);
     process.exitCode = 1;
   });
