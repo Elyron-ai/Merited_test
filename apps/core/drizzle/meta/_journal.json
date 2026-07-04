@@ -43,6 +43,13 @@
       "when": 1783300000006,
       "tag": "0005_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783300000007,
+      "tag": "0006_claims_intake",
+      "breakpoints": true
     }
   ]
 }
