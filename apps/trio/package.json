@@ -13,10 +13,12 @@
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
     "contract-test": "tsc -p contract-tests/tsconfig.json && vitest run contract-tests",
+    "openapi:generate": "tsc -b && node dist/openapi/generate.js",
     "db:migrate": "node scripts/migrate.mjs",
     "db:check": "node ../../packages/events/scripts/check-migrations.mjs"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@merited/contracts": "workspace:*",
     "@merited/events": "workspace:*",
     "@merited/otel": "workspace:*",
@@ -25,6 +27,7 @@
     "pg": "catalog:",
     "playwright-core": "^1.61.1",
     "ulidx": "catalog:",
+    "yaml": "^2.9.0",
     "zod": "catalog:"
   },
   "devDependencies": {

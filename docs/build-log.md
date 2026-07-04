@@ -297,3 +297,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Security self-review (trio zone — this suite IS the gate):** every negative is induced from public HTTP inputs (no clock or DB backdoors; the zero-window clawback negative uses a real elapsed wall-clock); tokens are opaque throughout; the transport auth gate is asserted on; the exhaustiveness test fails if any of the 12 closed-enum codes was never induced; the seam guard makes simulator leakage into routes or tests a CI failure, not a review catch; both gap-sweep fixes tighten the public surface (byte-stable idempotency, no 500s from crafted input). From here the suite is FROZEN under XC-7 change control — any edit during PH1-24…26 is a contract bug to stop and log, not a test to fix.
 
 **Deviation/notes:** wallet-path fixtures and DB-backed event assertions skip at run time against remote targets (directory arrives with TRIO-17; a remote ledger is not the suite's to open) — recorded for TRIO-16/HANDOFF. PH1-30 will add a real-Ed25519 signer branch to `harness.ts` (a harness change, never a test-file change).
+
+---
+
+## TRIO-14 — OpenAPI docs · ✅ 2026-07-04
+
+**Built:** `apps/trio/src/openapi/document.ts` — the trio's OpenAPI 3.0.3 document generated with zod-to-openapi (v7, zod-3 line) from the SAME `packages/contracts` Zod schemas the routes parse, committed as `apps/trio/openapi.yaml` (deterministic YAML; `pnpm --filter @merited/trio openapi:generate` regenerates). Documents all eleven endpoints, the normative six-stage pipeline order with first-failure-wins semantics (SYN-2), all 12 reason codes with their exact trigger conditions — via a `Record<RejectionReasonCode, string>` that is compile-time exhaustive over the closed enum (a 13th code fails the build until documented) — plus idempotency byte-for-byte semantics (§8/D7), re-mint/one-per-qid (SYN-9), clawback semantics (SYN-10/35), SYN-34's /end reading, the SYN-36 party mapping, and the SYN-24 transport gate as a securityScheme. `openapi.test.ts` is the drift gate: the committed yaml must equal the regenerated string byte-for-byte in CI-equivalent runs, every enum member must appear, every endpoint must be present.
+
+**Tests:** 3 new (trio 110; workspace 221 green, build/lint exit 0). Accept clause held: byte-identical regeneration asserted; all 12 `RejectionReasonCode` members verified present in the verify response docs.
+
+**Deviation/notes:** none. The version is pinned 0.1.0 to be tagged by XC-7 (M1 freeze) alongside `@merited/contracts@0.1.0`.

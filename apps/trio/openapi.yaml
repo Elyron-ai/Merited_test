@@ -1,0 +1,1218 @@
+openapi: 3.0.3
+info:
+  title: Merited trio — Commitment Signing, Token Mint + Conversion Verification, Net Settlement
+  version: 0.1.0
+  description: The security-critical trio (BUILD-SPEC §7). Phase 0 serves these contracts from behaviourally faithful simulators; PH1-24…26 replace them file-for-file behind the UNCHANGED TRIO-13 contract suite. This document is generated from the packages/contracts Zod schemas — CI fails on drift.
+security:
+  - serviceToken: []
+components:
+  securitySchemes:
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Merited-Service-Token
+      description: "Phase-0 transport gate (SYN-24): a shared service token on every route except /healthz. PH1-25 upgrades transport auth; payload trust always comes from signatures, never from this header."
+  schemas: {}
+  parameters: {}
+paths:
+  /trio/commitments:
+    post:
+      summary: Countersign a commitment (COR) — §7.1
+      description: "Unsigned draft in, countersigned Commitment Object Record out. CORs are immutable: there is no update surface, and ledger roles revoke UPDATE/DELETE at the database. An optional budget registers a spend counter in Settlement; the COR itself stays budget-free (SYN-12). Emits `CommitmentCreated`."
+      security: &a2
+        - serviceToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                merchant_id:
+                  type: string
+                  pattern: ^mer_[0-9A-HJKMNP-TV-Z]{26}$
+                offer_ref:
+                  type: string
+                  pattern: ^off_[0-9A-HJKMNP-TV-Z]{26}$
+                bounty:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - fixed
+                        - pct_of_order
+                    amount:
+                      type: object
+                      properties:
+                        amount:
+                          type: integer
+                          minimum: 0
+                        currency:
+                          type: string
+                          enum:
+                            - GBP_pence
+                      required:
+                        - amount
+                        - currency
+                    pct_bps:
+                      type: integer
+                      minimum: 0
+                      exclusiveMinimum: true
+                  required:
+                    - type
+                take_rate_bps:
+                  type: integer
+                  minimum: 0
+                agent_commission_bps:
+                  type: integer
+                  minimum: 0
+                terms:
+                  type: object
+                  properties:
+                    attribution_window_s:
+                      type: integer
+                      minimum: 0
+                      exclusiveMinimum: true
+                    eligible_identity_tiers:
+                      type: array
+                      items:
+                        type: string
+                        enum: &a1
+                          - T1
+                          - T2
+                          - T3
+                    max_conversions:
+                      type: integer
+                      nullable: true
+                      minimum: 0
+                      exclusiveMinimum: true
+                    clawback_window_s:
+                      type: integer
+                      minimum: 0
+                    valid_from:
+                      type: string
+                      format: date-time
+                    valid_until:
+                      type: string
+                      format: date-time
+                  required:
+                    - attribution_window_s
+                    - eligible_identity_tiers
+                    - max_conversions
+                    - clawback_window_s
+                    - valid_from
+                    - valid_until
+                budget:
+                  type: object
+                  properties:
+                    amount:
+                      type: integer
+                      minimum: 0
+                    currency:
+                      type: string
+                      enum:
+                        - GBP_pence
+                  required:
+                    - amount
+                    - currency
+              required:
+                - merchant_id
+                - offer_ref
+                - bounty
+                - take_rate_bps
+                - agent_commission_bps
+                - terms
+      responses:
+        "200":
+          description: The countersigned COR.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commitment:
+                    type: object
+                    properties:
+                      commitment_id:
+                        type: string
+                        pattern: ^com_[0-9A-HJKMNP-TV-Z]{26}$
+                      merchant_id:
+                        type: string
+                        pattern: ^mer_[0-9A-HJKMNP-TV-Z]{26}$
+                      offer_ref:
+                        type: string
+                        pattern: ^off_[0-9A-HJKMNP-TV-Z]{26}$
+                      bounty:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - fixed
+                              - pct_of_order
+                          amount:
+                            type: object
+                            properties:
+                              amount:
+                                type: integer
+                                minimum: 0
+                              currency:
+                                type: string
+                                enum:
+                                  - GBP_pence
+                            required:
+                              - amount
+                              - currency
+                          pct_bps:
+                            type: integer
+                            minimum: 0
+                            exclusiveMinimum: true
+                        required:
+                          - type
+                      take_rate_bps:
+                        type: integer
+                        minimum: 0
+                      agent_commission_bps:
+                        type: integer
+                        minimum: 0
+                      terms:
+                        type: object
+                        properties:
+                          attribution_window_s:
+                            type: integer
+                            minimum: 0
+                            exclusiveMinimum: true
+                          eligible_identity_tiers:
+                            type: array
+                            items:
+                              type: string
+                              enum: *a1
+                          max_conversions:
+                            type: integer
+                            nullable: true
+                            minimum: 0
+                            exclusiveMinimum: true
+                          clawback_window_s:
+                            type: integer
+                            minimum: 0
+                          valid_from:
+                            type: string
+                            format: date-time
+                          valid_until:
+                            type: string
+                            format: date-time
+                        required:
+                          - attribution_window_s
+                          - eligible_identity_tiers
+                          - max_conversions
+                          - clawback_window_s
+                          - valid_from
+                          - valid_until
+                      merchant_sig:
+                        type: string
+                      platform_sig:
+                        type: string
+                    required:
+                      - commitment_id
+                      - merchant_id
+                      - offer_ref
+                      - bounty
+                      - take_rate_bps
+                      - agent_commission_bps
+                      - terms
+                      - merchant_sig
+                      - platform_sig
+                required:
+                  - commitment
+        "400":
+          description: Malformed draft (`VALIDATION_FAILED`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+        "401":
+          description: Missing or wrong service token (`SERVICE_AUTH_FAILED`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/commitments/{id}/end:
+    post:
+      summary: End a commitment — §7.1
+      description: 'Stops NEW token mints against the commitment. In-flight tokens still verify until their own windows close (SYN-34: §5.1 "old tokens still verify" governs — no retroactive repricing). Emits `CommitmentEnded`.'
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Ended.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commitment_id:
+                    type: string
+                    pattern: ^com_[0-9A-HJKMNP-TV-Z]{26}$
+                  ended_at:
+                    type: string
+                    format: date-time
+                required:
+                  - commitment_id
+                  - ended_at
+        "404":
+          description: Unknown commitment (`COMMITMENT_NOT_FOUND`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+        "409":
+          description: Already ended (`COMMITMENT_ALREADY_ENDED`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/commitments/{id}:
+    get:
+      summary: Commitment status — SYN-7
+      description: Liveness (live / ended / expired / not_yet_valid) plus the Settlement counters (conversions used, budget remaining). Consumed by eligibility (CORE-6).
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Current status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commitment_id:
+                    type: string
+                    pattern: ^com_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum:
+                      - live
+                      - ended
+                      - expired
+                      - not_yet_valid
+                  conversions_used:
+                    type: integer
+                    minimum: 0
+                  max_conversions:
+                    type: integer
+                    nullable: true
+                    minimum: 0
+                    exclusiveMinimum: true
+                  budget_remaining:
+                    type: object
+                    nullable: true
+                    properties:
+                      amount:
+                        type: integer
+                        minimum: 0
+                      currency:
+                        type: string
+                        enum:
+                          - GBP_pence
+                    required:
+                      - amount
+                      - currency
+                required:
+                  - commitment_id
+                  - status
+                  - conversions_used
+                  - max_conversions
+                  - budget_remaining
+        "404":
+          description: Unknown commitment (`COMMITMENT_NOT_FOUND`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/tokens/mint:
+    post:
+      summary: Mint a quote-bound attribution token — §7.2
+      description: "Mints a single-use, quote-bound token (≤10-minute life, capped by the attribution window). The request snapshots the quote expiry and mandate reference (SYN-8) so verification never calls back into Core. Re-mint after an approval (B26): same qid, fresh jti, apr set — only one token per qid ever converts (SYN-9). Tokens are opaque to every consumer; claims are returned alongside for bookkeeping. Emits `TokenMinted`."
+      security: *a2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cid:
+                  type: string
+                  pattern: ^com_[0-9A-HJKMNP-TV-Z]{26}$
+                qid:
+                  type: string
+                  pattern: ^qte_[0-9A-HJKMNP-TV-Z]{26}$
+                aid:
+                  type: string
+                  pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+                tier:
+                  type: string
+                  enum: *a1
+                session_nonce:
+                  type: string
+                  minLength: 1
+                apr:
+                  type: string
+                  pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+                quote:
+                  type: object
+                  properties:
+                    expires_at:
+                      type: string
+                      format: date-time
+                    mandate_ref:
+                      type: string
+                      nullable: true
+                      pattern: ^mnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  required:
+                    - expires_at
+                    - mandate_ref
+              required:
+                - cid
+                - qid
+                - aid
+                - tier
+                - session_nonce
+                - quote
+      responses:
+        "200":
+          description: Token + claims.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  claims:
+                    type: object
+                    properties:
+                      jti:
+                        type: string
+                        pattern: ^atk_[0-9A-HJKMNP-TV-Z]{26}$
+                      cid:
+                        type: string
+                        pattern: ^com_[0-9A-HJKMNP-TV-Z]{26}$
+                      qid:
+                        type: string
+                        pattern: ^qte_[0-9A-HJKMNP-TV-Z]{26}$
+                      aid:
+                        type: string
+                        pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+                      tier:
+                        type: string
+                        enum: *a1
+                      sid:
+                        type: string
+                      apr:
+                        type: string
+                        nullable: true
+                        pattern: ^apr_[0-9A-HJKMNP-TV-Z]{26}$
+                      iat:
+                        type: integer
+                      exp:
+                        type: integer
+                    required:
+                      - jti
+                      - cid
+                      - qid
+                      - aid
+                      - tier
+                      - sid
+                      - apr
+                      - iat
+                      - exp
+                required:
+                  - token
+                  - claims
+        "400":
+          description: Malformed request (`VALIDATION_FAILED`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+        "404":
+          description: Unknown commitment (`COMMITMENT_NOT_FOUND`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+        "409":
+          description: Commitment not live (`COMMITMENT_NOT_LIVE`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+        "422":
+          description: Quote expiry beyond token life (`QUOTE_EXPIRY_EXCEEDS_TOKEN`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/claims/verify:
+    post:
+      summary: Verify a conversion claim — §7.2
+      description: |-
+        Runs the normative six-stage verification pipeline, in this exact order, first-failure-wins
+        (the response carries the reason code of the EARLIEST failing stage — SYN-2):
+
+        1. **Signature chain** — merchant claim signature → platform token signature → both COR countersignatures.
+        2. **Replay** — single-use jti; one verified conversion per qid (SYN-9). Consumption is atomic with the verdict: a rejected claim never burns the token.
+        3. **Attribution window** — order.ts within [iat, iat + attribution_window_s].
+        4. **Quote liveness** — order.ts within the quote expiry snapshotted at mint (SYN-8).
+        5. **Commitment terms** — COR validity (SYN-34), conversion cap, identity tier, budget.
+        6. **Approval checks** — wallet path only (apr set, or minted under a mandate): approval exists, quote-bound, unexpired; mandate active (live read) and within per_txn/per_month limits. Walletless claims (apr null, no mandate) skip this stage by design.
+
+        ### Rejection reason codes
+
+        - `SIG_INVALID`: Stage 1 (signature chain) — the merchant signature on the claim, the platform signature on the token, or either COR countersignature fails; or the claim references records the trio does not hold (unknown token, a different merchant’s commitment). Reversals reuse this code for unknown claims, foreign merchants and bad signatures (SYN-35).
+        - `TOKEN_REPLAYED`: Stage 2 (replay) — the token’s jti was already consumed by a verified conversion, or its qid already produced one via a re-mint (SYN-9: one verified conversion per quote, ever). A second reversal of the same conversion also reuses this code (SYN-35).
+        - `WINDOW_EXPIRED`: Stage 3 (attribution window) — order.ts falls outside [iat, iat + attribution_window_s]. A reversal submitted after clawback_window_s reuses this code with the clawback window as the trigger (SYN-10).
+        - `QUOTE_EXPIRED`: Stage 4 (quote liveness) — order.ts is after the quote expiry snapshotted at mint time (SYN-8: the trio trusts only its own mint record).
+        - `COMMITMENT_ENDED`: Stage 5 (commitment terms) — order.ts falls outside the COR’s valid_from/valid_until. Ending a commitment stops NEW mints only; in-flight tokens still verify (SYN-34 — no retroactive repricing).
+        - `CAP_EXHAUSTED`: Stage 5 (commitment terms) — max_conversions is used up. A clawback reversal frees the cap (SYN-10).
+        - `TIER_INELIGIBLE`: Stage 5 (commitment terms) — the token’s identity tier is not in the COR’s eligible_identity_tiers.
+        - `BUDGET_EXHAUSTED`: Stage 5 (commitment terms) — the commitment’s registered budget cannot cover this conversion’s bounty (SYN-12: budget is a Settlement counter, not a COR field).
+        - `APPROVAL_MISSING`: Stage 6 (approval checks, wallet path) — the token was minted under a mandate but carries no approval (SYN-8 guard), or the referenced approval is unknown or bound to a different quote.
+        - `APPROVAL_EXPIRED`: Stage 6 (approval checks) — order.ts is after the approval’s expiry.
+        - `MANDATE_REVOKED`: Stage 6 (approval checks) — the mandate is missing, not active, or its attestation fails verification. Mandate status is read live on every claim; revocation takes effect immediately (B14).
+        - `LIMIT_EXCEEDED`: Stage 6 (approval checks) — the order’s gross value breaches the mandate’s per_txn limit, or cumulative verified spend this calendar month would breach per_month (SYN-11).
+
+        ### Idempotency (§8/D7)
+
+        The `Idempotency-Key` header is required. Replaying the same key with the same body returns the
+        stored original response **byte-for-byte** (responses are canonically serialised) without
+        re-executing the pipeline. The same key with a different body is rejected with HTTP 422
+        (`IDEMPOTENCY_CONFLICT`).
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            description: Required. Same key + same body replays the stored verdict byte-for-byte.
+          required: true
+          name: idempotency-key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claim_id:
+                  type: string
+                  pattern: ^clm_[0-9A-HJKMNP-TV-Z]{26}$
+                merchant_id:
+                  type: string
+                  pattern: ^mer_[0-9A-HJKMNP-TV-Z]{26}$
+                attribution_token:
+                  type: string
+                order:
+                  type: object
+                  properties:
+                    order_ref_hash:
+                      type: string
+                    gross_value:
+                      type: object
+                      properties:
+                        amount:
+                          type: integer
+                          minimum: 0
+                        currency:
+                          type: string
+                          enum:
+                            - GBP_pence
+                      required:
+                        - amount
+                        - currency
+                    ts:
+                      type: string
+                      format: date-time
+                  required:
+                    - order_ref_hash
+                    - gross_value
+                    - ts
+                merchant_sig:
+                  type: string
+              required:
+                - claim_id
+                - merchant_id
+                - attribution_token
+                - order
+                - merchant_sig
+      responses:
+        "200":
+          description: The verdict — verified with a preview of the exact posted entry set, or rejected with the earliest failing stage’s reason code.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      verdict:
+                        type: string
+                        enum:
+                          - verified
+                      entries_preview:
+                        type: object
+                        properties:
+                          entry_set_id:
+                            type: string
+                          claim_id:
+                            type: string
+                            nullable: true
+                            pattern: ^clm_[0-9A-HJKMNP-TV-Z]{26}$
+                          lines:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                account:
+                                  type: string
+                                side:
+                                  type: string
+                                  enum: &a3
+                                    - dr
+                                    - cr
+                                amount:
+                                  type: object
+                                  properties:
+                                    amount:
+                                      type: integer
+                                      minimum: 0
+                                    currency:
+                                      type: string
+                                      enum:
+                                        - GBP_pence
+                                  required:
+                                    - amount
+                                    - currency
+                              required:
+                                - account
+                                - side
+                                - amount
+                            minItems: 2
+                        required:
+                          - entry_set_id
+                          - claim_id
+                          - lines
+                    required:
+                      - verdict
+                      - entries_preview
+                  - type: object
+                    properties:
+                      verdict:
+                        type: string
+                        enum:
+                          - rejected
+                      reason_code:
+                        type: string
+                        enum: &a4
+                          - SIG_INVALID
+                          - TOKEN_REPLAYED
+                          - WINDOW_EXPIRED
+                          - COMMITMENT_ENDED
+                          - CAP_EXHAUSTED
+                          - TIER_INELIGIBLE
+                          - BUDGET_EXHAUSTED
+                          - MANDATE_REVOKED
+                          - QUOTE_EXPIRED
+                          - APPROVAL_MISSING
+                          - APPROVAL_EXPIRED
+                          - LIMIT_EXCEEDED
+                    required:
+                      - verdict
+                      - reason_code
+        "400":
+          description: Malformed claim or missing idempotency key.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+        "422":
+          description: Same idempotency key, different body (`IDEMPOTENCY_CONFLICT`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/claims/reverse:
+    post:
+      summary: Clawback reversal — §7.3
+      description: Merchant-signed `ConversionReversed` claim, accepted only within the COR’s clawback_window_s of the conversion (after-window reuses `WINDOW_EXPIRED` — SYN-10). Posts the exact side-flipped entry set (history is append-only; net effect zero for the conversion) and frees the max_conversions counter — and only that counter. Double-reverse reuses `TOKEN_REPLAYED`; unknown claims, foreign merchants and bad signatures reuse `SIG_INVALID` (SYN-35). A reversal of an already-netted conversion posts into the open period. Emits `ConversionReversed`.
+      security: *a2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claim_id:
+                  type: string
+                  pattern: ^clm_[0-9A-HJKMNP-TV-Z]{26}$
+                merchant_id:
+                  type: string
+                  pattern: ^mer_[0-9A-HJKMNP-TV-Z]{26}$
+                reason:
+                  type: string
+                merchant_sig:
+                  type: string
+              required:
+                - claim_id
+                - merchant_id
+                - merchant_sig
+      responses:
+        "200":
+          description: Reversed with the reversing entry set, or rejected.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      verdict:
+                        type: string
+                        enum:
+                          - reversed
+                      entries_preview:
+                        type: object
+                        properties:
+                          entry_set_id:
+                            type: string
+                          claim_id:
+                            type: string
+                            nullable: true
+                            pattern: ^clm_[0-9A-HJKMNP-TV-Z]{26}$
+                          lines:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                account:
+                                  type: string
+                                side:
+                                  type: string
+                                  enum: *a3
+                                amount:
+                                  type: object
+                                  properties:
+                                    amount:
+                                      type: integer
+                                      minimum: 0
+                                    currency:
+                                      type: string
+                                      enum:
+                                        - GBP_pence
+                                  required:
+                                    - amount
+                                    - currency
+                              required:
+                                - account
+                                - side
+                                - amount
+                            minItems: 2
+                        required:
+                          - entry_set_id
+                          - claim_id
+                          - lines
+                    required:
+                      - verdict
+                      - entries_preview
+                  - type: object
+                    properties:
+                      verdict:
+                        type: string
+                        enum:
+                          - rejected
+                      reason_code:
+                        type: string
+                        enum: *a4
+                    required:
+                      - verdict
+                      - reason_code
+        "400":
+          description: Malformed request (`VALIDATION_FAILED`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/netting/run:
+    post:
+      summary: Netting run — §7.3
+      description: Folds every un-netted entry set into per-party net positions (SYN-36 party mapping; zero folds omitted; positions always sum to zero). Entries are never edited — an append-only marker records the fold, and a set folds into exactly one run ever. Payout instructions are out of scope (SimulatedPayouts/statements-only through Phase 1). Emits `SettlementNetted`.
+      security: *a2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                period:
+                  type: string
+              required:
+                - period
+      responses:
+        "200":
+          description: The run’s folded positions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  netting_run_id:
+                    type: string
+                  period:
+                    type: string
+                  positions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        direction:
+                          type: string
+                          enum: &a5
+                            - payable
+                            - receivable
+                        amount:
+                          type: object
+                          properties:
+                            amount:
+                              type: integer
+                              minimum: 0
+                            currency:
+                              type: string
+                              enum:
+                                - GBP_pence
+                          required:
+                            - amount
+                            - currency
+                        party:
+                          type: string
+                      required:
+                        - direction
+                        - amount
+                        - party
+                required:
+                  - netting_run_id
+                  - period
+                  - positions
+        "400":
+          description: Malformed period (`INVALID_PERIOD`, format YYYY-MM).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/positions/{party}:
+    get:
+      summary: Live net position — §7.3
+      description: "Σ of the party’s account lines, netted or not (SYN-36: `mer_*`/`agt_*` ids, `platform`, or `reserve`; credit positive — a balance ≥ 0 is receivable, < 0 payable)."
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: party
+          in: path
+      responses:
+        "200":
+          description: Current position.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  direction:
+                    type: string
+                    enum: *a5
+                  amount:
+                    type: object
+                    properties:
+                      amount:
+                        type: integer
+                        minimum: 0
+                      currency:
+                        type: string
+                        enum:
+                          - GBP_pence
+                    required:
+                      - amount
+                      - currency
+                  party:
+                    type: string
+                required:
+                  - direction
+                  - amount
+                  - party
+  /trio/statements/{party}/{period}:
+    get:
+      summary: Statement (JSON) — §7.3
+      description: Opening balance, the party’s entry lines in the period (YYYY-MM), netting events that folded the party’s entries, and the closing balance. Closing always equals the live position once the period covers all activity.
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: party
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: period
+          in: path
+      responses:
+        "200":
+          description: The statement.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  party:
+                    type: string
+                  period:
+                    type: string
+                  opening:
+                    type: object
+                    properties:
+                      direction:
+                        type: string
+                        enum: *a5
+                      amount:
+                        type: object
+                        properties:
+                          amount:
+                            type: integer
+                            minimum: 0
+                          currency:
+                            type: string
+                            enum:
+                              - GBP_pence
+                        required:
+                          - amount
+                          - currency
+                    required:
+                      - direction
+                      - amount
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 0
+                          exclusiveMinimum: true
+                        description:
+                          type: string
+                        side:
+                          type: string
+                          enum:
+                            - dr
+                            - cr
+                        amount:
+                          type: object
+                          properties:
+                            amount:
+                              type: integer
+                              minimum: 0
+                            currency:
+                              type: string
+                              enum:
+                                - GBP_pence
+                          required:
+                            - amount
+                            - currency
+                      required:
+                        - seq
+                        - description
+                        - side
+                        - amount
+                  netting_events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        netting_run_id:
+                          type: string
+                        at:
+                          type: string
+                          format: date-time
+                        position:
+                          type: object
+                          properties:
+                            direction:
+                              type: string
+                              enum: *a5
+                            amount:
+                              type: object
+                              properties:
+                                amount:
+                                  type: integer
+                                  minimum: 0
+                                currency:
+                                  type: string
+                                  enum:
+                                    - GBP_pence
+                              required:
+                                - amount
+                                - currency
+                          required:
+                            - direction
+                            - amount
+                      required:
+                        - netting_run_id
+                        - at
+                        - position
+                  closing:
+                    type: object
+                    properties:
+                      direction:
+                        type: string
+                        enum: *a5
+                      amount:
+                        type: object
+                        properties:
+                          amount:
+                            type: integer
+                            minimum: 0
+                          currency:
+                            type: string
+                            enum:
+                              - GBP_pence
+                        required:
+                          - amount
+                          - currency
+                    required:
+                      - direction
+                      - amount
+                required:
+                  - party
+                  - period
+                  - opening
+                  - lines
+                  - netting_events
+                  - closing
+        "400":
+          description: Malformed period (`INVALID_PERIOD`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /trio/statements/{party}/{period}/pdf:
+    get:
+      summary: Statement (rendered PDF) — §7.3
+      description: The same statement rendered to PDF via the Playwright/Chromium path.
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: party
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: period
+          in: path
+      responses:
+        "200":
+          description: The statement document.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Malformed period (`INVALID_PERIOD`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
+  /healthz:
+    get:
+      summary: Liveness probe (unauthenticated)
+      responses:
+        "200":
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  service:
+                    type: string
+                required:
+                  - ok
+                  - service
