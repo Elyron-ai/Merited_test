@@ -185,11 +185,20 @@ export const StatementLine = z.object({
 });
 export type StatementLine = z.infer<typeof StatementLine>;
 
+/** A netting run's fold for this party, as it appears on a statement. */
+export const NettingEventRef = z.object({
+  netting_run_id: z.string(),
+  at: datetime,
+  position: Balance,
+});
+export type NettingEventRef = z.infer<typeof NettingEventRef>;
+
 export const Statement = z.object({
   party: z.string(),
   period: z.string(),
   opening: Balance,
   lines: z.array(StatementLine),
+  netting_events: z.array(NettingEventRef),
   closing: Balance,
 });
 export type Statement = z.infer<typeof Statement>;

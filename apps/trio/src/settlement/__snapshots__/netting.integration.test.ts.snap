@@ -1,0 +1,75 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`netting, positions, statements (TRIO-11 accept) > statement JSON is snapshot-tested (normalised ids and timestamps) 1`] = `
+{
+  "closing": {
+    "amount": {
+      "amount": 1200,
+      "currency": "GBP_pence",
+    },
+    "direction": "payable",
+  },
+  "lines": [
+    {
+      "amount": {
+        "amount": 1200,
+        "currency": "GBP_pence",
+      },
+      "description": "Conversion clm_<ULID>",
+      "seq": 1,
+      "side": "dr",
+    },
+    {
+      "amount": {
+        "amount": 1200,
+        "currency": "GBP_pence",
+      },
+      "description": "Reversal of conversion clm_<ULID>",
+      "seq": 2,
+      "side": "cr",
+    },
+    {
+      "amount": {
+        "amount": 1200,
+        "currency": "GBP_pence",
+      },
+      "description": "Conversion clm_<ULID>",
+      "seq": 3,
+      "side": "dr",
+    },
+  ],
+  "netting_events": [
+    {
+      "at": "<TS>",
+      "netting_run_id": "net_<ULID>",
+      "position": {
+        "amount": {
+          "amount": 1200,
+          "currency": "GBP_pence",
+        },
+        "direction": "payable",
+      },
+    },
+    {
+      "at": "<TS>",
+      "netting_run_id": "net_<ULID>",
+      "position": {
+        "amount": {
+          "amount": 1200,
+          "currency": "GBP_pence",
+        },
+        "direction": "receivable",
+      },
+    },
+  ],
+  "opening": {
+    "amount": {
+      "amount": 0,
+      "currency": "GBP_pence",
+    },
+    "direction": "receivable",
+  },
+  "party": "mer_<ULID>",
+  "period": "<PERIOD>",
+}
+`;

@@ -4,20 +4,20 @@ packages:
   - tools/*
 catalog:
   '@opentelemetry/api': ^1.9.0
-  '@opentelemetry/sdk-trace-node': ^2.0.0
-  '@opentelemetry/sdk-trace-base': ^2.0.0
   '@opentelemetry/core': ^2.0.0
-  '@opentelemetry/resources': ^2.0.0
   '@opentelemetry/exporter-trace-otlp-http': ^0.200.0
-  pino: ^9.6.0
-  fastify: ^5.3.0
-  drizzle-orm: ^0.44.0
-  drizzle-kit: ^0.31.0
-  pg: ^8.16.0
-  '@types/pg': ^8.15.0
-  json-canonicalize: ^2.0.0
-  zod: ^3.25.0
-  ulidx: ^2.4.0
-  typescript: ^5.8.0
-  vitest: ^3.2.0
+  '@opentelemetry/resources': ^2.0.0
+  '@opentelemetry/sdk-trace-base': ^2.0.0
+  '@opentelemetry/sdk-trace-node': ^2.0.0
   '@types/node': ^22.15.0
+  '@types/pg': ^8.15.0
+  drizzle-kit: ^0.31.0
+  drizzle-orm: ^0.44.0
+  fastify: ^5.3.0
+  json-canonicalize: ^2.0.0
+  pg: ^8.16.0
+  pino: ^9.6.0
+  typescript: ^5.8.0
+  ulidx: ^2.4.1
+  vitest: ^3.2.0
+  zod: ^3.25.0

@@ -15,6 +15,13 @@
       "when": 1783200000011,
       "tag": "0001_settlement",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783200000012,
+      "tag": "0002_netting",
+      "breakpoints": true
     }
   ]
 }

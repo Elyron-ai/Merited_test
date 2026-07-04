@@ -52,7 +52,7 @@ catalogs:
       specifier: ^5.8.0
       version: 5.9.3
     ulidx:
-      specifier: ^2.4.0
+      specifier: ^2.4.1
       version: 2.4.1
     vitest:
       specifier: ^3.2.0
@@ -168,6 +168,12 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.22.0
+      playwright-core:
+        specifier: ^1.61.1
+        version: 1.61.1
+      ulidx:
+        specifier: 'catalog:'
+        version: 2.4.1
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -1844,6 +1850,11 @@ packages:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
     hasBin: true
 
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   postcss@8.5.16:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
@@ -3362,6 +3373,8 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.1
       thread-stream: 3.2.0
+
+  playwright-core@1.61.1: {}
 
   postcss@8.5.16:
     dependencies:

@@ -18,10 +18,12 @@
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "@merited/events": "workspace:*",
-    "@merited/signing": "workspace:*",
     "@merited/otel": "workspace:*",
+    "@merited/signing": "workspace:*",
     "fastify": "catalog:",
     "pg": "catalog:",
+    "playwright-core": "^1.61.1",
+    "ulidx": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

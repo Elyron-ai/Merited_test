@@ -116,6 +116,13 @@ const GOLDENS: Array<[string, z.ZodTypeAny, unknown]> = [
       period: '2026-W27',
       opening: { direction: 'payable', amount: gbp(0) },
       lines: [{ seq: 1, description: 'Conversion clm fixture', side: 'dr', amount: gbp(1200) }],
+      netting_events: [
+        {
+          netting_run_id: 'net_1',
+          at: '2026-07-04T12:00:00Z',
+          position: { direction: 'payable', amount: gbp(1200) },
+        },
+      ],
       closing: { direction: 'payable', amount: gbp(1200) },
     },
   ],

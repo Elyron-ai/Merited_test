@@ -1,8 +1,8 @@
 import {
   Commitment,
+  NettingRunRequest,
+  NettingRunResult,
   ReverseRequest,
-  type NettingRunRequest,
-  type NettingRunResult,
   type Position,
   type RejectionReasonCode,
   type ReverseResponse,
@@ -10,9 +10,13 @@ import {
   type Statement,
 } from '@merited/contracts';
 import { appendEvent } from '@merited/events';
-import { inTx, merchantKeyRef, TrioHttpError, type TrioDeps } from '../shared/deps.js';
+import { monotonicFactory } from 'ulidx';
+import { inTx, merchantKeyRef, type TrioDeps } from '../shared/deps.js';
 import { claimSignaturePayload } from '../verification/verify-pipeline.js';
 import { freeConversionCap, loadEntrySet, reversalEntrySet, storeEntrySet } from './posting.js';
+import { buildStatement, foldPositions, livePosition, periodBounds } from './statements.js';
+
+const ulid = monotonicFactory();
 
 interface ConsumedRow {
   jti: string;
@@ -110,16 +114,60 @@ export class SettlementSimulator implements SettlementService {
     }
   }
 
-  async position(_party: string): Promise<Position> {
-    throw new TrioHttpError(501, 'NOT_IMPLEMENTED', 'positions land with TRIO-11');
+  async position(party: string): Promise<Position> {
+    return livePosition(this.deps.pool, party);
   }
 
-  async runNetting(_request: NettingRunRequest): Promise<NettingRunResult> {
-    throw new TrioHttpError(501, 'NOT_IMPLEMENTED', 'netting lands with TRIO-11');
+  /**
+   * TRIO-11: fold every un-netted entry set into per-party net positions.
+   * The `netted_sets` PK claims sets atomically — a set folds into exactly
+   * one run ever, and concurrent runs partition the un-netted population
+   * rather than double-counting it. Entries are never edited (append-only
+   * marker), so a later reversal lands in the open period by construction.
+   */
+  async runNetting(requestInput: NettingRunRequest): Promise<NettingRunResult> {
+    const request = NettingRunRequest.parse(requestInput);
+    periodBounds(request.period); // 400 INVALID_PERIOD on a malformed period
+    const runId = `net_${ulid()}`;
+    return inTx(this.deps.pool, async (tx) => {
+      await tx.query('INSERT INTO trio.netting_runs (netting_run_id, period) VALUES ($1, $2)', [
+        runId,
+        request.period,
+      ]);
+      const claimed = await tx.query<{ entry_set_id: string }>(
+        `INSERT INTO trio.netted_sets (entry_set_id, netting_run_id)
+         SELECT es.entry_set_id, $1
+           FROM trio.entry_sets es
+          WHERE NOT EXISTS (SELECT 1 FROM trio.netted_sets ns WHERE ns.entry_set_id = es.entry_set_id)
+         ON CONFLICT DO NOTHING
+         RETURNING entry_set_id`,
+        [runId],
+      );
+      const setIds = claimed.rows.map((r) => r.entry_set_id);
+      const folded = setIds.length
+        ? await tx.query<{ account: string; signed: string }>(
+            `SELECT account,
+                    SUM(CASE WHEN side = 'cr' THEN amount_pence ELSE -amount_pence END) AS signed
+               FROM trio.entry_lines
+              WHERE entry_set_id = ANY($1::text[])
+              GROUP BY account`,
+            [setIds],
+          )
+        : { rows: [] };
+      const positions = foldPositions(
+        folded.rows.map((r) => ({ account: r.account, signed: Number(r.signed) })),
+      );
+      await appendEvent(tx, 'SettlementNetted', {
+        netting_run_id: runId,
+        period: request.period,
+        positions,
+      });
+      return NettingRunResult.parse({ netting_run_id: runId, period: request.period, positions });
+    });
   }
 
-  async statement(_party: string, _period: string): Promise<Statement> {
-    throw new TrioHttpError(501, 'NOT_IMPLEMENTED', 'statements land with TRIO-11');
+  async statement(party: string, period: string): Promise<Statement> {
+    return buildStatement(this.deps.pool, party, period);
   }
 
   private now(): string {
