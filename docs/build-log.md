@@ -207,3 +207,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 4/4 integration on real Postgres — sequential replay by jti; **16 parallel consumptions → exactly 1 consumed, 15 replayed**; re-minted token (same qid, fresh jti) blocked by qid (the double-bounty path is structurally closed); rollback-leaves-consumable (rejected claims don't burn). Workspace test/lint exit 0.
 
 **Security self-review (trio zone):** replay decision rests solely on Postgres unique constraints (no read-then-write race — conflict resolution is the constraint itself); both replay dimensions covered; consumption atomicity with the verdict guaranteed by transaction scope; no trust in caller-supplied state beyond the ids being consumed.
+
+---
+
+## TRIO-7 — TrioDirectory port + fakes · ✅ 2026-07-04
+
+**Built:** `shared/ports/directory.ts` — the `TrioDirectory` port (getApproval/getMandate), `attest()` helper (platform attestation over the canonical record minus its attestation field), `VerifiedDirectory` wrapper (the ONLY view the pipeline uses — invalid attestation ⇒ record treated as absent, P3), and the mutable `FixtureDirectory` fake with live `revokeMandate` so the full stage-6 pipeline is testable before B14/B26 exist. TRIO-17 swaps the inner port for the wallet HTTP client with zero pipeline changes.
+
+**Tests:** 7/7 — attested round-trips; tampered attestation → absent; tampered body under old attestation → absent; wrong-hierarchy attestation → absent (SYN-1); live revocation visible on next read; unknown ids null; port swappability proof.
+
+**Security self-review (trio zone):** the pipeline can only see attestation-verified records; body and attestation are bound via canonical JSON; hierarchy namespacing enforced; revocation is read live, never cached.
