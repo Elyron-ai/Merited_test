@@ -123,3 +123,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 30/30 events-package total. New integration: empty ledger clean; 4-event chain → exit 0 with count + exact head hash; superuser body-tamper at seq 3 → exit 1, "CHAIN BROKEN at seq 3". Root `pnpm verify-chain` executed against the compose DB (clean).
 
 **Deviations:** none. B2's acceptance ("hash-chain verification function + verify-chain CLI") is now fully closed; Phase-0 gate clause "chain verifies via verify-chain" has its tool.
+
+---
+
+## FND-6 — Vendor port interfaces (§2.2) · ✅ 2026-07-04
+
+**Built:** `contracts/src/ports/index.ts` — `ReplayCache` (never source of truth, doc-noted), `RateLimiter`, `Mailer`, `CommerceAdapter` (normalise-only; claim building stays in MER-4's pipeline), `IdentityProviderAdapter` (authorize/exchange/refresh/userinfo/revoke), `LoyaltyLookup`, `PayoutRail` (integer-pence Money, idempotency key on transfer). Every port's doc-comment names its fake and wire-up phase per §2.2. Type-only barrel export.
+
+**Tests:** compile-and-implement smoke test (in-memory ReplayCache/RateLimiter/Mailer exercised). Workspace build/test/lint exit 0. Also cleaned an unused import left in verify-chain.ts (caught by lint before commit this time).
+
+**Deviations:** none. Port semantics deliberately minimal — consuming tasks refine via contracts-first PRs (per task row).

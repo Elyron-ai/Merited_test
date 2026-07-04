@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url';
 import { createAppPool } from '../db.js';
 import { verifyChain } from '../verify.js';
 
