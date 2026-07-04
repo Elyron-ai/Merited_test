@@ -265,10 +265,22 @@ importers:
       '@merited/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@merited/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       pg:
         specifier: 'catalog:'
         version: 8.22.0
     devDependencies:
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../core
+      '@merited/fake-aurora':
+        specifier: workspace:*
+        version: link:../fake-aurora
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../trio
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
@@ -278,6 +290,9 @@ importers:
       fast-check:
         specifier: ^4.8.0
         version: 4.8.0
+      fastify:
+        specifier: 'catalog:'
+        version: 5.9.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

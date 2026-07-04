@@ -173,12 +173,13 @@ export class QuoteService {
     final_amount: number;
     list_amount: number;
     token_jti: string | null;
+    agent_id: string | null;
     expires_at: string;
     inputs_snapshot: unknown;
   }> {
     const { rows } = await this.deps.pool.query(
       `SELECT quote_id, offer_id, commitment_id, list_amount, final_amount,
-              token_jti, expires_at, inputs_snapshot
+              token_jti, agent_id, expires_at, inputs_snapshot
          FROM core.quotes WHERE quote_id = $1`,
       [quoteId],
     );
@@ -190,10 +191,28 @@ export class QuoteService {
       list_amount: number;
       final_amount: number;
       token_jti: string | null;
+      agent_id: string | null;
       expires_at: Date;
       inputs_snapshot: unknown;
     };
     return { ...row, expires_at: isoS(row.expires_at) };
+  }
+
+  /** Latest claim intake for a quote (SYN-40): how the QUOTE'S OWNER — the
+   * agent — discovers its verdict without ever learning the claim id out of
+   * band. Rejected replays land newer rows for the same qid, so LATEST is
+   * the poller's answer. Returns null while no claim has arrived. */
+  async latestClaimFor(quoteId: string): Promise<{
+    claim_id: string;
+    verdict: 'pending' | 'verified' | 'rejected';
+    reason_code: string | null;
+  } | null> {
+    const { rows } = await this.deps.pool.query(
+      `SELECT claim_id, verdict, reason_code FROM core.claims_intake
+        WHERE qid = $1 ORDER BY created_at DESC, claim_id DESC LIMIT 1`,
+      [quoteId],
+    );
+    return (rows[0] as { claim_id: string; verdict: 'pending' | 'verified' | 'rejected'; reason_code: string | null } | undefined) ?? null;
   }
 
   /** Quotes are promises: live until expiry, converted when the ledger says so. */

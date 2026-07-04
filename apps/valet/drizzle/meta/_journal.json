@@ -8,6 +8,13 @@
       "when": 1783309000000,
       "tag": "0000_errands",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783311000000,
+      "tag": "0001_agent_credentials",
+      "breakpoints": true
     }
   ]
 }

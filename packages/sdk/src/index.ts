@@ -147,6 +147,15 @@ export class MeritedClient {
     );
   }
 
+  /** Agent-side verdict discovery (SYN-40): the latest claim consuming the
+   * agent's own quote. 404 (`CLAIM_NOT_FOUND`) while no claim has arrived —
+   * the VerdictPoller treats that as "keep waiting". */
+  async getQuoteClaim(quoteId: string): Promise<ClaimStatusResponse> {
+    return ClaimStatusResponse.parse(
+      await this.request('GET', `/v1/quotes/${quoteId}/claim`, { headers: this.agentHeaders() }),
+    );
+  }
+
   async getClaim(claimId: string): Promise<ClaimStatusResponse> {
     return ClaimStatusResponse.parse(
       await this.request('GET', `/v1/claims/${claimId}`, {

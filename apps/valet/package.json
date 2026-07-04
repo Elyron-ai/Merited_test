@@ -19,11 +19,16 @@
     "typescript": "catalog:",
     "vitest": "catalog:",
     "fast-check": "^4.8.0",
-    "@types/pg": "catalog:"
+    "@types/pg": "catalog:",
+    "@merited/core": "workspace:*",
+    "@merited/trio": "workspace:*",
+    "@merited/fake-aurora": "workspace:*",
+    "fastify": "catalog:"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "pg": "catalog:",
-    "@merited/events": "workspace:*"
+    "@merited/events": "workspace:*",
+    "@merited/sdk": "workspace:*"
   }
 }

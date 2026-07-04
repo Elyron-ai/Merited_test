@@ -14,3 +14,18 @@ export {
   type MirrorResult,
   type MirrorTransition,
 } from './errand/ledger-mirror.js';
+export { QuoteClient, type QuoteClientOptions, type ReadQuery } from './ports/quote-client.js';
+export {
+  PostgresCredentialsStore,
+  type AgentCredentials,
+  type CredentialsStore,
+} from './ports/credentials.js';
+export {
+  CheckoutFailedError,
+  FakeShopRail,
+  type CheckoutConfirmation,
+  type CheckoutRail,
+  type CheckoutRequest,
+} from './ports/checkout-rail.js';
+export { VerdictPoller, VerdictTimeoutError, type VerdictEvent } from './ports/verdict-poller.js';
+export { AutoSkipGate, type ApprovalGate, type ApprovalOutcome } from './ports/approval-gate.js';

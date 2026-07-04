@@ -1,4 +1,5 @@
 import {
+  ClaimStatusResponse,
   QuoteStatusResponse,
   pence,
   type AgentCtx,
@@ -38,12 +39,13 @@ export interface V1Deps {
  * Every route is authenticated or EXPLICITLY anonymous-degraded (§8) —
  * the audit test asserts this classification covers the whole route table.
  */
-export const ROUTE_CLASSIFICATIONS: Record<string, 'open-health' | 'open-rate-limited' | 'agent-degraded'> = {
+export const ROUTE_CLASSIFICATIONS: Record<string, 'open-health' | 'open-rate-limited' | 'agent-degraded' | 'agent-required'> = {
   'GET /healthz': 'open-health',
   'POST /v1/agents/register': 'open-rate-limited',
   'GET /v1/offers': 'agent-degraded',
   'GET /v1/offers/:id': 'agent-degraded',
   'GET /v1/quotes/:id': 'agent-degraded',
+  'GET /v1/quotes/:id/claim': 'agent-required',
 };
 
 /**
@@ -117,6 +119,28 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
         price: { list: pence(row.list_amount), final: pence(row.final_amount) },
         expires_at: row.expires_at,
       },
+    });
+  });
+
+  // SYN-40: agent-side verdict discovery. The quote's owner polls its own
+  // quote for the claim that consumed it — the agent never learns claim ids
+  // out of band. AGENT-REQUIRED and owner-only: any other identity gets a
+  // uniform 401 (no existence oracle beyond the open quote read above).
+  app.get('/v1/quotes/:id/claim', async (req) => {
+    const quoteId = (req.params as { id: string }).id;
+    const agentId = req.agentCtx.agent_id;
+    if (!agentId) throw new CoreHttpError(401, 'AGENT_REQUIRED', 'registered agent key required');
+    const quote = await deps.quotes.getQuote(quoteId);
+    if (quote.agent_id !== agentId) {
+      throw new CoreHttpError(401, 'CLAIM_ACCESS_DENIED', 'not the quote owner');
+    }
+    const claim = await deps.quotes.latestClaimFor(quoteId);
+    if (!claim) throw new CoreHttpError(404, 'CLAIM_NOT_FOUND', 'no claim for this quote yet');
+    return ClaimStatusResponse.parse({
+      claim_id: claim.claim_id,
+      status: claim.verdict,
+      ...(claim.verdict === 'pending' ? {} : { verdict: claim.verdict }),
+      ...(claim.reason_code ? { reason_code: claim.reason_code } : {}),
     });
   });
 };

@@ -30,6 +30,11 @@ export interface FakeShopOptions {
 export const createFakeShop = (options: FakeShopOptions): FastifyInstance => {
   const app = Fastify();
   let orderSeq = 1000;
+  // Checkout idempotency (§8, consumed by VAL-5/8): a repeated Idempotency-Key
+  // replays the SAME confirmation — one order, one webhook — so an agent
+  // resuming a crashed errand never double-buys. In-memory is honest for a
+  // fake shop; a real merchant holds this in its order store.
+  const confirmations = new Map<string, unknown>();
 
   app.get('/skus', async () => ({ skus: CATALOGUE }));
 
@@ -40,6 +45,11 @@ export const createFakeShop = (options: FakeShopOptions): FastifyInstance => {
     }
     const entry = skuByRef(parsed.data.sku);
     if (!entry) return reply.code(404).send({ error: 'unknown sku' });
+
+    const idempotencyKey = req.headers['idempotency-key'];
+    if (typeof idempotencyKey === 'string' && confirmations.has(idempotencyKey)) {
+      return confirmations.get(idempotencyKey);
+    }
 
     orderSeq += 1;
     const order = FakeShopOrderWebhook.parse({
@@ -70,12 +80,14 @@ export const createFakeShop = (options: FakeShopOptions): FastifyInstance => {
       });
     }
 
-    return {
+    const confirmation = {
       order_number: order.order.number,
       status: 'confirmed',
       total_pence: order.order.total.amount_minor,
       webhook: dropped ? 'dropped' : delivery.delivered ? 'delivered' : 'failed',
     };
+    if (typeof idempotencyKey === 'string') confirmations.set(idempotencyKey, confirmation);
+    return confirmation;
   });
 
   return app;
