@@ -56,7 +56,7 @@ export const QuoteIssued = eventBody(
     quote_id: Id('qte'),
     offer_id: Id('off'),
     commitment_id: Id('com'),
-    agent_id: Id('agt'),
+    agent_id: Id('agt').nullable(), // null = anonymous read (unpayable quote)
     consumer_ref: Id('usr').nullable(),
     tier: IdentityTier,
     segment: z.string(),

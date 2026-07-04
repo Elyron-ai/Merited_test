@@ -29,6 +29,13 @@
       "when": 1783200000003,
       "tag": "0003_projections",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783300000005,
+      "tag": "0004_conversion_qid_index",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,9 @@ export const OfferQuote = z.object({
   quote_id: Id('qte'),
   offer_id: Id('off'),
   commitment_id: Id('com'),
-  agent_id: Id('agt'),
+  /** null on anonymous/unregistered reads — the quote persists regardless
+   * (§5.6a: quote ids stay honest), it is simply unpayable. */
+  agent_id: Id('agt').nullable(),
   consumer_ref: Id('usr').nullable(),
   tier: IdentityTier,
   segment: z.string(), // categorisation output

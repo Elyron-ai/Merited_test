@@ -1,2 +1,2 @@
-// Quote service: pricing + persist + mint (CORE-10, B24 — SYN-14). Layout frozen day one (CORE-1, §1).
-export {};
+// Quote service: pricing + persist + mint (CORE-10, B24 — SYN-14).
+export { QuoteService, type QuoteCtx, type QuoteMinter, type QuotesDeps } from './service.js'
