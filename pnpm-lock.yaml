@@ -488,10 +488,37 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../../apps/core
+      '@merited/fake-aurora':
+        specifier: workspace:*
+        version: link:../../apps/fake-aurora
+      '@merited/seed':
+        specifier: workspace:*
+        version: link:../seed
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../../apps/trio
+      '@merited/valet':
+        specifier: workspace:*
+        version: link:../../apps/valet
+      pg:
+        specifier: 'catalog:'
+        version: 8.22.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.20.0
+      fastify:
+        specifier: 'catalog:'
+        version: 5.9.0
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

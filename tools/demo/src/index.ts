@@ -9,3 +9,4 @@ export {
   type RunActOptions,
   type StepContext,
 } from './harness.js';
+export { act1Steps, runAct1, type Act1Handles, type RunAct1Options } from './act1.js';

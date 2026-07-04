@@ -11,14 +11,24 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "act1": "tsx src/act1.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@types/pg": "catalog:",
+    "tsx": "^4.23.0",
+    "fastify": "catalog:"
   },
   "dependencies": {
-    "@merited/contracts": "workspace:*"
+    "@merited/contracts": "workspace:*",
+    "@merited/core": "workspace:*",
+    "@merited/fake-aurora": "workspace:*",
+    "@merited/seed": "workspace:*",
+    "@merited/trio": "workspace:*",
+    "@merited/valet": "workspace:*",
+    "pg": "catalog:"
   }
 }

@@ -11,6 +11,24 @@
   "references": [
     {
       "path": "../../packages/contracts"
+    },
+    {
+      "path": "../../packages/events"
+    },
+    {
+      "path": "../../apps/core"
+    },
+    {
+      "path": "../../apps/trio"
+    },
+    {
+      "path": "../../apps/fake-aurora"
+    },
+    {
+      "path": "../../apps/valet"
+    },
+    {
+      "path": "../seed"
     }
   ]
 }
