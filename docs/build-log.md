@@ -361,3 +361,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 10 new (apps/core 36; workspace 257) — the Accept's three fast-check suites verbatim: (1) any input containing an active member match resolves T1 regardless of what else is present (500 runs, match injected into every slot); (2) the SAME input with members flipped to revoked downgrades to T2/T3 immediately (500 runs); (3) referential transparency — 1000 runs per sampled input, exactly one distinct output. Plus link-beats-hash head-to-head, no-context → t3-acquisition, the exhaustive frozen segment mapping, and store+resolve composition against Postgres (T1 via all three signals; DB-revoked row → non-T1 on next read; t2-new → t2-returning across sightings; unknown → T3). Build/lint exit 0.
 
 **Deviation/notes:** fast-check v4 removed `hexaString` — replaced with `stringMatching` (caught by tsc). Store timestamps keep millisecond precision (a first/repeat sighting can share a second; resolve compares exact equality). The `clock` parameter is part of the stage signature per §4 but unused by Phase-0 rules (link expiry arrives with B23) — kept for signature stability.
+
+---
+
+## CORE-7 — Decisioning Slot + Guardrails stubs · ✅ 2026-07-04
+
+**Built:** contracts-first `packages/contracts/src/pipeline.ts` (additive; M1-frozen trio shapes untouched): `EligibleOffer` (offer + nullable COR ref), `RankedOffer` (optional decisioner-internal `score`), `EligibilityExclusionReason`/`EligibilityExclusion`/`EligibilityResult` (SYN-37: §3 codes plus read-path-only `OFFER_NOT_LIVE` and `STACKING_DEDUPED`; the verify enum stays closed), `DecisionCtx`/`GuardrailCtx`, and the §5.5-verbatim `Decisioner` + `Guardrails` interfaces. `modules/decisioning/`: `PassthroughDecisioner` (stable offer_id sort — the Ph0 production decisioner) and `RandomDecisioner` (mulberry32 seeded PRNG, test-only). `modules/guardrails/`: `NoopGuardrails` (identity pass, empty suppressed). B7/B8 land later as file swaps behind these interfaces (P4).
+
+**Tests:** 4 new — the staged Accept: swapping Passthrough↔Random preserves membership and the response SHAPE fingerprint byte-for-byte (score excluded as optional colour; every entry parses against `RankedOffer`) while the ranking actually differs; Passthrough stable/deterministic regardless of input order; RandomDecisioner deterministic per seed, different across seeds; Noop passes all, suppresses none. This test becomes B7's Phase-1 gate when RulesDecisioner lands.
+
+**Decision (SYN-37, appended to plan §3 in this commit):** eligibility exclusion labels — §3 codes where they fit, `OFFER_NOT_LIVE`/`STACKING_DEDUPED` as read-path-only literals.
