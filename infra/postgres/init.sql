@@ -10,6 +10,9 @@
 CREATE ROLE merited_migrate LOGIN PASSWORD 'merited_migrate_dev';
 CREATE ROLE merited_app LOGIN PASSWORD 'merited_app_dev';
 
+-- The migration runner creates schemas/tables: it needs CREATE on the database.
+GRANT CREATE ON DATABASE merited TO merited_migrate;
+
 -- Per-module schemas -------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS events AUTHORIZATION merited_migrate;
 CREATE SCHEMA IF NOT EXISTS core AUTHORIZATION merited_migrate;

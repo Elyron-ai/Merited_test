@@ -67,3 +67,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Deviations:** none. The "append rejects unregistered types" accept clause is FND-10's to prove — the guard it will use is tested here.
 
 **Security self-review (ledger-adjacent):** event payloads carry no secrets (tokens appear only as claims/jti, never token strings; refresh tokens structurally absent); balance refinement prevents unbalanced ledger postings entering the chain; fixtures use fake-prefixed signatures only.
+
+---
+
+## FND-9 — Drizzle setup + migrations policy (D8) · ✅ 2026-07-04
+
+**Built:** drizzle wiring in `packages/events` (`drizzle.config.ts`, `drizzle/` with `0000_baseline` + journal); forward-only runner `scripts/migrate.mjs` (refuses any role but `merited_migrate`, applies journal order transactionally, records in `events.__migrations`, checksum-guards before applying); `scripts/check-migrations.mjs` checksum guard (`db:check`, `--update` refuses modified applied files); `src/db.ts` runtime pool factory hard-asserting `merited_app`; `docs/migrations.md` policy one-pager. Root `pnpm db:migrate` orchestrates.
+
+**Tests:** 12/12 — checksum guard (clean pass, mutation fails, new-file flagged, update-refusal), URL role assertions, integration on live Postgres: fresh DB apply → no-op re-run, wrong-role refusal, runtime `current_user = merited_app`. Workspace build/test/lint exit 0.
+
+**Deviations:** custom Node migration runner instead of `drizzle-kit migrate` (gives us the role assertion + checksum gate in one place; drizzle-kit still generates future SQL). **Fix applied:** `init.sql` gained `GRANT CREATE ON DATABASE merited TO merited_migrate` (was missing; applied to the live volume manually — clean machines get it from init.sql).
+
+**Security self-review (ledger DDL zone):** DDL restricted to the migrate role mechanically; runtime role asserted at pool construction; checksum guard makes applied history tamper-evident at the repo level (chain-level tamper evidence lands with FND-10/13); no secrets in migrations or logs.

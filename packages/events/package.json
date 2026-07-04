@@ -11,15 +11,22 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:check": "node scripts/check-migrations.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "drizzle-kit": "catalog:",
+    "@types/pg": "catalog:"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "drizzle-orm": "catalog:",
+    "pg": "catalog:",
+    "json-canonicalize": "catalog:"
   }
 }
