@@ -4,3 +4,5 @@ export type { IdPrefix, MeritedId } from './ids.js';
 export { Money, pence } from './money.js';
 export { REJECTION_REASON_CODES, RejectionReasonCode } from './reasons.js';
 export { defineEnv, EnvValidationError } from './env.js';
+export * from './offer/mechanics/index.js';
+export { MECHANICS_FIXTURES } from './offer/mechanics/fixtures.js';
