@@ -5,7 +5,6 @@ import {
   type Merchant,
 } from '@merited/contracts';
 import { appendEvent } from '@merited/events';
-import { injectTraceparent } from '@merited/otel';
 import type { Signer } from '@merited/signing';
 import type pg from 'pg';
 import { inTx } from '../../../db.js';
@@ -127,11 +126,11 @@ export class GradeBOrderProcessor implements OrderProcessor {
   private async submitToTrio(claim: ConversionClaim): Promise<VerifyResponse> {
     const response = await fetch(`${this.deps.trioBaseUrl}/trio/claims/verify`, {
       method: 'POST',
-      headers: injectTraceparent({
+      headers: {
         'content-type': 'application/json',
         'x-merited-service-token': this.deps.trioServiceToken,
         'idempotency-key': claim.claim_id, // claim ids are fresh per intake; trio replays byte-stable
-      }),
+      },
       body: JSON.stringify(claim),
       signal: AbortSignal.timeout(this.deps.timeoutMs ?? 5000),
     });

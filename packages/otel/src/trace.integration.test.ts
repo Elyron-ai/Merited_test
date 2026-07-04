@@ -5,7 +5,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inRequestSpan, registerTracing } from './fastify-plugin.js';
 import { createLogger } from './logger.js';
-import { getMemoryExporter, initOtel, injectTraceparent, shutdownOtel, withSpan } from './sdk.js';
+import { getMemoryExporter, initOtel, shutdownOtel, withSpan } from './sdk.js';
 
 /**
  * FND-14 harness: service A calls service B; B writes a DB row and appends a
@@ -62,9 +62,12 @@ beforeAll(async () => {
   serviceA.post('/orchestrate', async (req) =>
     inRequestSpan(req as never, () =>
       withSpan('call service-b', async () => {
+        // traceparent is injected by the undici auto-instrumentation that
+        // initOtel registers — adding injectTraceparent here would produce a
+        // doubled (comma-joined) header that breaks W3C extraction at B.
         const response = await fetch(`${urlB}/write`, {
           method: 'POST',
-          headers: injectTraceparent({ 'content-type': 'application/json' }),
+          headers: { 'content-type': 'application/json' },
           body: '{}',
         });
         return response.json();
@@ -101,10 +104,21 @@ describe('one trace ID end-to-end (FND-14 accept)', () => {
     const traceIds = new Set(spans.map((s) => s.spanContext().traceId));
     expect(traceIds.size).toBe(1); // ONE trace ID across the HTTP hop + pg spans
 
-    // parentage: B's server span is a child of A's client span (the HTTP hop)
+    // parentage: B's server span descends from A's client span — the undici
+    // auto-instrumentation inserts its own client span for the HTTP hop, so
+    // walk the ancestor chain rather than asserting a direct parent.
     const client = spans.find((s) => s.name === 'call service-b')!;
     const serverB = spans.find((s) => s.name === 'POST /write')!;
-    expect(serverB.parentSpanContext?.spanId).toBe(client.spanContext().spanId);
+    const bySpanId = new Map(spans.map((s) => [s.spanContext().spanId, s]));
+    const ancestors: string[] = [];
+    for (
+      let cursor = serverB.parentSpanContext;
+      cursor;
+      cursor = bySpanId.get(cursor.spanId)?.parentSpanContext
+    ) {
+      ancestors.push(cursor.spanId);
+    }
+    expect(ancestors).toContain(client.spanContext().spanId);
   });
 
   it('logger injects trace_id/span_id and redacts token fields', async () => {

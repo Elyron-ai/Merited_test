@@ -10,6 +10,7 @@ import {
   type Merchant,
   type MerchantCommercial,
 } from '@merited/contracts';
+import { activeTraceId, withSpan } from '@merited/otel';
 import { FakeCrypter, FakeSigner } from '@merited/signing';
 import { createSimulatedTrio, type SimulatedTrio } from '@merited/trio/testing';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -87,7 +88,8 @@ const deliver = async (payload: FakeShopOrderWebhook, opts: { badSignature?: boo
       [WEBHOOK_SIGNATURE_HEADER]: signature,
       [WEBHOOK_TIMESTAMP_HEADER]: String(timestamp),
       [IDEMPOTENCY_KEY_HEADER]: `order-${payload.order.number}`,
-      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+      // traceparent arrives via undici auto-instrumentation (@merited/otel);
+      // a manual header here would double-inject and corrupt extraction
     },
     body: raw,
   });
@@ -231,16 +233,22 @@ describe('under-reporting instrumentation (MER-6 accept — the B19 data contrac
   it('(c) signature-rejected deliveries: structured log with slug/reason/traceparent, NO ledger row', async () => {
     const token = await mintToken(); // mint first — its TokenMinted is not the delivery's doing
     const before = await pool.query(`SELECT count(*) FROM events.events`);
-    const res = await deliver(webhookFor(token, 7003), { badSignature: true });
-    expect(res.status).toBe(401);
+    let callerTraceId = '';
+    await withSpan('bad-signature-delivery', async () => {
+      callerTraceId = activeTraceId()!;
+      const res = await deliver(webhookFor(token, 7003), { badSignature: true });
+      expect(res.status).toBe(401);
+    });
     const after = await pool.query(`SELECT count(*) FROM events.events`);
     // the mint above emitted TokenMinted; the REJECTED DELIVERY itself adds nothing
     expect(Number(after.rows[0].count)).toBe(Number(before.rows[0].count));
     const entry = authLogs.find((l) => l['reason'] === 'bad_signature');
-    expect(entry).toMatchObject({
-      merchant_slug: merchant.slug,
-      reason: 'bad_signature',
-      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
-    });
+    expect(entry).toMatchObject({ merchant_slug: merchant.slug, reason: 'bad_signature' });
+    // the logged traceparent must CORRELATE: it carries the caller's trace ID
+    // (injected on the wire by undici auto-instrumentation), so the rejected
+    // delivery is findable from the caller's trace (B19).
+    expect(entry!['traceparent']).toMatch(
+      new RegExp(`^00-${callerTraceId}-[0-9a-f]{16}-[0-9a-f]{2}$`),
+    );
   });
 });

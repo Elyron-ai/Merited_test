@@ -63,12 +63,10 @@ export const createFakeShop = (options: FakeShopOptions): FastifyInstance => {
     const dropped = dropPct > 0 && (options.random ?? Math.random)() * 100 < dropPct;
     let delivery = { delivered: false, attempts: 0 };
     if (!dropped) {
-      const traceparent = req.headers['traceparent'];
       delivery = await deliverOrderWebhook(order, {
         adapterUrl: options.adapterUrl,
         secret: options.webhookSecret,
         idempotencyKey: String(order.order.number),
-        ...(typeof traceparent === 'string' ? { traceparent } : {}),
       });
     }
 

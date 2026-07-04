@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@merited/fake-aurora": "workspace:*",
+    "@merited/sdk": "workspace:*",
     "@merited/trio": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

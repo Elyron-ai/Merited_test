@@ -1,5 +1,4 @@
 import { MerchantKeyResponse, type MeritedId } from '@merited/contracts';
-import { injectTraceparent } from '@merited/otel';
 import { CoreHttpError } from '../../http-error.js';
 import type { TrioKeyIssuer } from './service.js';
 
@@ -22,10 +21,10 @@ export class TrioKeysClient implements TrioKeyIssuer {
     try {
       response = await fetch(`${this.options.baseUrl}/trio/keys/merchant`, {
         method: 'POST',
-        headers: injectTraceparent({
+        headers: {
           'content-type': 'application/json',
           'x-merited-service-token': this.options.serviceToken,
-        }),
+        },
         body: JSON.stringify({ merchant_id: merchantId }),
         signal: AbortSignal.timeout(this.options.timeoutMs ?? 5000),
       });

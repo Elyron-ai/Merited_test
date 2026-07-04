@@ -44,8 +44,10 @@ export class MeritedClient {
     apiKey?: string;
     /** Merchant key (`mmk_…`) — required only for submitClaim(). */
     merchantApiKey?: string;
-    /** Trace propagation hook — the CALLER owns OTel (zero-dep rule); wire
-     * `() => injectTraceparent({})` from @merited/otel to join one trace. */
+    /** Extra-headers hook for callers WITHOUT @merited/otel (zero-dep rule:
+     * the caller owns tracing). Apps running `initOtel` must NOT set this —
+     * fetch is auto-instrumented there, and a manual traceparent would
+     * double-inject and break W3C extraction. */
     traceHeaders?: () => Record<string, string>;
   }) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');

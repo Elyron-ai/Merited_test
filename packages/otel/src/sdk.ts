@@ -9,6 +9,9 @@ import {
   SimpleSpanProcessor,
   type SpanExporter,
 } from '@opentelemetry/sdk-trace-base';
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
+import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 
 /**
@@ -17,11 +20,12 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
  * the demo asset (§8). Exporter selection per §2.2: console locally,
  * OTLP (Axiom/Grafana) env-gated.
  *
- * Deviation from the plan's "auto-instrumentation" wording (recorded in the
- * build log): propagation is explicit — the fastify plugin extracts
- * traceparent, `injectTraceparent` carries it on outbound calls, and
- * `withSpan`/`tracedQuery` wrap work — deterministic under ESM, no loader
- * hooks in every app boot.
+ * Propagation is automatic for HTTP: initOtel registers http + undici
+ * instrumentations, so inbound requests open a server span the handler
+ * inherits and outbound `fetch` carries traceparent by itself (MER-12's
+ * e2e proved hooks alone cannot do this — Fastify has no handler wrap
+ * point). `withSpan` wraps in-process work; `injectTraceparent` remains
+ * only for non-fetch transports.
  */
 export interface OtelOptions {
   serviceName: string;
@@ -58,6 +62,13 @@ export const initOtel = (options: OtelOptions): void => {
       : [],
   });
   provider.register({ propagator: new W3CTraceContextPropagator() });
+  // §8/B21 one-trace: auto-instrument inbound node:http servers and outbound
+  // fetch (undici) so handler bodies inherit the request context and every
+  // hop joins the same trace — Fastify has no wrap point for handlers, so
+  // hooks alone cannot carry the context (found by MER-12's e2e).
+  registerInstrumentations({
+    instrumentations: [new HttpInstrumentation(), new UndiciInstrumentation()],
+  });
 };
 
 /** Test hook: the in-memory exporter when initOtel({exporter:'memory'}) was used. */
@@ -86,7 +97,10 @@ export const withSpan = async <T>(name: string, work: (span: Span) => Promise<T>
   });
 };
 
-/** Inject the active trace context into outbound headers (W3C traceparent). */
+/** Inject the active trace context into outbound headers (W3C traceparent).
+ * NON-FETCH transports (queues, in-process `app.inject`) only — real `fetch`
+ * calls are auto-instrumented, and adding this on top produces a doubled
+ * comma-joined traceparent that breaks extraction (found by MER-12's e2e). */
 export const injectTraceparent = (headers: Record<string, string> = {}): Record<string, string> => {
   propagation.inject(context.active(), headers);
   return headers;

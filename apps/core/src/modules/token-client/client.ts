@@ -5,7 +5,6 @@ import {
   type MintFailure,
   type MintResult,
 } from '@merited/contracts';
-import { injectTraceparent } from '@merited/otel';
 
 export interface TokenClientOptions {
   baseUrl: string;
@@ -34,12 +33,13 @@ export class TrioTokenClient {
   async mint(request: MintRequest): Promise<MintResult> {
     const body = MintRequest.parse(request);
 
-    // W3C trace propagation (§8: one trace from readOffers to ledger) —
-    // FND-14's helper carries the active span onto the outbound call.
-    const headers = injectTraceparent({
+    // W3C trace propagation (§8) is AUTOMATIC: @merited/otel registers
+    // undici instrumentation — manual injection here would double the
+    // traceparent header and break extraction (found by MER-12's e2e).
+    const headers: Record<string, string> = {
       'content-type': 'application/json',
       'x-merited-service-token': this.options.serviceToken,
-    });
+    };
 
     let response: Response;
     try {

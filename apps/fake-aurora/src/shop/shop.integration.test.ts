@@ -73,7 +73,6 @@ describe('FakeShop storefront (MER-11 accept)', () => {
     const res = await shop.inject({
       method: 'POST',
       url: '/checkout',
-      headers: { traceparent: '00-11111111111111111111111111111111-2222222222222222-01' },
       payload: { sku: 'sku_spa_day', attribution_token: 'v4.public.fake.tok.sig' },
     });
     expect(res.statusCode).toBe(200);
@@ -90,9 +89,7 @@ describe('FakeShop storefront (MER-11 accept)', () => {
     // idempotency key = order number; traceparent forwarded (§8 one trace)
     const payload = FakeShopOrderWebhook.parse(JSON.parse(delivery.raw));
     expect(delivery.headers[IDEMPOTENCY_KEY_HEADER]).toBe(String(payload.order.number));
-    expect(delivery.headers['traceparent']).toBe(
-      '00-11111111111111111111111111111111-2222222222222222-01',
-    );
+    // trace forwarding is otel-instrumentation's job (proven in MER-12's e2e)
     expect(payload.order.attribution.merited_token).toBe('v4.public.fake.tok.sig');
     expect(payload.order.total.amount_minor).toBe(8450);
   });

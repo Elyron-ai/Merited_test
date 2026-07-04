@@ -19,21 +19,24 @@
   },
   "dependencies": {
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/sdk-trace-node": "catalog:",
-    "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/core": "catalog:",
-    "@opentelemetry/resources": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "catalog:",
+    "@opentelemetry/instrumentation": "^0.220.0",
+    "@opentelemetry/instrumentation-http": "^0.220.0",
+    "@opentelemetry/instrumentation-undici": "^0.30.0",
+    "@opentelemetry/resources": "catalog:",
+    "@opentelemetry/sdk-trace-base": "catalog:",
+    "@opentelemetry/sdk-trace-node": "catalog:",
     "pino": "catalog:"
   },
   "devDependencies": {
+    "@merited/contracts": "workspace:*",
+    "@merited/events": "workspace:*",
     "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:",
+    "@types/pg": "catalog:",
     "fastify": "catalog:",
     "pg": "catalog:",
-    "@types/pg": "catalog:",
-    "@merited/events": "workspace:*",
-    "@merited/contracts": "workspace:*"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -11,7 +11,6 @@ export interface WebhookDeliveryOptions {
   adapterUrl: string;
   secret: string;
   idempotencyKey: string;
-  traceparent?: string;
   /** Injected for tests; wall clock in production use. */
   nowS?: () => number;
   maxAttempts?: number;
@@ -26,9 +25,10 @@ export interface DeliveryResult {
 /**
  * Signed order-confirmed delivery (MER-11): HMAC-SHA256 hex over the shared
  * `${timestamp}.${rawBody}` layout, Idempotency-Key = order id (every retry
- * reuses it — exercising MER-3's replay path for real), traceparent
- * forwarded from the checkout request (§8 single trace). Retries with
- * backoff on non-2xx / network failure.
+ * reuses it — exercising MER-3's replay path for real). The §8 single-trace
+ * forward happens via otel's undici auto-instrumentation (the delivery runs
+ * inside the checkout request's span) — a manual header would double-inject.
+ * Retries with backoff on non-2xx / network failure.
  */
 export const deliverOrderWebhook = async (
   payload: FakeShopOrderWebhook,
@@ -51,7 +51,6 @@ export const deliverOrderWebhook = async (
           [WEBHOOK_SIGNATURE_HEADER]: signature,
           [WEBHOOK_TIMESTAMP_HEADER]: String(timestampS),
           [IDEMPOTENCY_KEY_HEADER]: options.idempotencyKey,
-          ...(options.traceparent ? { traceparent: options.traceparent } : {}),
         },
         body: rawBody,
         signal: AbortSignal.timeout(5000),

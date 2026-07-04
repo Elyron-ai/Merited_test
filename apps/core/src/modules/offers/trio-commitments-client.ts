@@ -4,7 +4,6 @@ import {
   CommitmentStatus,
   type CommitmentDraft,
 } from '@merited/contracts';
-import { injectTraceparent } from '@merited/otel';
 import { CoreHttpError } from '../../http-error.js';
 
 export interface CommitmentIssuer {
@@ -30,10 +29,10 @@ export class TrioCommitmentsClient implements CommitmentIssuer {
     try {
       return await fetch(`${this.options.baseUrl}${path}`, {
         method: 'POST',
-        headers: injectTraceparent({
+        headers: {
           'content-type': 'application/json',
           'x-merited-service-token': this.options.serviceToken,
-        }),
+        },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(this.options.timeoutMs ?? 5000),
       });
@@ -59,7 +58,7 @@ export class TrioCommitmentsClient implements CommitmentIssuer {
   async status(commitmentId: string): Promise<CommitmentStatus | null> {
     try {
       const response = await fetch(`${this.options.baseUrl}/trio/commitments/${commitmentId}`, {
-        headers: injectTraceparent({ 'x-merited-service-token': this.options.serviceToken }),
+        headers: { 'x-merited-service-token': this.options.serviceToken },
         signal: AbortSignal.timeout(this.options.timeoutMs ?? 5000),
       });
       if (response.status !== 200) return null;
