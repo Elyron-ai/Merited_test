@@ -116,6 +116,32 @@ export class OffersRepository {
     return rows[0]?.redeem_count ?? 0;
   }
 
+  /** Read-path candidate fetch (CORE-11, §4): live offers matching the
+   * query, with their current COR reference. Ph0 text search is plain
+   * ILIKE over title/description — no search infra (§11 restraint). */
+  async listCandidates(query: {
+    merchantId?: string;
+    sku?: string;
+    text?: string;
+  }): Promise<Array<{ offer: Offer; commitment_id: `com_${string}` | null }>> {
+    const conditions: SQL[] = [eq(offers.status, 'live')];
+    if (query.merchantId) conditions.push(eq(offers.merchant_id, query.merchantId));
+    if (query.sku) {
+      conditions.push(
+        sql`(${offers.sku_scope} = to_jsonb('all'::text) OR ${offers.sku_scope} @> jsonb_build_array(${query.sku}::text))`,
+      );
+    }
+    if (query.text) {
+      const needle = `%${query.text.replace(/[%_]/g, '\\$&')}%`;
+      conditions.push(sql`(${offers.title} ILIKE ${needle} OR ${offers.description} ILIKE ${needle})`);
+    }
+    const rows = await this.db.select().from(offers).where(and(...conditions)).orderBy(offers.offer_id);
+    return rows.map((row) => ({
+      offer: toOffer(row),
+      commitment_id: row.current_commitment_id as `com_${string}` | null,
+    }));
+  }
+
   /** COR history rows for an offer (CORE-5 appends; "history preserved"). */
   async commitmentHistory(
     offerId: string,

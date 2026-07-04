@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AgentCtx } from './ctx.js';
 import { Id } from './ids.js';
 import { Offer } from './offer/offer.js';
+import { OfferQuote } from './quote.js';
 import { RejectionReasonCode } from './reasons.js';
 import { Segment } from './segment.js';
 import { IdentityTier } from './tier.js';
@@ -58,6 +59,22 @@ export type DecisionCtx = z.infer<typeof DecisionCtx>;
 
 export const GuardrailCtx = DecisionCtx;
 export type GuardrailCtx = z.infer<typeof GuardrailCtx>;
+
+/**
+ * `readOffers()` response (CORE-11, §4/B4): anonymous reads get quotes with
+ * `token: null` plus the register_to_earn hint — visible but not payable is
+ * the adoption incentive (arch §2.3, P2).
+ */
+export const OfferReadResponse = z.object({
+  quotes: z.array(OfferQuote),
+  hint: z
+    .object({
+      register_to_earn: z.literal(true),
+      register_url: z.string(),
+    })
+    .optional(),
+});
+export type OfferReadResponse = z.infer<typeof OfferReadResponse>;
 
 /** §5.5 verbatim: the decisioning slot. Ph0 production = Passthrough. */
 export interface Decisioner {

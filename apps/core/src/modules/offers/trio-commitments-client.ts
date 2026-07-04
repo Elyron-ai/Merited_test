@@ -1,6 +1,7 @@
 import {
   Commitment,
   CommitmentCreateResponse,
+  CommitmentStatus,
   type CommitmentDraft,
 } from '@merited/contracts';
 import { injectTraceparent } from '@merited/otel';
@@ -51,6 +52,21 @@ export class TrioCommitmentsClient implements CommitmentIssuer {
       throw new CoreHttpError(502, 'COMMITMENT_CREATE_FAILED', `trio responded ${response.status}`);
     }
     return CommitmentCreateResponse.parse(await response.json()).commitment;
+  }
+
+  /** SYN-7 status read (eligibility stage 3). Unknown/unreachable → null —
+   * the eligibility filter excludes unverifiable promises conservatively. */
+  async status(commitmentId: string): Promise<CommitmentStatus | null> {
+    try {
+      const response = await fetch(`${this.options.baseUrl}/trio/commitments/${commitmentId}`, {
+        headers: injectTraceparent({ 'x-merited-service-token': this.options.serviceToken }),
+        signal: AbortSignal.timeout(this.options.timeoutMs ?? 5000),
+      });
+      if (response.status !== 200) return null;
+      return CommitmentStatus.parse(await response.json());
+    } catch {
+      return null;
+    }
   }
 
   async end(commitmentId: string, reason?: string): Promise<void> {

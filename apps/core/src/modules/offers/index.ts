@@ -4,3 +4,4 @@ export { OffersService, type OfferDraftInput } from './service.js';
 export { offers, offerCounters, offerCommitments } from './schema.js';
 export { OfferPublisher, type BountyInput, type PublisherDeps } from './publisher.js';
 export { TrioCommitmentsClient, type CommitmentIssuer } from './trio-commitments-client.js';
+export { ReadOffers, type ReadOffersDeps, type ReadOffersInput, type ReadOffersQuery } from './read-offers.js';
