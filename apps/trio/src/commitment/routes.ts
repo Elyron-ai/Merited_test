@@ -1,6 +1,6 @@
 import { CommitmentDraft, CommitmentEndRequest, type CommitmentSigningService } from '@merited/contracts';
 import type { FastifyInstance } from 'fastify';
-import { TrioHttpError } from '../shared/deps.js';
+import { sendTrioError } from '../shared/deps.js';
 
 /**
  * §7.1 routes. Imports ONLY the contracts interface (TRIO-13 seam rule) —
@@ -10,19 +10,12 @@ export const registerCommitmentRoutes = (
   app: FastifyInstance,
   service: CommitmentSigningService,
 ): void => {
-  const handle = (error: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {
-    if (error instanceof TrioHttpError) {
-      return reply.code(error.statusCode).send({ error: { code: error.code } });
-    }
-    throw error;
-  };
-
   app.post('/trio/commitments', async (req, reply) => {
     try {
       const draft = CommitmentDraft.parse(req.body);
       return await service.create(draft);
     } catch (error) {
-      return handle(error, reply);
+      return sendTrioError(error, reply);
     }
   });
 
@@ -31,7 +24,7 @@ export const registerCommitmentRoutes = (
       const request = CommitmentEndRequest.parse(req.body ?? {});
       return await service.end((req.params as { id: string }).id, request);
     } catch (error) {
-      return handle(error, reply);
+      return sendTrioError(error, reply);
     }
   });
 
@@ -39,7 +32,7 @@ export const registerCommitmentRoutes = (
     try {
       return await service.status((req.params as { id: string }).id);
     } catch (error) {
-      return handle(error, reply);
+      return sendTrioError(error, reply);
     }
   });
 };

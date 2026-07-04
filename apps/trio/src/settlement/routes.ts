@@ -1,6 +1,6 @@
 import { NettingRunRequest, ReverseRequest, type SettlementService } from '@merited/contracts';
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { TrioHttpError } from '../shared/deps.js';
+import { sendTrioError } from '../shared/deps.js';
 import { renderStatementPdf } from './statements.js';
 
 /**
@@ -13,12 +13,7 @@ export const registerSettlementRoutes = (
   service: SettlementService,
   options: { chromiumPath?: string } = {},
 ): void => {
-  const handle = (error: unknown, reply: FastifyReply): unknown => {
-    if (error instanceof TrioHttpError) {
-      return reply.code(error.statusCode).send({ error: { code: error.code } });
-    }
-    throw error;
-  };
+  const handle = (error: unknown, reply: FastifyReply): unknown => sendTrioError(error, reply);
 
   app.post('/trio/claims/reverse', async (req, reply) => {
     try {

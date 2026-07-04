@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
+    "contract-test": "tsc -p contract-tests/tsconfig.json && vitest run contract-tests",
     "db:migrate": "node scripts/migrate.mjs",
     "db:check": "node ../../packages/events/scripts/check-migrations.mjs"
   },

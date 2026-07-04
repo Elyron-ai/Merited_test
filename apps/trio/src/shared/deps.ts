@@ -1,5 +1,6 @@
 import type { Signer } from '@merited/signing';
 import type pg from 'pg';
+import { ZodError } from 'zod';
 import type { Clock } from './clock.js';
 
 /** Constructor-injected dependencies for every trio service (SYN-30: time and
@@ -40,3 +41,21 @@ export class TrioHttpError extends Error {
     this.name = 'TrioHttpError';
   }
 }
+
+/**
+ * Shared route error mapping (retained; used by every routes.ts): service
+ * errors carry their own status; malformed public input (Zod) is the
+ * caller's fault — 400, never a 500 (found by the TRIO-13 gap sweep).
+ */
+export const sendTrioError = (
+  error: unknown,
+  reply: { code: (status: number) => { send: (body: unknown) => unknown } },
+): unknown => {
+  if (error instanceof TrioHttpError) {
+    return reply.code(error.statusCode).send({ error: { code: error.code } });
+  }
+  if (error instanceof ZodError) {
+    return reply.code(400).send({ error: { code: 'VALIDATION_FAILED' } });
+  }
+  throw error;
+};
