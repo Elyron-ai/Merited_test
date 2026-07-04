@@ -317,3 +317,5 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Deferred, recorded in the ADR:** CI pinning of the suite to tagged contracts lands with FND-16/XC-12 (no CI pipeline exists yet in the solo order — the drift gates run in every `pnpm -r test` until then); TRIO-16 will be written against the frozen 0.1.0 shapes; XC-4 back-fills ADR-001…008.
 
 **Tests:** workspace 221 green after the version bump; build/lint exit 0. Milestone: **real-trio Phase-1 work (PH1-24…26/30) is now unblocked** against frozen contracts.
+
+**Addendum (XC-7):** the annotated tags `contracts-v0.1.0` / `trio-openapi-v0.1.0` exist locally on commit `45a5aa7`, but pushing tag refs is denied (HTTP 403) — this build session's repository access is scoped to the working branch only. The freeze commit itself is pushed; the tags can be pushed by anyone with full repo access, or recreated verbatim: `git tag -a contracts-v0.1.0 45a5aa7 -m "M1 freeze: @merited/contracts 0.1.0 (ADR-009)"` (same for `trio-openapi-v0.1.0`). Recorded here so the M1 record is complete.
