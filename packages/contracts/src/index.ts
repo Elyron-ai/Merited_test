@@ -21,3 +21,4 @@ export * from './fixtures.js';
 export * from './events/index.js';
 export { EVENT_FIXTURES } from './events/fixtures.js';
 export type * from './ports/index.js';
+export * from './trio/index.js';

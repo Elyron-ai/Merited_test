@@ -143,3 +143,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 32/32 events-package total. New integration: incremental build (7 events) vs wipe+rebuild-from-0 → **byte-identical snapshots**; cursor persisted (7) → fresh runner resumes, new event lands, cursor 8, count never double-applied. Root `pnpm projections:rebuild` runs green.
 
 **Deviations:** rebuild uses DELETE not TRUNCATE (works within the app role's grants); projection tables live in the events schema for now — analytics (PH1-19) may move its own to a dedicated schema.
+
+---
+
+## TRIO-1 — Trio contract schemas · ✅ 2026-07-04
+
+**Built:** `contracts/src/trio/index.ts` — the full M1-freeze surface: `CommitmentDraft` (unsigned, optional SYN-12 budget) + create/end req/resp; `CommitmentStatus` read (SYN-7: status, conversions_used, max_conversions, budget_remaining); `MintRequest` with the SYN-8 quote snapshot (expires_at + mandate_ref, apr optional for the B26 re-mint) and `MintResponse {token, claims}` (token-opaque downstream); `EntryLine`/`EntrySet` (balanced-set refinement, same shape as the LedgerEntryPosted body); `VerifyResponse`/`ReverseResponse` discriminated verdicts bound to the closed 12-code enum; `Balance`/`Position`/`NettingRunRequest`/`NettingRunResult`/`StatementLine`/`Statement`; the four service interfaces the simulators and PH1-24…26 both implement. Reuses FND-3's `RejectionReasonCode` and FND-7's event bodies — nothing redefined.
+
+**Tests:** 17 golden round-trips (walletless + wallet-re-mint mint requests among them); rejected-verdict exhaustiveness over all 12 codes + unknown/missing rejection; verified-verdict requires entries_preview; no-float sweep across Money and bps fields; unbalanced EntrySet rejected; SYN-8 snapshot and non-empty nonce required. Contracts package: 67 tests green; workspace test/lint exit 0.
+
+**Deviations:** none. This lands the freeze surface a week ahead of the calendar's M1 (end of week 4) — the change-control clock (XC-7) starts when TRIO-13's suite is green over it.
+
+**Security self-review (trio zone):** verdict unions make an unreasoned rejection or preview-less verification unrepresentable; balance refinement blocks unbalanced previews at the schema; reason enum closed; all amounts integer pence; the SYN-8 snapshot is data the trio verifies against its own mint record (never trusted from the claim); no secrets or token internals in any schema.
