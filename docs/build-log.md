@@ -113,3 +113,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 27/27 events-package total. New integration: strict-order delivery riding NOTIFY alone (poll effectively off); NOTIFY suppressed (`useListen: false`) → poll delivers within one 50ms interval; stop mid-stream → resume from `cursor()` with no gaps and no repeats.
 
 **Deviations:** `notify.ts` folded into `append.ts` (one query in the same tx) rather than a separate file — same behaviour, less indirection.
+
+---
+
+## FND-13 — verify-chain CLI (B2 pt 4) · ✅ 2026-07-04
+
+**Built:** `cli/verify-chain.ts` — `runVerifyChain()` (testable core returning `{code, output}`) + argv wrapper; events-package `verify-chain` script wired so root `pnpm verify-chain` reaches it. Prints event count + head hash; exit 1 names the first broken seq; exit 2 on connection failure.
+
+**Tests:** 30/30 events-package total. New integration: empty ledger clean; 4-event chain → exit 0 with count + exact head hash; superuser body-tamper at seq 3 → exit 1, "CHAIN BROKEN at seq 3". Root `pnpm verify-chain` executed against the compose DB (clean).
+
+**Deviations:** none. B2's acceptance ("hash-chain verification function + verify-chain CLI") is now fully closed; Phase-0 gate clause "chain verifies via verify-chain" has its tool.
