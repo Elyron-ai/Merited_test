@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --dry",
     "db:migrate": "pnpm -r --workspace-concurrency=1 run db:migrate",
+    "seed": "pnpm --filter @merited/seed seed",
     "verify-chain": "pnpm -r run verify-chain",
     "projections:rebuild": "pnpm -r run projections:rebuild"
   },

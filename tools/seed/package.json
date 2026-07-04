@@ -11,14 +11,22 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "seed": "tsx src/index.ts"
   },
   "devDependencies": {
+    "@merited/events": "workspace:*",
+    "@merited/fake-aurora": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "tsx": "^4.23.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@merited/contracts": "workspace:*"
+    "@merited/contracts": "workspace:*",
+    "@merited/core": "workspace:*",
+    "@merited/trio": "workspace:*",
+    "pg": "catalog:"
   }
 }

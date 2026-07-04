@@ -16,6 +16,9 @@ const WEBHOOK_SECRET_CRYPTER_REF = 'platform/webhook-secrets';
 export interface CreateMerchantInput {
   name: string;
   commercial: MerchantCommercial;
+  /** Fixed ID for seed fixtures (VAL-9, D6 — deterministic demo data);
+   * omitted everywhere else, where a fresh ULID is generated. */
+  merchant_id?: MeritedId<'mer'>;
 }
 
 export interface IssuedWebhookSecret {
@@ -75,7 +78,7 @@ export class MerchantsService {
 
   async create(input: CreateMerchantInput): Promise<Merchant> {
     const commercial = MerchantCommercial.parse(input.commercial);
-    const merchantId = newId('mer');
+    const merchantId = input.merchant_id ?? newId('mer');
     const base = slugify(input.name);
     // uniquify against existing slugs (hand-onboarding scale, §5.7)
     const { rows: taken } = await this.pool.query<{ slug: string }>(

@@ -1,4 +1,4 @@
-import { newId, Offer } from '@merited/contracts';
+import { newId, Offer, type MeritedId } from '@merited/contracts';
 import { CoreHttpError } from '../../http-error.js';
 import type { OffersRepository } from './repository.js';
 
@@ -12,8 +12,9 @@ export type OfferDraftInput = Omit<Offer, 'offer_id' | 'status'>;
 export class OffersService {
   constructor(private readonly repository: OffersRepository) {}
 
-  async createDraft(input: OfferDraftInput): Promise<Offer> {
-    const offer = Offer.parse({ ...input, offer_id: newId('off'), status: 'draft' });
+  /** `fixedId` is for seed fixtures only (VAL-9, D6 deterministic IDs). */
+  async createDraft(input: OfferDraftInput, fixedId?: MeritedId<'off'>): Promise<Offer> {
+    const offer = Offer.parse({ ...input, offer_id: fixedId ?? newId('off'), status: 'draft' });
     await this.repository.insert(offer);
     return offer;
   }

@@ -474,10 +474,31 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../../apps/core
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../../apps/trio
+      pg:
+        specifier: 'catalog:'
+        version: 8.22.0
     devDependencies:
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@merited/fake-aurora':
+        specifier: workspace:*
+        version: link:../../apps/fake-aurora
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.20.0
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
