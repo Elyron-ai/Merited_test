@@ -217,3 +217,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 7/7 — attested round-trips; tampered attestation → absent; tampered body under old attestation → absent; wrong-hierarchy attestation → absent (SYN-1); live revocation visible on next read; unknown ids null; port swappability proof.
 
 **Security self-review (trio zone):** the pipeline can only see attestation-verified records; body and attestation are bound via canonical JSON; hierarchy namespacing enforced; revocation is read live, never cached.
+
+---
+
+## TRIO-9 — Double-entry posting engine · ✅ 2026-07-04
+
+**Built:** `settlement/posting.ts` — pure `bountyFor` (fixed / pct_of_order with floor), `splitBounty` (floor + remainder-to-reserve: balances by construction), `conversionEntrySet` (the four-line balanced set, entry_set_id deterministic from claim); `storeEntrySet` (persist + `LedgerEntryPosted` in the caller's tx); counters per architecture §2.2 (`applyConversionCounters` — used+1, budget decrement; `recordMandateSpend`/`mandateMonthSpend` for the per-month limit, SYN-11). Migration `0001_settlement`: `mandate_month_spend` + a **deferred constraint trigger** so an unbalanced entry set fails at COMMIT in Postgres itself.
+
+**Tests:** 9/9 (4 pure + 5 integration) — the demo's canonical numbers exact (1200 → 720/240/240, trial balance zero); floor/remainder property across awkward bps; pct_of_order flooring (8450 @ 500bps → 422); unbalanced insert **rejected by the DB trigger with full rollback**; counters and month-spend accumulation. This file is production code (retained per TRIO-16/§7.3).
+
+**Security self-review (trio zone — P1):** split arithmetic is integer-only and locked by the demo numbers; balance enforced at two layers (schema refine + DB trigger); counters mutate only through dedicated functions inside the verdict transaction; rounding remainder always lands in reserve (never platform or agent — no silent skim).

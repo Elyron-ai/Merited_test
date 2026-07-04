@@ -8,6 +8,13 @@
       "when": 1783200000010,
       "tag": "0000_trio_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783200000011,
+      "tag": "0001_settlement",
+      "breakpoints": true
     }
   ]
 }
