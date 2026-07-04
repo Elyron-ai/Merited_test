@@ -187,3 +187,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 6/6 integration — COR schema-valid with both sigs verifying; CommitmentCreated in the hash chain; live status with counters/budget; end→liveness-fails→409→CommitmentEnded ledgered; §5.1 bounty-edit fixture (COR1 immutable + sigs still valid after COR2 created); 404 path.
 
 **Security self-review (trio zone):** no update path in code + DB REVOKE proven earlier; signatures cover canonical JSON so any field mutation invalidates; countersign order documented and testable; events commit atomically with writes; budget kept out of the immutable COR (counters).
+
+---
+
+## TRIO-5 — Token Mint simulator · ✅ 2026-07-04
+
+**Built:** `verification/simulator.ts` mint half (`MintSimulator` implementing `TokenMintService`; verify pipeline is TRIO-8): cid liveness check via the commitment service; TTL = min(600s, attribution window); `sid = sha256(session_nonce)`; SYN-8 snapshot (`quote_expires_at`, `mandate_ref`) persisted on `minted_tokens`; opaque pseudo-PASETO `v4.public.fake.<b64url(canonical claims)>.<FakeSigner sig>`; `TokenMinted` in the same tx; re-mint = same `qid`, fresh `jti`, `apr` set. Mint REJECTS a snapshot whose `expires_at` exceeds token exp (422 — Core clamps first per CORE-10; a violating call is a caller bug). `routes.ts` mint route, interface-only.
+
+**Tests:** 5/5 integration — claims schema-valid, sid derivation, walletless `apr: null`, ledger emission; B26 re-mint (same qid/fresh jti/apr + persisted mandate_ref); TTL capped by a 120s window; 422 snapshot-beyond-exp + 409 non-live commitment; downstream-opacity discipline (claims only ever read from the response). Workspace build/test/lint exit 0.
+
+**Security self-review (trio zone):** tokens carry no secrets (claims are public by design; the fake sig binds them to the platform mint key); mint refuses non-live commitments and oversized quote windows; the wallet-path marker (`mandate_ref`) is recorded at mint from Core's request — verification will treat it as the trio's own record, never trusting the claim (SYN-8); nonce hashed, never stored raw.
