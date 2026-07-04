@@ -184,3 +184,18 @@ jobs:
         run: docker compose down -v
 
   # ── reserved slots (append, don't restructure) ──────────────────────────
+
+  security-review:
+    # XC-3 (SYN-32): PRs touching a high-scrutiny zone (table XC.7) must
+    # carry the PR template's completed "Security self-review" section.
+    # PR-only — pushes to main have already passed it at merge.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node tools/ci/check-security-review.mjs
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}

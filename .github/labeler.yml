@@ -1,0 +1,16 @@
+# XC-3: high-scrutiny zone auto-labelling (BUILD-PLAN §8, table XC.7).
+# The `high-scrutiny` label is the LEAD-5 audit trail — the query
+# `is:pr label:high-scrutiny` lists every PR that touched a zone. Paths
+# mirror tools/ci/high-scrutiny-zones.mjs (a conventions test keeps them
+# in lockstep).
+high-scrutiny:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/contracts/**'
+          - 'packages/signing/**'
+          - 'packages/events/**'
+          - 'apps/trio/**'
+          - 'apps/core/src/modules/token-client/**'
+          - 'apps/core/src/modules/adapters/**'
+          - 'apps/wallet/src/modules/linking/**'
+          - 'apps/wallet/src/modules/mandates/**'

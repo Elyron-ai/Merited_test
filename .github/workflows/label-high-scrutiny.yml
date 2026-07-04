@@ -1,0 +1,19 @@
+# XC-3: auto-label PRs that touch a high-scrutiny zone (table XC.7).
+# pull_request_target so the label can be applied to fork PRs too; the job
+# checks out nothing and runs no PR code — it only reads the diff listing.
+name: label-high-scrutiny
+
+on: pull_request_target
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: false

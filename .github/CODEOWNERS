@@ -1,0 +1,18 @@
+# XC-3: ownership marking the high-scrutiny zones (BUILD-PLAN §8, XC.7).
+# Solo build (SYN-32): the founder owns everything; the zone lines exist so
+# branch protection can require owner review on exactly these paths, and so
+# the zones are machine-readable alongside .github/labeler.yml and
+# tools/ci/high-scrutiny-zones.mjs (a conventions test keeps all three in
+# lockstep). Order matters: later lines win, so zones follow the default.
+
+*                                       jameskmcdowall@gmail.com
+
+# ── High-scrutiny zones (XC.7) — security self-review + LEAD-5 audit ──────
+packages/contracts/                     jameskmcdowall@gmail.com
+packages/signing/                       jameskmcdowall@gmail.com
+packages/events/                        jameskmcdowall@gmail.com
+apps/trio/                              jameskmcdowall@gmail.com
+apps/core/src/modules/token-client/     jameskmcdowall@gmail.com
+apps/core/src/modules/adapters/         jameskmcdowall@gmail.com
+apps/wallet/src/modules/linking/        jameskmcdowall@gmail.com
+apps/wallet/src/modules/mandates/       jameskmcdowall@gmail.com
