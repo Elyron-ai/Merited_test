@@ -91,3 +91,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Deviations:** none. Teardown note: test pools swallow late idle-client FATALs caused by `DROP DATABASE … WITH (FORCE)` (teardown race, not product code).
 
 **Security self-review (ledger zone — P1):** append validates type against the frozen catalogue and body against Zod before hashing; hash-unsafe data cannot enter the chain; appends serialised via advisory xact lock (no interleaved heads); inserted body is the canonical string actually hashed; append-only enforced at the DB role level and tamper-evidence proven end-to-end (admin mutation → verify failure at seq); no secrets in event bodies (FND-7 review holds); runtime role asserted merited_app.
+
+---
+
+## FND-8 — Signing package: interfaces + fakes · ✅ 2026-07-04
+
+**Built:** `Signer`/`Crypter` interfaces with hierarchy-namespaced key refs (`platform|merchant|agent`/id — SYN-1); `FakeSigner` (HMAC-SHA256, `fake-ed25519:`-tagged, timing-safe verify, secret-independent deterministic pseudo public keys); `FakeCrypter` (AES-256-GCM per (secret, keyRef)-derived key, `fake-kms:`-tagged envelopes, all failure modes collapsed into one hygienic `DecryptionError`); README stating the PH1-30/SYN-32 boundary.
+
+**Tests:** 10/10, docker-free (D7) — determinism, own-sig verify, tampered payload/sig/keyRef rejection, cross-hierarchy rejection (merchant sig never verifies as platform), cross-secret rejection, crypter round-trip, tampered-ciphertext/wrong-key/garbage rejection, error-hygiene sweep (no secret or plaintext in any thrown error or stack). Workspace build/test/lint exit 0.
+
+**Deviations:** none. TRIO-2 remains subsumed (SYN-1) — the trio lane builds on this package as-is.
+
+**Security self-review (signing zone):** fakes are prefix-tagged so they can never pass for production signatures; keyRef inside the MAC input makes cross-hierarchy forgery structurally impossible; constant-time comparison; no KMS SDK dependency introduced; secrets never appear in errors (tested), and the AAD-free GCM envelope is documented as fake-only.
