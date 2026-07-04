@@ -262,6 +262,9 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       pg:
         specifier: 'catalog:'
         version: 8.22.0

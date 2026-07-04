@@ -3,5 +3,6 @@
   "0001_events_table.sql": "90b801c756d30a4966b36c09e660b4d455c391a4f02a9efecec1f5e4ad957325",
   "0002_ledger_permissions.sql": "b1a4ff029108cb75de2c7bcabfcbe12343d407492a6e3ece1541b13ad0aea7fe",
   "0003_projections.sql": "f9f7bcd2be96774ac77efe613f8a41066445685225d8ef57776606e4295c973a",
-  "0004_conversion_qid_index.sql": "1d10b49d295ba798adcead71c075b234c6a1c282ad41811c7221ee3ef52a2650"
+  "0004_conversion_qid_index.sql": "1d10b49d295ba798adcead71c075b234c6a1c282ad41811c7221ee3ef52a2650",
+  "0005_valet_emitter_fence.sql": "7f13bcf1d51eec0873c6c178d08af33f390f0054fef9fda8dd98746160f82ee4"
 }

@@ -9,6 +9,10 @@
 -- merited_app:     runtime; no DDL. Ledger REVOKEs land with FND-10.
 CREATE ROLE merited_migrate LOGIN PASSWORD 'merited_migrate_dev';
 CREATE ROLE merited_app LOGIN PASSWORD 'merited_app_dev';
+-- merited_valet: Valet's ledger-mirror credential (SYN-21). May append
+-- `ErrandStateChanged` ONLY — the allow-list trigger lands with the events
+-- migrations; an unfenced append credential would be a P5 backdoor.
+CREATE ROLE merited_valet LOGIN PASSWORD 'merited_valet_dev';
 
 -- The migration runner creates schemas/tables: it needs CREATE on the database.
 GRANT CREATE ON DATABASE merited TO merited_migrate;

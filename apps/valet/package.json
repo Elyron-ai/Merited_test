@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
-    "pg": "catalog:"
+    "pg": "catalog:",
+    "@merited/events": "workspace:*"
   }
 }

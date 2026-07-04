@@ -11,6 +11,21 @@ export class UnregisteredEventError extends Error {
   }
 }
 
+export class EmitterFenceError extends Error {
+  constructor(name: string, allowlist: readonly string[]) {
+    super(`emitter allow-list (SYN-21): '${name}' is not one of [${allowlist.join(', ')}]`);
+    this.name = 'EmitterFenceError';
+  }
+}
+
+export interface AppendOptions {
+  /** Emitter allow-list (SYN-21): a scoped emitter (e.g. Valet's ledger
+   * mirror) names the ONLY types it may append; anything else throws before
+   * touching the database. The DB-level twin is the `valet_emitter_fence`
+   * trigger — both layers are tested in VAL-4. */
+  allowlist?: readonly MeritedEventName[];
+}
+
 export interface AppendedEvent {
   seq: number;
   evt_id: string;
@@ -27,8 +42,12 @@ export const appendEvent = async (
   tx: pg.ClientBase,
   name: MeritedEventName | string,
   data: unknown,
+  options: AppendOptions = {},
 ): Promise<AppendedEvent> => {
   if (!isCatalogueEvent(name)) throw new UnregisteredEventError(name);
+  if (options.allowlist && !options.allowlist.includes(name)) {
+    throw new EmitterFenceError(name, options.allowlist);
+  }
   const body = EVENT_CATALOGUE[name].parse({ type: name, v: 1, data });
   const canonical = canonicalJson(body);
 
@@ -56,11 +75,12 @@ export const appendEventInNewTx = async (
   pool: pg.Pool,
   name: MeritedEventName | string,
   data: unknown,
+  options: AppendOptions = {},
 ): Promise<AppendedEvent> => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await appendEvent(client, name, data);
+    const result = await appendEvent(client, name, data, options);
     await client.query('COMMIT');
     return result;
   } catch (error) {

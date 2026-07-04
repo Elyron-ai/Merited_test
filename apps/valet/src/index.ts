@@ -8,3 +8,9 @@ export {
   type ErrandEventRow,
   type StoredErrand,
 } from './errand/store.js';
+export {
+  EventsPackageMirror,
+  type LedgerMirror,
+  type MirrorResult,
+  type MirrorTransition,
+} from './errand/ledger-mirror.js';
