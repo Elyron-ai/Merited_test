@@ -1,2 +1,2 @@
-// Typed mint client against the trio contract (CORE-9). Layout frozen day one (CORE-1, §1).
-export {};
+// Typed mint client against the trio contract (CORE-9).
+export { TrioTokenClient, type TokenClientOptions } from './client.js';

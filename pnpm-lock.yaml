@@ -7,7 +7,7 @@ settings:
 catalogs:
   default:
     '@opentelemetry/api':
-      specifier: ^1.9.0
+      specifier: ^1.9.1
       version: 1.9.1
     '@opentelemetry/core':
       specifier: ^2.0.0
@@ -111,6 +111,9 @@ importers:
       '@merited/otel':
         specifier: workspace:*
         version: link:../../packages/otel
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.1
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.44.7(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.22.0)
@@ -130,6 +133,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../trio
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0

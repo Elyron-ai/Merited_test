@@ -23,12 +23,14 @@
     "fast-check": "^4.8.0",
     "tsx": "^4.23.0",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@merited/trio": "workspace:*"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "@merited/events": "workspace:*",
     "@merited/otel": "workspace:*",
+    "@opentelemetry/api": "catalog:",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",
     "fastify-type-provider-zod": "^4.0.2",
