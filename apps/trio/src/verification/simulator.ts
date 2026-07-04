@@ -85,3 +85,7 @@ export class MintSimulator implements TokenMintService {
     return { token, claims };
   }
 }
+
+// §7.2's verify half — same swap unit as the mint (PH1-25 replaces the
+// crypto in both; ordering/replay/terms logic is retained).
+export { claimSignaturePayload, VerifySimulator } from './verify-pipeline.js';

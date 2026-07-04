@@ -16,7 +16,6 @@ initOtel({
 const sentryDsn = process.env['MERITED_SENTRY_DSN'];
 if (sentryDsn) {
   const sentryModule = '@sentry/node';
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   import(/* @vite-ignore */ sentryModule as string)
     .then((Sentry: { init: (o: { dsn: string }) => void }) => Sentry.init({ dsn: sentryDsn }))
     .catch(() => {

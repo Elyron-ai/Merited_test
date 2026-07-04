@@ -227,3 +227,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 9/9 (4 pure + 5 integration) — the demo's canonical numbers exact (1200 → 720/240/240, trial balance zero); floor/remainder property across awkward bps; pct_of_order flooring (8450 @ 500bps → 422); unbalanced insert **rejected by the DB trigger with full rollback**; counters and month-spend accumulation. This file is production code (retained per TRIO-16/§7.3).
 
 **Security self-review (trio zone — P1):** split arithmetic is integer-only and locked by the demo numbers; balance enforced at two layers (schema refine + DB trigger); counters mutate only through dedicated functions inside the verdict transaction; rounding remainder always lands in reserve (never platform or agent — no silent skim).
+
+---
+
+## TRIO-8 — Conversion Verification simulator (the six-stage pipeline) · ✅ 2026-07-04
+
+**Built:** `verification/verify-pipeline.ts` (re-exported through `simulator.ts` — the PH1-25 swap unit): first-failure-wins through the spec's exact order — (1) signature chain: merchant sig on claim → platform sig on token → both COR sigs, with the trio's own `minted_tokens` row authoritative for token facts (SYN-8; absent row = forged); (2) replay read-check; (3) attribution window; (4) quote liveness from the minted snapshot; (5) COR validity (SYN-34) → cap → tier → budget; (6) wallet-path-only approval checks incl. the SYN-8 guard (mandate_ref minted + apr null → APPROVAL_MISSING), approval quote-binding/expiry, live mandate status, per_txn AND cumulative per_month limits. Verified: consume jti + post entries + counters + mandate spend + `ConversionVerified` in ONE transaction; concurrent-duplicate losers get TOKEN_REPLAYED from the constraint. §8 idempotency: same key → stored byte-identical verdict without re-execution; same key/different body → 422. `ConversionClaimed` is never emitted here (SYN-6). Verify route registered; `claimSignaturePayload` exported for MER-4.
+
+**Decision (SYN-34, appended to plan §3 in this commit):** `/end` stops new mints, not in-flight tokens — §5.1/arch §2.2 govern over a literal stage-5 reading; `COMMITMENT_ENDED` = claim outside the COR's validity window. The plan's matrix row was corrected; both directions are tested.
+
+**Tests:** 16 new (51 trio total) — happy path with preview==persisted line-for-line + counters + ledger; ALL 12 reason codes induced from public inputs; multi-failure ordering (window beats quote); SYN-34 both ways; idempotent replay byte-identical with no re-posting; ≥10 distinct reason codes present in ConversionRejected ledger events. Workspace build/test/lint exit 0.
+
+**Security self-review (trio zone — the crown jewel):** the trio trusts only verified signatures and its own records (mint row, counters, month spend); every rejection is first-class ledger data; consumption is atomic with the verdict so no state mutates on a rejected claim; approval/mandate records reach the pipeline only through the attestation-verifying directory; idempotency responses are stored verdicts, not re-computations; no test backdoors — every negative case is public-input-induced (SYN-30 held).

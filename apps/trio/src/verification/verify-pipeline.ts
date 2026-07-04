@@ -1,0 +1,313 @@
+import {
+  AttributionTokenClaims,
+  Commitment,
+  VerifyRequest,
+  type Approval,
+  type Mandate,
+  type RejectionReasonCode,
+  type VerifyResponse,
+} from '@merited/contracts';
+import { appendEvent, canonicalJson, sha256hex } from '@merited/events';
+import {
+  merchantSignedPayload,
+  unsignedCommitmentPayload,
+} from '../commitment/simulator.js';
+import {
+  inTx,
+  merchantKeyRef,
+  PLATFORM_MINT_KEY,
+  TrioHttpError,
+  type TrioDeps,
+} from '../shared/deps.js';
+import type { TrioDirectory } from '../shared/ports/directory.js';
+import {
+  applyConversionCounters,
+  bountyFor,
+  conversionEntrySet,
+  mandateMonthSpend,
+  monthKey,
+  recordMandateSpend,
+  storeEntrySet,
+} from '../settlement/posting.js';
+import { consumeToken, isConsumed } from './replay-store.js';
+
+/** Merchant signature payload for a claim (used by MER-4 and the tests). */
+export const claimSignaturePayload = (claim: Record<string, unknown>): string => {
+  const { merchant_sig: _m, ...rest } = claim;
+  return canonicalJson(rest);
+};
+
+interface MintedRow {
+  jti: string;
+  cid: string;
+  qid: string;
+  aid: string;
+  tier: string;
+  iat: number;
+  exp: number;
+  quote_expires_at: string;
+  mandate_ref: string | null;
+  apr: string | null;
+}
+
+type Rejection = { verdict: 'rejected'; reason: RejectionReasonCode; jti?: string };
+
+/**
+ * Conversion Verification SIMULATOR (TRIO-8, §7.2) — the six-stage pipeline
+ * in the spec's exact order, first-failure-wins. Fake signature primitives
+ * (FakeSigner) are the ONLY simulated part; replay, window, quote, terms and
+ * approval logic are real and retained (PH1-25 swaps the crypto, not this
+ * ordering). `ConversionClaimed` is emitted upstream by the adapter (SYN-6).
+ *
+ * SYN-34: ending a commitment stops NEW mints, not in-flight tokens (§5.1 /
+ * arch §2.2 "no retroactive repricing"). Stage 5's COMMITMENT_ENDED fires
+ * when the claim's order.ts falls outside the COR's own validity window.
+ *
+ * The trio trusts ONLY its own records for token facts: claims fields are
+ * cross-checked against the minted_tokens row (SYN-8); directory records are
+ * attestation-verified (TRIO-7).
+ */
+export class VerifySimulator {
+  constructor(
+    private readonly deps: TrioDeps,
+    private readonly directory: TrioDirectory,
+  ) {}
+
+  async verify(
+    claimInput: VerifyRequest,
+    options: { idempotencyKey: string },
+  ): Promise<VerifyResponse> {
+    if (!options.idempotencyKey) throw new TrioHttpError(400, 'IDEMPOTENCY_KEY_REQUIRED');
+    const claim = VerifyRequest.parse(claimInput);
+    const requestHash = sha256hex(canonicalJson(claim));
+
+    // §8 idempotency: same key + same body → stored original, byte-identical.
+    const existing = await this.deps.pool.query<{ request_hash: string; response: VerifyResponse }>(
+      `SELECT request_hash, response FROM trio.idempotency_keys WHERE scope = 'claims/verify' AND key = $1`,
+      [options.idempotencyKey],
+    );
+    if (existing.rows.length > 0) {
+      const row = existing.rows[0]!;
+      if (row.request_hash !== requestHash) throw new TrioHttpError(422, 'IDEMPOTENCY_CONFLICT');
+      return row.response;
+    }
+
+    const outcome = await this.pipeline(claim);
+
+    return inTx(this.deps.pool, async (tx) => {
+      let response: VerifyResponse;
+      if (outcome.verdict === 'verified') {
+        // Consume + post + counters in ONE transaction with the verdict.
+        const consumption = await consumeToken(tx, {
+          jti: outcome.minted.jti,
+          qid: outcome.minted.qid,
+          claim_id: claim.claim_id,
+        });
+        if (!consumption.consumed) {
+          response = { verdict: 'rejected', reason_code: 'TOKEN_REPLAYED' };
+          await appendEvent(tx, 'ConversionRejected', {
+            claim_id: claim.claim_id,
+            merchant_id: claim.merchant_id,
+            jti: outcome.minted.jti,
+            reason_code: 'TOKEN_REPLAYED',
+            rejected_at: this.now(),
+          });
+        } else {
+          await storeEntrySet(tx, outcome.entries);
+          await applyConversionCounters(tx, outcome.minted.cid, outcome.bounty);
+          if (outcome.minted.mandate_ref) {
+            await recordMandateSpend(
+              tx,
+              outcome.minted.mandate_ref,
+              monthKey(new Date(claim.order.ts)),
+              claim.order.gross_value.amount,
+            );
+          }
+          await appendEvent(tx, 'ConversionVerified', {
+            claim_id: claim.claim_id,
+            merchant_id: claim.merchant_id,
+            jti: outcome.minted.jti,
+            qid: outcome.minted.qid,
+            cid: outcome.minted.cid,
+            gross_value: claim.order.gross_value,
+            verified_at: this.now(),
+          });
+          response = { verdict: 'verified', entries_preview: outcome.entries };
+        }
+      } else {
+        response = { verdict: 'rejected', reason_code: outcome.reason };
+        await appendEvent(tx, 'ConversionRejected', {
+          claim_id: claim.claim_id,
+          merchant_id: claim.merchant_id,
+          jti: outcome.jti ?? null,
+          reason_code: outcome.reason,
+          rejected_at: this.now(),
+        });
+      }
+      await tx.query(
+        `INSERT INTO trio.idempotency_keys (scope, key, request_hash, response)
+         VALUES ('claims/verify', $1, $2, $3::jsonb)`,
+        [options.idempotencyKey, requestHash, canonicalJson(response)],
+      );
+      return response;
+    });
+  }
+
+  private now(): string {
+    return this.deps.clock.now().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  private async pipeline(
+    claim: VerifyRequest,
+  ): Promise<
+    | { verdict: 'verified'; minted: MintedRow; entries: ReturnType<typeof conversionEntrySet>; bounty: number }
+    | Rejection
+  > {
+    const reject = (reason: RejectionReasonCode, jti?: string): Rejection => ({
+      verdict: 'rejected',
+      reason,
+      ...(jti ? { jti } : {}),
+    });
+
+    // ── stage 1: signature chain ────────────────────────────────────────────
+    const merchantSigOk = await this.deps.signer.verify(
+      merchantKeyRef(claim.merchant_id),
+      claimSignaturePayload(claim),
+      claim.merchant_sig,
+    );
+    if (!merchantSigOk) return reject('SIG_INVALID');
+
+    const tokenParts = claim.attribution_token.split('.');
+    if (tokenParts.length !== 5 || claim.attribution_token.startsWith('v4.public.fake.') === false) {
+      return reject('SIG_INVALID');
+    }
+    const canonicalClaims = Buffer.from(tokenParts[3]!, 'base64url').toString('utf8');
+    const tokenSig = tokenParts[4]!;
+    if (!(await this.deps.signer.verify(PLATFORM_MINT_KEY, canonicalClaims, tokenSig))) {
+      return reject('SIG_INVALID');
+    }
+    let claims: AttributionTokenClaims;
+    try {
+      claims = AttributionTokenClaims.parse(JSON.parse(canonicalClaims));
+    } catch {
+      return reject('SIG_INVALID');
+    }
+
+    // The trio's own mint record is authoritative (SYN-8) — absent = forged.
+    const mintedRows = await this.deps.pool.query<MintedRow>(
+      `SELECT jti, cid, qid, aid, tier, iat::int AS iat, exp::int AS exp,
+              quote_expires_at, mandate_ref, apr
+         FROM trio.minted_tokens WHERE jti = $1`,
+      [claims.jti],
+    );
+    if (mintedRows.rows.length === 0) return reject('SIG_INVALID', claims.jti);
+    const minted = mintedRows.rows[0]!;
+
+    const corRows = await this.deps.pool.query<{ body: unknown }>(
+      'SELECT body FROM trio.commitments WHERE commitment_id = $1',
+      [minted.cid],
+    );
+    if (corRows.rows.length === 0) return reject('SIG_INVALID', minted.jti);
+    const cor = Commitment.parse(corRows.rows[0]!.body);
+    if (cor.merchant_id !== claim.merchant_id) return reject('SIG_INVALID', minted.jti);
+    const corMerchantOk = await this.deps.signer.verify(
+      merchantKeyRef(cor.merchant_id),
+      unsignedCommitmentPayload(cor as never),
+      cor.merchant_sig,
+    );
+    const corPlatformOk = await this.deps.signer.verify(
+      'platform/commitments',
+      merchantSignedPayload(cor as never),
+      cor.platform_sig,
+    );
+    if (!corMerchantOk || !corPlatformOk) return reject('SIG_INVALID', minted.jti);
+
+    const orderTs = Math.floor(Date.parse(claim.order.ts) / 1000);
+
+    // ── stage 2: replay (read check; consumption happens with the verdict) ──
+    const client = await this.deps.pool.connect();
+    try {
+      if (await isConsumed(client, minted.jti)) return reject('TOKEN_REPLAYED', minted.jti);
+    } finally {
+      client.release();
+    }
+
+    // ── stage 3: attribution window ─────────────────────────────────────────
+    if (orderTs < minted.iat || orderTs > minted.iat + cor.terms.attribution_window_s) {
+      return reject('WINDOW_EXPIRED', minted.jti);
+    }
+
+    // ── stage 4: quote liveness (trio's own snapshot — SYN-8) ───────────────
+    if (orderTs > Math.floor(Date.parse(minted.quote_expires_at) / 1000)) {
+      return reject('QUOTE_EXPIRED', minted.jti);
+    }
+
+    // ── stage 5: commitment terms ───────────────────────────────────────────
+    // SYN-34: /end stops new mints, not in-flight tokens. Validity window is
+    // the COR's own promise boundary.
+    if (
+      orderTs < Math.floor(Date.parse(cor.terms.valid_from) / 1000) ||
+      orderTs > Math.floor(Date.parse(cor.terms.valid_until) / 1000)
+    ) {
+      return reject('COMMITMENT_ENDED', minted.jti);
+    }
+    const counters = await this.deps.pool.query<{
+      conversions_used: number;
+      budget_remaining_pence: string | null;
+    }>('SELECT conversions_used, budget_remaining_pence FROM trio.counters WHERE commitment_id = $1', [
+      minted.cid,
+    ]);
+    const used = counters.rows[0]?.conversions_used ?? 0;
+    if (cor.terms.max_conversions !== null && used >= cor.terms.max_conversions) {
+      return reject('CAP_EXHAUSTED', minted.jti);
+    }
+    if (!cor.terms.eligible_identity_tiers.includes(minted.tier as never)) {
+      return reject('TIER_INELIGIBLE', minted.jti);
+    }
+    const bounty = bountyFor(cor, claim.order.gross_value.amount);
+    const budgetRemaining = counters.rows[0]?.budget_remaining_pence;
+    if (budgetRemaining !== null && budgetRemaining !== undefined && Number(budgetRemaining) < bounty) {
+      return reject('BUDGET_EXHAUSTED', minted.jti);
+    }
+
+    // ── stage 6: approval + mandate checks (wallet path only) ───────────────
+    if (minted.apr === null && minted.mandate_ref !== null) {
+      // SYN-8 wallet-path guard: quote was minted under a mandate but the
+      // token carries no approval → execute-without-approval.
+      return reject('APPROVAL_MISSING', minted.jti);
+    }
+    if (minted.apr !== null) {
+      const approval: Approval | null = await this.directory.getApproval(minted.apr);
+      if (!approval || approval.quote_id !== minted.qid) return reject('APPROVAL_MISSING', minted.jti);
+      if (orderTs > Math.floor(Date.parse(approval.exp) / 1000)) {
+        return reject('APPROVAL_EXPIRED', minted.jti);
+      }
+      const mandate: Mandate | null = await this.directory.getMandate(approval.mandate_id);
+      if (!mandate || mandate.status !== 'active') return reject('MANDATE_REVOKED', minted.jti);
+      if (claim.order.gross_value.amount > mandate.limits.per_txn.amount) {
+        return reject('LIMIT_EXCEEDED', minted.jti);
+      }
+      const monthClient = await this.deps.pool.connect();
+      try {
+        const spent = await mandateMonthSpend(
+          monthClient,
+          mandate.mandate_id,
+          monthKey(new Date(claim.order.ts)),
+        );
+        if (spent + claim.order.gross_value.amount > mandate.limits.per_month.amount) {
+          return reject('LIMIT_EXCEEDED', minted.jti);
+        }
+      } finally {
+        monthClient.release();
+      }
+    }
+
+    const entries = conversionEntrySet({
+      commitment: cor,
+      agentId: minted.aid,
+      claimId: claim.claim_id,
+      grossPence: claim.order.gross_value.amount,
+    });
+    return { verdict: 'verified', minted, entries, bounty };
+  }
+}
