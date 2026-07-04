@@ -141,6 +141,19 @@ jobs:
       - if: always()
         run: docker compose down -v
 
+  demo-clean-machine:
+    # VAL-15 (§9 gate): a bare checkout — no cached state, no pre-started
+    # containers — runs ONLY `pnpm install && pnpm demo:act1`. The bootstrap
+    # does everything else (preflight, compose up, migrations, Act 1).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable
+      - run: pnpm install
+      - run: MERITED_DEMO_MODE=ci pnpm demo:act1
+
   # ── reserved slots (append, don't restructure) ──────────────────────────
   # contract-suite (XC-12): the trio acceptance gate —
   #   TRIO_TARGET=simulator pnpm trio:contract-test   (Phase 1 flips to real)

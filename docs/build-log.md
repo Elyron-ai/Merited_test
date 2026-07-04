@@ -715,3 +715,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** the suite relocated, not duplicated (workspace 440; full suite + lint green). The GitHub-side green run lands when the branch merges — same follow-through note as FND-16.
 
 **Deviation/notes:** none.
+
+---
+
+## VAL-15 — Clean-machine bootstrap · ✅ 2026-07-04
+
+**Built:** `tools/demo/src/bootstrap.ts`, now what `pnpm demo:act1` runs (the bare act stays available as `act1:bare`): preflight with actionable UK-English messages (Node 22 via version parse, pnpm via corepack hint, Docker daemon via `docker info`, checkout integrity) → `docker compose up -d --wait` (postgres, redis, fake-kms, mailpit; a friendly port-5432 hint when compose fails) → `pnpm -r build` (a bare checkout has no dist; Act 1's import chain is a DYNAMIC import so the entry file loads before the workspace exists) → all four Drizzle migration sets in-process → `runAct(act1Steps)` in human mode (CI mode via `MERITED_DEMO_MODE=ci`) → summary + artefact paths. Root `README.md` added with the three-line "Run the demo" section. CI job `demo-clean-machine`: bare checkout, no cache, no pre-started containers, literally `pnpm install && pnpm demo:act1`.
+
+**Verification:** the bare-checkout ordering proven locally by wiping package dist directories and running `pnpm demo:act1` — the bootstrap rebuilt the workspace, migrated, and played all 9 steps to the verified chain head (the first attempt failed exactly as a clean machine would have: static imports resolved dist at load time — fixed with the dynamic import; recorded because that failure IS the scenario this task exists to cover). Preflight unit tests (3 new — healthy pass, old-Node message, pnpm/Docker fixes; tools/demo 9; workspace 443). The truly bare GitHub-side run lands with the merge, same follow-through note as FND-16/VAL-14. Build/lint exit 0.
+
+**Deviation/notes:** compose containers already running make `up -d --wait` a no-op — "clean machine" and "warm dev machine" share one path. The §9 gate's "recorded as the demo asset" (an actual recording) is a founder action once the branch merges; everything the recording needs is scripted and green.
