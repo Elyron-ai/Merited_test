@@ -479,7 +479,7 @@ Every stage is a pure module with its own tests (§4); the clock and all externa
 |---|---|---|---|---|
 | CORE-1 — ✅ done 2026-07-04 | Core app skeleton: Fastify boot, module tree, Drizzle, RateLimiter adapter+fake | §1, §2.2, §8 | FND-3/4/5, FND-1/2, FND-14 | M |
 | CORE-2 — ✅ done 2026-07-04 | Offers storage + CRUD service: `offers`, `offer_counters`, COR history link | B3, §5.1 | CORE-1 | M |
-| CORE-3 | Agent Registry: `agt_` IDs, hashed keys, register route, auth plugin, per-agent limits | B4, §5.2 | CORE-1 | M |
+| CORE-3 — ✅ done 2026-07-04 | Agent Registry: `agt_` IDs, hashed keys, register route, auth plugin, per-agent limits | B4, §5.2 | CORE-1 | M |
 | CORE-4 | Identity Resolution: pure `resolve()`, seeded Aurora Club table, `soft_identities`, segments | B5, §5.3 | CORE-1 | M |
 | CORE-5 | Offer publish flow + bounty-edit COR lifecycle (calls trio commitments) | B3, §5.1 | CORE-2, MER-2, TRIO-1/4, FND-7/10/11 | M |
 | CORE-6 | Eligibility minimal (Ph0): liveness → tier → commitment+cap → stacking dedupe | B6, §5.4 | CORE-2, CORE-4, TRIO-1/4 | M |
