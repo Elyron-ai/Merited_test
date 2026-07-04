@@ -267,3 +267,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Security self-review (trio + ledger-DDL zones):** netting never mutates entries — marker rows only, enforced by REVOKE at the role level; the `netted_sets` PK makes double-netting structurally impossible under concurrency; period input validated (closed regex) before touching SQL; all SQL parameterised; statement HTML escapes party/description strings (they transit merchant-supplied ids); PDF rendering happens on trusted, already-persisted ledger data only; no secrets or keys logged.
 
 **Deviation/notes:** playwright-core pinned at ^1.61; environments whose installed Chromium revision differs pass `executablePath` (the sandbox uses `/opt/pw-browsers/chromium`). The PDF title is ASCII-only so the party name is greppable in the PDF's plain-text metadata (em-dash titles get UTF-16-encoded by Chromium — found and fixed by the smoke test).
+
+---
+
+## TRIO-12 — Trial-balance-zero property suite · ✅ 2026-07-04
+
+**Built:** `settlement/trial-balance.property.test.ts` — fast-check (v4) generator over arbitrary interleaved sequences (1–10 ops) of commitment-create / mint / verify / reverse / netting-run, valid AND invalid inputs deliberately mixed: fixed and pct bounties, tiny/huge attribution and clawback windows, restricted tiers, small caps and budgets, not-yet-valid commitments, tampered signatures, replayed tokens (organic — token indices repeat), unknown/wrong-merchant reversals, malformed netting periods. Runs against the HTTP surface (Fastify inject with the service-token gate live and all four route modules registered), so the identical property gates PH1-24…26 with zero edits. Model state and the database accumulate across runs — the invariant must hold over all history, not a clean slate. After every sequence: Σ(debits) − Σ(credits) across all accounts = 0, and `GET /trio/positions/:party` equals the per-party fold of raw entry lines for every party seen. Any 5xx fails the property. On failure the shrunk counter-example (+ seed and replay path) is written to `src/settlement/__fixtures__/trial-balance.counterexample.json` per the Accept clause.
+
+**Tests:** 1 property × 500 generated sequences (~12.6s; the Accept's ≥500 asserted on `numRuns` inside the test). Workspace 176 tests, build/test/lint exit 0.
+
+**Security self-review (trio zone):** the suite is adversarial by construction — forged signatures, replays, cross-merchant reversals and malformed inputs are generated continuously and the books must stay balanced through all of them; everything is induced via public HTTP inputs (no clock or DB backdoors, SYN-30 held); the service-token gate stays enabled during the property run.
+
+**Deviation/notes:** fc counter-example replay is advisory when state accumulates (a re-run with the same seed starts from different DB state) — acceptable because the invariant is state-independent; noted for TRIO-13's harness docs. fast-check 4.x renamed `error` → `errorInstance` on RunDetails (caught by tsc).

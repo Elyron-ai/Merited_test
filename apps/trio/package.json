@@ -29,6 +29,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
+    "fast-check": "^4.8.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
