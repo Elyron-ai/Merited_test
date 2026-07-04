@@ -16,6 +16,7 @@ export { Approval, approvalIsQuoteBound } from './approval.js';
 export { ConversionClaim } from './claim.js';
 export { Mandate } from './mandate.js';
 export { AgentCtx, ConsumerCtx } from './ctx.js';
+export { Segment, SEGMENTS } from './segment.js';
 export { OrderConfirmed } from './order.js';
 export * from './fixtures.js';
 export * from './events/index.js';

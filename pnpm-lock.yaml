@@ -139,6 +139,9 @@ importers:
       drizzle-kit:
         specifier: 'catalog:'
         version: 0.31.10
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
       tsx:
         specifier: ^4.23.0
         version: 4.23.0
