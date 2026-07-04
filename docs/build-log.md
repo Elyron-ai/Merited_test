@@ -881,3 +881,11 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 5 new (workspace 534) + the Accept run LIVE: `pnpm gate:0` → **6 automated pass, 0 fail, 2 manual, exit 0** (act 1 replayed end-to-end inside it: splits exact, both refusals, trace e6929b…, chain head 73f0ae…, 20 events). Unit level: the six demanded proxies present and the manual pair named; all-pass → exit 0; any failing proxy → exit 1 with the remaining proxies still run (the gate reports everything, not first-failure); manual items never move the exit code but always appear in the record; a red run records RED. 
 
 **Deviation/notes:** `pnpm gate:1` is deliberately NOT created yet — Phase 1's proxies don't exist to aggregate; the phase-1 doc records the definition of done and the aggregator is assembled as its criteria land (noted in the doc itself).
+
+---
+
+## XC-10 — Risk register · ✅ 2026-07-04
+
+**Built:** `docs/risk-register.md` — the twelve XC.6 risks seeded verbatim (L/I, mitigation, owner) plus a **Phase 0 posture column** recording where each mitigation actually stands today (R1's drop-flag rehearsal live, threat-notes cross-references, R3's controls all in force with LEAD-5 commissioning a Gate 1 item, R4 zero post-freeze wire changes, R5 proven by the green `gate:0` end-to-end, R6's naming screen flagged as an open founder action, R9's first quarterly watch due 2026-10). The fortnightly review ritual is written into the doc (walk every open risk, date-stamped log, new risks take the next R-number, closures need evidence), the review log opens with today's seeding entry, and the **first review is set: 2026-07-17**.
+
+**Tests:** 2 new (workspace 536) — all twelve rows present each with an owner; the next-review date, fortnightly ritual and review log exist. Full workspace build/test/lint green.
