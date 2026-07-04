@@ -39,6 +39,9 @@
     },
     {
       "path": "./tools/demo"
+    },
+    {
+      "path": "./packages/otel"
     }
   ]
 }

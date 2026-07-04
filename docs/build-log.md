@@ -155,3 +155,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Deviations:** none. This lands the freeze surface a week ahead of the calendar's M1 (end of week 4) — the change-control clock (XC-7) starts when TRIO-13's suite is green over it.
 
 **Security self-review (trio zone):** verdict unions make an unreasoned rejection or preview-less verification unrepresentable; balance refinement blocks unbalanced previews at the schema; reason enum closed; all amounts integer pence; the SYN-8 snapshot is data the trio verifies against its own mint record (never trusted from the claim); no secrets or token internals in any schema.
+
+---
+
+## FND-14 — Observability package (B21) · ✅ 2026-07-04
+
+**Built:** `packages/otel` (SYN-2's ratified layout addition) — `sdk.ts` (NodeTracerProvider, W3C propagator; exporter selection: console default / OTLP env-gated via `MERITED_OTLP_ENDPOINT` / in-memory for tests / `MERITED_OTEL=off`), `withSpan` + `injectTraceparent` + `activeTraceId` helpers, `fastify-plugin.ts` (structural typing — no runtime fastify dep; `registerTracing` + `inRequestSpan`), `logger.ts` (pino factory with trace_id/span_id mixin + FND-15 redact paths pre-wired), `register.ts` boot entry (`@merited/otel/register`; Sentry per §2.2 initialises only when `MERITED_SENTRY_DSN` is set, lazily imported).
+
+**Tests:** harness green — service A → service B with real pg write + real ledger append on a throwaway DB: **five spans, one trace ID**, B's server span parented to A's client span; logger test proves trace_id/span_id injection and `refresh_token → [Redacted]` with no secret in the serialised line. Workspace build/test/lint exit 0.
+
+**Deviations (recorded):** explicit propagation + span helpers instead of the plan's "auto-instrumentation for http, fastify, pg, ioredis" — ESM auto-instrumentation needs loader hooks in every app boot and is nondeterministic under vitest; the explicit pattern is what the demo trace needs and auto-instr can be layered later without contract changes. Sentry ships as a lazy optional import rather than a hard dependency.
