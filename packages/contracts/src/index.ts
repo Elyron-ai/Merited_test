@@ -1,2 +1,6 @@
-// @merited/contracts — scaffold placeholder (FND-1). Real content arrives with its workstream tasks.
-export const PACKAGE_NAME = '@merited/contracts';
+// @merited/contracts — the single source of shared types (BUILD-SPEC §1).
+export { ID_PREFIXES, Id, newId } from './ids.js';
+export type { IdPrefix, MeritedId } from './ids.js';
+export { Money, pence } from './money.js';
+export { REJECTION_REASON_CODES, RejectionReasonCode } from './reasons.js';
+export { defineEnv, EnvValidationError } from './env.js';
