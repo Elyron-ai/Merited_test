@@ -89,6 +89,12 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../core
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
@@ -108,6 +114,9 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
     devDependencies:
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../trio
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0

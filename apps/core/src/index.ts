@@ -9,3 +9,5 @@ export {
   type RateLimiterOptions,
   type RedisRateLimiterOptions,
 } from './modules/adapters/rate-limiter/index.js';
+export { MerchantsService, type CreateMerchantInput, type IssuedWebhookSecret } from './modules/merchants/service.js';
+export { TrioKeysClient } from './modules/merchants/trio-keys-client.js';

@@ -11,6 +11,7 @@
     "db:migrate": "node scripts/migrate.mjs"
   },
   "devDependencies": {
+    "@merited/trio": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "@types/react": "^19.2.17",
@@ -20,6 +21,8 @@
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
+    "@merited/core": "workspace:*",
+    "@merited/signing": "workspace:*",
     "argon2": "^0.44.0",
     "next": "^15.5.20",
     "otplib": "^13.4.1",
