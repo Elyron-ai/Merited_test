@@ -13,7 +13,8 @@
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
     "act1": "tsx src/bootstrap.ts",
-    "act1:bare": "tsx src/act1.ts"
+    "act1:bare": "tsx src/act1.ts",
+    "gate:0": "tsx src/gate0.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

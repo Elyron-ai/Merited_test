@@ -871,3 +871,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 4 new (workspace 529). Full workspace build/test/lint green; the mutation suite needs no docker (pure asserts) so it also guards local `pnpm -r test` runs.
 
 **Deviation/notes:** the row's "under frozen clock/seeded ULIDs" reads as the XC-5 kit freezing PLATFORM time — the compose services run real clocks by design (no test backdoors in the trio, SYN-30); demo determinism instead comes from the D6 fixed fixtures, the seed, and the env-gated quote-TTL override, with CI asserting exact values throughout. Recorded as the standing interpretation rather than plumbing a fake clock through five services.
+
+---
+
+## XC-9 — Phase-gate checklists + pnpm gate:0 · ✅ 2026-07-04
+
+**Built:** `docs/gates/phase-{0,1,2,3}.md` — XC.5's four gate definitions as living checklists. Phase 0's carries, per criterion, the AUTOMATED PROXY that proves it (which command, and why it is honest) with the two irreducibly manual items marked (demo recording — a founder action; later-phase discipline — reviewed against plan states at the sitting); phases 1–3 track their definitions of done with pointers into the property registry and XC-12's real-trio flip. `tools/demo/src/gate0.ts` + root script `pnpm gate:0`: the aggregator runs every automated Phase 0 check sequentially — workspace build+test (all module Accepts incl. the P-1..P-8 Phase 0 subset), lint (XC-2/FND-15 rules), the frozen 42-test contract suite, `pnpm verify-chain`, the demo-E2E trio of suites (e2e + XC-8 mutation + negatives acceptance), and the clean-machine bootstrap (`MERITED_DEMO_MODE=ci pnpm demo:act1`) — prints a per-criterion PASS/FAIL/MANUAL ledger, exits 0 iff no automated proxy failed, and `--record` appends the result table to `docs/gates/phase-0.md` for the sitting to ratify. The criteria list and runner are exported and injectable, so the exit-code contract is unit-tested without a ten-minute run.
+
+**Tests:** 5 new (workspace 534) + the Accept run LIVE: `pnpm gate:0` → **6 automated pass, 0 fail, 2 manual, exit 0** (act 1 replayed end-to-end inside it: splits exact, both refusals, trace e6929b…, chain head 73f0ae…, 20 events). Unit level: the six demanded proxies present and the manual pair named; all-pass → exit 0; any failing proxy → exit 1 with the remaining proxies still run (the gate reports everything, not first-failure); manual items never move the exit code but always appear in the record; a red run records RED. 
+
+**Deviation/notes:** `pnpm gate:1` is deliberately NOT created yet — Phase 1's proxies don't exist to aggregate; the phase-1 doc records the definition of done and the aggregator is assembled as its criteria land (noted in the doc itself).

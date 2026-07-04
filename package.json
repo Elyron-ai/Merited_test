@@ -16,7 +16,8 @@
     "seed": "pnpm --filter @merited/seed seed",
     "verify-chain": "pnpm -r run verify-chain",
     "projections:rebuild": "pnpm -r run projections:rebuild",
-    "demo:act1": "pnpm --filter @merited/demo act1"
+    "demo:act1": "pnpm --filter @merited/demo act1",
+    "gate:0": "pnpm --filter @merited/demo gate:0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
