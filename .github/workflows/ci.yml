@@ -121,7 +121,8 @@ jobs:
   demo-e2e:
     # VAL-14 (§8): "one end-to-end test that is literally the demo script in
     # CI against simulators + FakeShop" — the SAME step list as pnpm
-    # demo:act1, CI mode. XC-8 extends the assertions; it appends here.
+    # demo:act1, CI mode. XC-8: mutation.test.ts proves the step asserts
+    # are load-bearing (disabling replay rejection fails this job).
     runs-on: ubuntu-latest
     needs: install
     steps:
@@ -137,7 +138,7 @@ jobs:
       - run: docker compose up -d --wait postgres redis
       - run: pnpm -r build
       - run: pnpm db:migrate
-      - run: pnpm --filter @merited/demo exec vitest run test/act1.e2e.test.ts
+      - run: pnpm --filter @merited/demo exec vitest run test/act1.e2e.test.ts test/mutation.test.ts
       - if: always()
         run: docker compose down -v
 
