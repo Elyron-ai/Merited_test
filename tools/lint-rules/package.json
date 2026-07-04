@@ -1,0 +1,14 @@
+{
+  "name": "@merited/lint-rules",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'plain JS - nothing to build'",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "eslint": "^9.30.0",
+    "vitest": "catalog:"
+  }
+}

@@ -129,6 +129,7 @@ describe('one trace ID end-to-end (FND-14 accept)', () => {
       },
     });
     await withSpan('log-span', () => {
+      // eslint-disable-next-line merited/no-refresh-token -- this test EXISTS to prove the redactor censors exactly this field
       logger.info({ refresh_token: 'super-secret', ok: true }, 'inside span');
     });
     const entry = JSON.parse(lines[0]!) as Record<string, unknown>;

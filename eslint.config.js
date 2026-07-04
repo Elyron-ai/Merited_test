@@ -1,4 +1,7 @@
 import tseslint from 'typescript-eslint';
+import noRefreshToken from './tools/lint-rules/no-refresh-token.js';
+
+const merited = { rules: { 'no-refresh-token': noRefreshToken } };
 
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/node_modules/**', '**/*.tsbuildinfo', 'BUILD-*.md'] },
@@ -7,6 +10,14 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
     },
+  },
+  {
+    // FND-15 (§6.3): the rule self-scopes by filename — contracts files ban
+    // token identifiers/keys outright; everywhere else, logger-call
+    // arguments are swept for token keys.
+    files: ['**/*.ts', '**/*.js'],
+    plugins: { merited },
+    rules: { 'merited/no-refresh-token': 'error' },
   },
   {
     // VAL-5 import fence (P5): Valet ships as an ORDINARY agent — its
