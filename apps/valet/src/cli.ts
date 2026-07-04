@@ -148,7 +148,10 @@ const printVerdict = async (deps: CliDeps, errandId: string): Promise<void> => {
   }
 };
 
-/** Drive an errand to rest, narrating each transition as it happens. */
+/** Drive an errand to rest, narrating each transition as it happens.
+ * VALET_PAUSE_AT=<STATE> is VAL-8's deterministic pause hook: entering the
+ * named state parks the process BEFORE that state's side effect runs, so a
+ * durability test can SIGKILL at an exact boundary — no racy timing. */
 const driveNoisily = async (deps: CliDeps, errandId: string): Promise<ErrandState> => {
   for (;;) {
     const before = (await deps.store.get(errandId))!;
@@ -157,6 +160,10 @@ const driveNoisily = async (deps: CliDeps, errandId: string): Promise<ErrandStat
     deps.print(`${before.state} → ${next.state}`);
     if (before.state === 'SEARCHING' && next.state === 'QUOTED') {
       await printQuoteAndClaims(deps, errandId);
+    }
+    if (process.env['VALET_PAUSE_AT'] === next.state) {
+      deps.print(`PAUSED_AT ${next.state}`);
+      await new Promise(() => {}); // held until the test kills the process
     }
   }
 };

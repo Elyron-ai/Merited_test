@@ -21,7 +21,7 @@ import { AURORA_MEMBERS } from '../../../tools/seed/src/fixtures/aurora.js';
 import { buildCliDeps, runCli } from '../src/cli.js';
 
 const ADMIN = 'postgres://merited_admin:merited_dev@localhost:5432/merited';
-const dbName = `merited_cli_${Date.now().toString(36)}`;
+const dbName = `merited_vcli_${Date.now().toString(36)}`; // NB: merited_cli_ is the events verify-chain suite's prefix
 const SERVICE_TOKEN = 'cli-test';
 const SIGNER_SECRET = 'trio-test-secret';
 
