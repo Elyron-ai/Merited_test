@@ -363,6 +363,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
       ulidx:
         specifier: 'catalog:'
         version: 2.4.1
@@ -373,9 +376,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
-      fast-check:
-        specifier: ^4.8.0
-        version: 4.8.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -413,6 +413,9 @@ importers:
       drizzle-kit:
         specifier: 'catalog:'
         version: 0.31.10
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
