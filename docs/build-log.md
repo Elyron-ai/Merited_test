@@ -331,3 +331,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 13 new (5 files) — envelope behaviour (invalid/valid/CoreHttpError/leak-proof 500), env fail-fast + coercion, in-memory limiter window semantics with injected clock, Redis limiter against compose (allow/deny/TTL/key isolation + fail-open against a dead Redis), db role assertion + live query. Workspace 234 tests green; build/lint exit 0.
 
 **Deviation/notes:** none beyond the row. Dependencies added: `fastify-type-provider-zod@^4` (zod-3 line), `ioredis`, `tsx` (dev, per D5), `drizzle-orm`/`drizzle-kit` (catalog). Rate-limit key conventions (per-agent vs per-IP) land with CORE-3 as the plan specifies.
+
+---
+
+## CORE-2 — Offers storage + CRUD service · ✅ 2026-07-04
+
+**Built:** migration `apps/core/drizzle/0000_offers` — ONE `core.offers` table with the mechanics union as jsonb (§5.1: "do not build 27 tables"), `core.offer_counters` (read-model outside the immutable COR; never the enforcement point) and `core.offer_commitments` (COR history link, "history preserved"). Explicit app-role grants (SELECT/INSERT/UPDATE, no DELETE). `modules/offers/schema.ts` (drizzle defs), `repository.ts` (insert+counter row in one tx; guarded `setStatus` transition primitive; `commitmentHistory`; the `OfferMechanics` union validates at BOTH boundaries — writes via `Offer.parse` before insert, reads via `Offer.parse` on the way out so a hand-edited row cannot leak), `service.ts` (createDraft / update / pause / end / list / get with `CoreHttpError` 404/409 semantics; offers stay editable until ended — only bounty changes cycle the COR, via CORE-5's editBounty). No HTTP surface, per the row.
+
+**Tests:** 6 new (apps/core 19; workspace 240) — the Accept verbatim: **all 27 `MECHANICS_FIXTURES` variants insert → select → `Offer.parse` → deep-equal** (fixture count asserted = 27); union rejection at the write boundary (unknown discriminant AND float pence inside a valid discriminant); full lifecycle with guarded transitions (pause requires live; end terminal; ended uneditable); update re-validates mechanics; merchant/status list filters; 404s; counters start at zero. Build/lint exit 0.
+
+**Deviation/notes:** `setStatus` initially used a raw `= ANY($param)` SQL fragment — drizzle serialises JS arrays incorrectly for that shape (pg 22P02); switched to drizzle's `inArray`. Service `update` allows draft/live/paused edits (not just draft) to honour §2.2's "offers stay freely editable"; recorded here as the intended reading of "create/update draft".

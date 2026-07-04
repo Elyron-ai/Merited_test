@@ -1,2 +1,4 @@
-// Offers storage + CRUD (CORE-2), publish/COR lifecycle (CORE-5). Layout frozen day one (CORE-1, §1).
-export {};
+// Offers storage + CRUD (CORE-2), publish/COR lifecycle (CORE-5).
+export { OffersRepository, type OfferRecord } from './repository.js';
+export { OffersService, type OfferDraftInput } from './service.js';
+export { offers, offerCounters, offerCommitments } from './schema.js';
