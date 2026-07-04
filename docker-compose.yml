@@ -1,0 +1,58 @@
+# Merited local infrastructure (FND-2, BUILD-SPEC §1).
+# Postgres 16 (single instance, per-module schemas; trio schema stands in for
+# its own logical DB in prod), Redis (never a source of truth), local KMS
+# (target for the real Signer — the in-process FakeSigner does NOT use it),
+# and Mailpit (Mailer fake).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: merited_admin
+      POSTGRES_PASSWORD: merited_dev
+      POSTGRES_DB: merited
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U merited_admin -d merited']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  fake-kms:
+    image: nsmithuk/local-kms
+    environment:
+      PORT: '4599'
+    ports:
+      - '4599:4599'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null --post-data="" --header="X-Amz-Target: TrentService.ListKeys" --header="Content-Type: application/x-amz-json-1.1" http://127.0.0.1:4599/ || exit 1']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # HTTP UI + API
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres_data:
