@@ -737,3 +737,15 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 6 new consumer-side (tools/demo 15; workspace 449). Build/lint exit 0.
 
 **Deviation/notes:** Act 1's two on-camera negatives (VAL-13, shipped before this kit per the calendar's dependency order) stage through the FULL platform rails (FakeShop → adapter → trio) — deliberately stronger theatre than direct-to-trio fixtures, so they stay as built; the kit is the single definition for the wallet-path negatives and for Act 2/PH2-11, which is where the row's reuse lands.
+
+---
+
+## XC-12 — Trio acceptance gate CI job · ✅ 2026-07-04
+
+**Built:** the `contract-suite` job filled into FND-16's reserved slot: compose Postgres up → build → `pnpm trio:contract-test`. Phase 0 runs the simulators (the harness boots them in-process when `TRIO_TARGET_URL` is unset); the Phase-1 gate flips THIS job to the real implementations by setting `TRIO_TARGET_URL` + `MERITED_TRIO_SERVICE_TOKEN` (the exact env stanza is pre-written as a comment for PH1-23 to uncomment — the job continues, never rebuilds). The harness's target-driven design (TRIO-13) already carried the whole parameterisation; XC-12 is the gate that makes it CI-binding.
+
+**Verification — BOTH legs proven locally with zero test edits:** simulator leg green (42/42, the standing run); the remote leg proven by booting a standalone trio on an ephemeral port (fresh database, service token, host Chromium) and running the UNCHANGED suite against `TRIO_TARGET_URL` — 34 passed, 8 skipped, exactly the harness's documented remote gating (DB-level chain/event assertions and directory-dependent wallet-path cases wait for TRIO-17). That run is the §7 Accept's mechanism demonstrated end to end: same suite binary, different target, zero edits. One stumble recorded: the first standalone boot omitted the Chromium path and the PDF contract test correctly failed with the target's 500 — evidence the suite genuinely exercises the remote deployment rather than anything in-process.
+
+**Tests:** no new test files (the job runs the frozen 42); workspace 449 green; lint 0.
+
+**Deviation/notes:** the row's `TRIO_TARGET=simulator|real` spelling maps to the harness's existing `TRIO_TARGET_URL` convention (unset = simulator; a URL = real) — recorded rather than renamed, since renaming would touch the frozen harness for cosmetics.
