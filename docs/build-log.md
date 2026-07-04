@@ -307,3 +307,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 3 new (trio 110; workspace 221 green, build/lint exit 0). Accept clause held: byte-identical regeneration asserted; all 12 `RejectionReasonCode` members verified present in the verify response docs.
 
 **Deviation/notes:** none. The version is pinned 0.1.0 to be tagged by XC-7 (M1 freeze) alongside `@merited/contracts@0.1.0`.
+
+---
+
+## XC-7 — M1 CONTRACT FREEZE · ✅ 2026-07-04
+
+**Done:** `docs/decisions/ADR-009-contract-freeze.md` records the completed freeze checklist: trio contract suite green vs simulators (42 tests, TRIO-13); OpenAPI 0.1.0 committed with its byte-identical drift gate (TRIO-14); high-scrutiny sign-off on the four core shapes (`Commitment`, `AttributionTokenClaims`, `ConversionClaim`, `Approval` — each reviewed against BUILD-SPEC §3, notes in the ADR); D1 (RFC 8785 canonical JSON) and D6 (`packages/otel`) ratified. `@merited/contracts` bumped 0.0.0 → 0.1.0; annotated tags `contracts-v0.1.0` and `trio-openapi-v0.1.0` created on this commit. Post-freeze change control is stated in the ADR and mirrors CLAUDE.md's zero-edit rule: contracts-first PRs, suite update in the same PR, recorded high-scrutiny review, minor-version bump. **From this commit, the zero-edit rule is ACTIVE** — the two sanctioned harness-only extension points (PH1-30 signer branch, TRIO-17 remote directory fixtures) live in `harness.ts`, never in test files.
+
+**Deferred, recorded in the ADR:** CI pinning of the suite to tagged contracts lands with FND-16/XC-12 (no CI pipeline exists yet in the solo order — the drift gates run in every `pnpm -r test` until then); TRIO-16 will be written against the frozen 0.1.0 shapes; XC-4 back-fills ADR-001…008.
+
+**Tests:** workspace 221 green after the version bump; build/lint exit 0. Milestone: **real-trio Phase-1 work (PH1-24…26/30) is now unblocked** against frozen contracts.
