@@ -6,6 +6,7 @@ import { canonicalize } from 'json-canonicalize';
  * verifier all use exactly this. Event bodies are Zod-validated before
  * hashing; this layer additionally rejects anything hash-unsafe: undefined
  * values, non-integer numbers (integer-pence rule, §0.4), NaN/Infinity.
+ * Decision record: docs/decisions/ADR-001-canonical-json.md (XC-4).
  */
 export class UnhashableDataError extends Error {
   constructor(path: string, problem: string) {
