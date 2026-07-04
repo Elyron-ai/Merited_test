@@ -491,7 +491,7 @@ Every stage is a pure module with its own tests (§4); the clock and all externa
 | CORE-9 — ✅ done 2026-07-04 | token-client module: typed mint client against trio contract | §1, §7.2 | FND-3/4/5, TRIO-5/8 | S |
 | CORE-10 — ✅ done 2026-07-04 | Quote Service: `quotes` table, pricing+persist+mint, status incl. converted | B24, §5.6a | CORE-2, CORE-4, CORE-8, CORE-9, FND-7/10/11 | L |
 | CORE-11 — ✅ done 2026-07-04 | `readOffers()` pipeline assembly + per-stage OTel spans | B9, §4, §8 | CORE-4, CORE-6, CORE-7, CORE-10, FND-14 | M |
-| CORE-12 | REST surface: all Phase 0 routes from §4, merchant auth, Idempotency-Key | B9, §4, §8 | CORE-3, CORE-11, MER-2, TRIO-5/8 | M |
+| CORE-12 — ✅ done 2026-07-04 (claims routes land with MER-3/4/5 per SYN-5) | REST surface: all Phase 0 routes from §4, merchant auth, Idempotency-Key | B9, §4, §8 | CORE-3, CORE-11, MER-2, TRIO-5/8 | M |
 | CORE-13 | `packages/sdk` typed public-API client | B9 | CORE-12 | M |
 | CORE-14 | Read-path e2e: Phase 0 gate slice (publish→quote→token→claim→verdict + negatives) | §9 Ph0 gate, §10 Act 1 | CORE-12, CORE-13, TRIO-5/8, TRIO-9/11, VAL-9 | M |
 

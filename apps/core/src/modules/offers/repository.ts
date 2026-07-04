@@ -123,8 +123,10 @@ export class OffersRepository {
     merchantId?: string;
     sku?: string;
     text?: string;
+    offerId?: string;
   }): Promise<Array<{ offer: Offer; commitment_id: `com_${string}` | null }>> {
     const conditions: SQL[] = [eq(offers.status, 'live')];
+    if (query.offerId) conditions.push(eq(offers.offer_id, query.offerId));
     if (query.merchantId) conditions.push(eq(offers.merchant_id, query.merchantId));
     if (query.sku) {
       conditions.push(

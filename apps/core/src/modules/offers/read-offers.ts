@@ -20,6 +20,8 @@ export interface ReadOffersQuery {
   sku?: string;
   /** Ph0 text search: plain ILIKE over title/description (§11 restraint). */
   text?: string;
+  /** Single-offer pass (`GET /v1/offers/:id` — a fresh quote every call). */
+  offer_id?: string;
 }
 
 export interface ReadOffersInput {
@@ -62,6 +64,7 @@ export class ReadOffers {
           ...(input.query.merchant_id ? { merchantId: input.query.merchant_id } : {}),
           ...(input.query.sku ? { sku: input.query.sku } : {}),
           ...(input.query.text ? { text: input.query.text } : {}),
+          ...(input.query.offer_id ? { offerId: input.query.offer_id } : {}),
         });
         span.setAttribute('candidates.count', found.length);
         return found;

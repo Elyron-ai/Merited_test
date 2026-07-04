@@ -76,6 +76,19 @@ export const OfferReadResponse = z.object({
 });
 export type OfferReadResponse = z.infer<typeof OfferReadResponse>;
 
+/** `GET /v1/quotes/:id` (CORE-12): derived status + the persisted promise. */
+export const QuoteStatusResponse = z.object({
+  status: z.enum(['live', 'expired', 'converted']),
+  quote: z.object({
+    quote_id: Id('qte'),
+    offer_id: Id('off'),
+    commitment_id: Id('com'),
+    price: z.object({ list: z.object({ amount: z.number().int(), currency: z.literal('GBP_pence') }), final: z.object({ amount: z.number().int(), currency: z.literal('GBP_pence') }) }),
+    expires_at: z.string().datetime(),
+  }),
+});
+export type QuoteStatusResponse = z.infer<typeof QuoteStatusResponse>;
+
 /** §5.5 verbatim: the decisioning slot. Ph0 production = Passthrough. */
 export interface Decisioner {
   rank(eligible: EligibleOffer[], ctx: DecisionCtx): Promise<RankedOffer[]>;
