@@ -1,7 +1,15 @@
 import tseslint from 'typescript-eslint';
+import noFloatCurrency from './tools/lint-rules/no-float-currency.js';
 import noRefreshToken from './tools/lint-rules/no-refresh-token.js';
+import noSchemaOutsideContracts from './tools/lint-rules/no-schema-outside-contracts.js';
 
-const merited = { rules: { 'no-refresh-token': noRefreshToken } };
+const merited = {
+  rules: {
+    'no-refresh-token': noRefreshToken,
+    'no-schema-outside-contracts': noSchemaOutsideContracts,
+    'no-float-currency': noFloatCurrency,
+  },
+};
 
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/node_modules/**', '**/.next/**', 'apps/control-plane/next-env.d.ts', '**/*.tsbuildinfo', 'BUILD-*.md'] },
@@ -17,7 +25,14 @@ export default tseslint.config(
     // arguments are swept for token keys.
     files: ['**/*.ts', '**/*.js'],
     plugins: { merited },
-    rules: { 'merited/no-refresh-token': 'error' },
+    rules: {
+      'merited/no-refresh-token': 'error',
+      // XC-2 (§1 + §0): schemas only in contracts; floats never touch money.
+      // Both rules self-scope by filename — sanctioned homes are documented
+      // in the rule headers.
+      'merited/no-schema-outside-contracts': 'error',
+      'merited/no-float-currency': 'error',
+    },
   },
   {
     // VAL-5 import fence (P5): Valet ships as an ORDINARY agent — its

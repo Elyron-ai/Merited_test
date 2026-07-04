@@ -11,12 +11,34 @@ import { EntrySet } from './trio/index.js';
  * source; the SDK defines no types of its own).
  */
 
+/** `POST /v1/agents/register` request body (CORE-3). */
+export const AgentRegisterRequest = z.object({
+  name: z.string().min(1),
+  contact: z.string().min(1),
+  /** Reserved for the Phase-1 Ed25519 upgrade (B4) — accepted, stored, unused. */
+  public_key: z.string().optional(),
+});
+export type AgentRegisterRequest = z.infer<typeof AgentRegisterRequest>;
+
 export const AgentRegistrationResponse = z.object({
   agent_id: Id('agt'),
   /** Returned exactly once — never stored or retrievable again (CORE-3). */
   api_key: z.string().min(1),
 });
 export type AgentRegistrationResponse = z.infer<typeof AgentRegistrationResponse>;
+
+/** `GET /v1/offers` query (CORE-11/12): filters + the §4 ConsumerCtx
+ * identity signals as they arrive over the wire. */
+export const OffersQuery = z.object({
+  merchant_id: z.string().optional(),
+  sku: z.string().optional(),
+  text: z.string().max(200).optional(),
+  consumer_ref: z.string().optional(),
+  sub_hash: z.string().optional(),
+  member_ref: z.string().optional(),
+  hashed_email: z.string().optional(),
+});
+export type OffersQuery = z.infer<typeof OffersQuery>;
 
 /** `GET /v1/offers/:id` — a fresh single-offer quote every call. */
 export const SingleOfferResponse = z.object({

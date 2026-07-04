@@ -1,29 +1,18 @@
 import {
   ClaimStatusResponse,
+  OffersQuery,
   QuoteStatusResponse,
   pence,
   type AgentCtx,
   type RateLimiter,
 } from '@merited/contracts';
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import { CoreHttpError } from '../../http-error.js';
 import { registerAgentAuth } from '../../modules/agents/auth.js';
 import { registerAgentRoutes } from '../../modules/agents/routes.js';
 import type { AgentsService } from '../../modules/agents/service.js';
 import type { ReadOffers } from '../../modules/offers/read-offers.js';
 import type { QuoteService } from '../../modules/quotes/service.js';
-
-const OffersQuery = z.object({
-  merchant_id: z.string().optional(),
-  sku: z.string().optional(),
-  text: z.string().max(200).optional(),
-  // consumer identity signals (§4 ConsumerCtx over the wire)
-  consumer_ref: z.string().optional(),
-  sub_hash: z.string().optional(),
-  member_ref: z.string().optional(),
-  hashed_email: z.string().optional(),
-});
 
 export interface V1Deps {
   readOffers: ReadOffers;
@@ -63,7 +52,7 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
     limiter: deps.readLimiter,
   });
 
-  const consumerFrom = (query: z.infer<typeof OffersQuery>) => {
+  const consumerFrom = (query: OffersQuery) => {
     const consumer = {
       ...(query.consumer_ref ? { consumer_ref: query.consumer_ref as `usr_${string}` } : {}),
       ...(query.sub_hash ? { sub_hash: query.sub_hash } : {}),
@@ -74,7 +63,7 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
   };
 
   app.get('/v1/offers', { schema: { querystring: OffersQuery } }, async (req) => {
-    const query = req.query as z.infer<typeof OffersQuery>;
+    const query = req.query as OffersQuery;
     const agent: AgentCtx = req.agentCtx;
     const consumer = consumerFrom(query);
     return deps.readOffers.read({
@@ -89,7 +78,7 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
   });
 
   app.get('/v1/offers/:id', { schema: { querystring: OffersQuery } }, async (req) => {
-    const query = req.query as z.infer<typeof OffersQuery>;
+    const query = req.query as OffersQuery;
     const offerId = (req.params as { id: string }).id;
     const consumer = consumerFrom(query);
     // a full single-offer readOffers pass — fresh quote + token every call
