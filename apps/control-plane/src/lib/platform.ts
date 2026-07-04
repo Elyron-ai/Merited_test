@@ -1,5 +1,13 @@
-import { MerchantsService, TrioKeysClient } from '@merited/core';
+import {
+  MerchantsService,
+  OfferPublisher,
+  OffersRepository,
+  OffersService,
+  TrioCommitmentsClient,
+  TrioKeysClient,
+} from '@merited/core';
 import { FakeCrypter } from '@merited/signing';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { getPool } from './db';
 
 /**
@@ -31,4 +39,27 @@ export const intField = (form: FormData, name: string): number => {
   const raw = String(form.get(name) ?? '').trim();
   if (!/^-?\d+$/.test(raw)) throw new Error(`${name} must be a whole number (integer pence or bps)`);
   return Number.parseInt(raw, 10);
+};
+
+let offers: { repository: OffersRepository; service: OffersService; publisher: OfferPublisher } | null = null;
+
+/** CORE-2/5 driven directly (same first-party posture as the merchants
+ * screens): publishing/bounty edits go through the publisher, which owns
+ * the trio commitment call. */
+export const getOffersStack = () => {
+  if (!offers) {
+    const pool = getPool();
+    const repository = new OffersRepository(drizzle(pool));
+    const publisher = new OfferPublisher({
+      pool,
+      repository,
+      commitments: new TrioCommitmentsClient({
+        baseUrl: process.env['MERITED_TRIO_URL'] ?? 'http://localhost:4500',
+        serviceToken: process.env['MERITED_TRIO_SERVICE_TOKEN'] ?? 'dev-service-token',
+      }),
+      merchantFor: (id) => getMerchantsService().get(id),
+    });
+    offers = { repository, service: new OffersService(repository), publisher };
+  }
+  return offers;
 };

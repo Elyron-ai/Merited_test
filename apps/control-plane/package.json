@@ -24,10 +24,12 @@
     "@merited/core": "workspace:*",
     "@merited/signing": "workspace:*",
     "argon2": "^0.44.0",
+    "drizzle-orm": "catalog:",
     "next": "^15.5.20",
     "otplib": "^13.4.1",
     "pg": "catalog:",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "zod": "catalog:"
   }
 }

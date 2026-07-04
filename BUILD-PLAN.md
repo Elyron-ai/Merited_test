@@ -720,7 +720,7 @@ The merchant-side failure mode is a token going in and no claim coming out. The 
 | MER-6 — ✅ done 2026-07-04 | Under-reporting event-completeness tests + structured rejection logging | S | MER-4 | A |
 | MER-7 — ✅ done 2026-07-04 | Control-plane scaffold: Next.js 15, credential + TOTP auth, session | M | FND-1/2, FND-3 | B (parallel to A from MER-2 onward) |
 | MER-8 — ✅ done 2026-07-04 | Control plane: merchant CRUD + keypair issuance screens | M | MER-7, MER-2 | B |
-| MER-9 | Control plane: offer authoring (mechanics union) + commercial config | L | MER-7, CORE-2/5 | B |
+| MER-9 — ✅ done 2026-07-04 | Control plane: offer authoring (mechanics union) + commercial config | L | MER-7, CORE-2/5 | B |
 | MER-10 | Control plane: claims/rejections viewer with reason codes | M | MER-7, MER-5 | B |
 | MER-11 — ✅ done 2026-07-04 | FakeShop storefront in `apps/fake-aurora` | M | MER-1, MER-3 (URL/signature contract only) | C (parallel to A/B) |
 | MER-12 — ✅ done 2026-07-04 | End-to-end conversion-flow integration test (CI) | M | MER-4, MER-5, MER-11, TRIO-5/6/8, TRIO-9/11, CORE-3, CORE-10/11/12 | gate task |

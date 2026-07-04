@@ -11,3 +11,7 @@ export {
 } from './modules/adapters/rate-limiter/index.js';
 export { MerchantsService, type CreateMerchantInput, type IssuedWebhookSecret } from './modules/merchants/service.js';
 export { TrioKeysClient } from './modules/merchants/trio-keys-client.js';
+export { OffersRepository } from './modules/offers/repository.js';
+export { OffersService, type OfferDraftInput } from './modules/offers/service.js';
+export { OfferPublisher, type BountyInput } from './modules/offers/publisher.js';
+export { TrioCommitmentsClient } from './modules/offers/trio-commitments-client.js';

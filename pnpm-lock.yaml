@@ -98,6 +98,9 @@ importers:
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.44.7(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.22.0)
       next:
         specifier: ^15.5.20
         version: 15.5.20(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -113,6 +116,9 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@merited/trio':
         specifier: workspace:*
