@@ -72,6 +72,62 @@ export const storeEntrySet = async (tx: pg.ClientBase, set: EntrySet): Promise<v
   });
 };
 
+/**
+ * Exact reversing set for a posted conversion (TRIO-10, arch §2.5): every
+ * line side-flipped, amounts and accounts untouched — so the conversion's
+ * net effect per account is zero. History is never edited, only appended;
+ * the deterministic `set_rev_` id makes the entry_sets PK the arbiter
+ * against concurrent double-reversal.
+ */
+export const reversalEntrySet = (original: EntrySet): EntrySet =>
+  EntrySet.parse({
+    entry_set_id: `set_rev_${original.claim_id}`,
+    claim_id: original.claim_id,
+    lines: original.lines.map((line) => ({
+      ...line,
+      side: line.side === 'dr' ? 'cr' : 'dr',
+    })),
+  });
+
+/** Re-hydrate a posted set from the ledger rows (the trio's own records). */
+export const loadEntrySet = async (
+  client: pg.Pool | pg.ClientBase,
+  entrySetId: string,
+): Promise<EntrySet | null> => {
+  const { rows } = await client.query<{
+    claim_id: string | null;
+    account: string;
+    side: 'dr' | 'cr';
+    amount_pence: string;
+  }>(
+    `SELECT es.claim_id, el.account, el.side, el.amount_pence
+       FROM trio.entry_sets es JOIN trio.entry_lines el USING (entry_set_id)
+      WHERE es.entry_set_id = $1
+      ORDER BY el.line_id`,
+    [entrySetId],
+  );
+  if (rows.length === 0) return null;
+  return EntrySet.parse({
+    entry_set_id: entrySetId,
+    claim_id: rows[0]!.claim_id,
+    lines: rows.map((r) => ({ account: r.account, side: r.side, amount: pence(Number(r.amount_pence)) })),
+  });
+};
+
+/**
+ * SYN-10: a reversal frees the `max_conversions` counter — and ONLY that
+ * counter. Budget spend and mandate month spend stay consumed (the money
+ * moved; the promise slot is what reopens).
+ */
+export const freeConversionCap = async (tx: pg.ClientBase, commitmentId: string): Promise<void> => {
+  await tx.query(
+    `UPDATE trio.counters
+        SET conversions_used = conversions_used - 1, updated_at = now()
+      WHERE commitment_id = $1 AND conversions_used > 0`,
+    [commitmentId],
+  );
+};
+
 /** Counters live in Settlement, outside the immutable COR (arch §2.2). */
 export const applyConversionCounters = async (
   tx: pg.ClientBase,
