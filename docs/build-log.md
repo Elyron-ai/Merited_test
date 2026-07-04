@@ -177,3 +177,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Deviations:** trio's migration runner is a thin wrapper over the generalised FND-9 runner (less duplication than the plan's per-package copy). Fixed in-test: route registration moved before first inject (Fastify freezes routes on ready); span assertion disambiguated from earlier requests.
 
 **Security self-review (trio zone — P3):** service-token compare is timing-safe and /healthz is the only open route; append-only proven at the DB for the commitment/replay/ledger tables; the per-qid unique constraint (SYN-9) is now structural; no clock or TTL backdoor exists in the trio — deterministic time enters only via the constructor port; secrets (service token) never logged.
+
+---
+
+## TRIO-4 — Commitment Signing simulator · ✅ 2026-07-04
+
+**Built:** `commitment/simulator.ts` implementing `CommitmentSigningService` (create → countersigned COR via FakeSigner with documented signing payloads — merchant over the unsigned COR, platform over unsigned+merchant_sig — persisted with counters init incl. SYN-12 budget, `CommitmentCreated` in the same tx; end → append-only `commitment_terminations` sidecar + `CommitmentEnded`, 409 on re-end; status → SYN-7 shape with live/ended/expired/not_yet_valid + counters). `routes.ts` imports only the contracts interface (the PH1-24 file-for-file seam). Signing-payload helpers exported for verification's sig-chain check (TRIO-8).
+
+**Tests:** 6/6 integration — COR schema-valid with both sigs verifying; CommitmentCreated in the hash chain; live status with counters/budget; end→liveness-fails→409→CommitmentEnded ledgered; §5.1 bounty-edit fixture (COR1 immutable + sigs still valid after COR2 created); 404 path.
+
+**Security self-review (trio zone):** no update path in code + DB REVOKE proven earlier; signatures cover canonical JSON so any field mutation invalidates; countersign order documented and testable; events commit atomically with writes; budget kept out of the immutable COR (counters).
