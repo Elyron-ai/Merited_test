@@ -1,7 +1,14 @@
 import { createSimulatedCore, type SimulatedCore } from '@merited/core/testing';
 import { createSimulatedTrio, type SimulatedTrio } from '@merited/trio/testing';
 import pg from 'pg';
-import { AURORA_COMMERCIAL, AURORA_MEMBERS, AURORA_MERCHANT_ID, AURORA_OFFERS } from './fixtures/aurora.js';
+import argon2 from 'argon2';
+import {
+  AURORA_COMMERCIAL,
+  AURORA_MEMBERS,
+  AURORA_MERCHANT_ID,
+  AURORA_OFFERS,
+  CONTROL_PLANE_ADMIN,
+} from './fixtures/aurora.js';
 
 export interface SeedOptions {
   /** merited_app connection string — events+core+trio schemas migrated. */
@@ -155,6 +162,26 @@ export const runSeed = async (options: SeedOptions): Promise<SeedResult> => {
         if (fixture.bounty) bountyCommitmentId = record.current_commitment_id;
         log(`Offer "${fixture.draft.title}" already ${record.offer.status} — kept.`);
       }
+    }
+
+    // 4. Control-plane admin (MER-7) — only where the schema is migrated
+    //    (core-only databases skip with a note; §5.7 single-team tool).
+    const cpUsers = await pool.query(`SELECT to_regclass('control_plane.users') AS t`);
+    if (cpUsers.rows[0]?.t) {
+      await pool.query(
+        `INSERT INTO control_plane.users (user_id, email, password_hash, totp_secret)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [
+          CONTROL_PLANE_ADMIN.user_id,
+          CONTROL_PLANE_ADMIN.email,
+          await argon2.hash(CONTROL_PLANE_ADMIN.password, { type: argon2.argon2id }),
+          CONTROL_PLANE_ADMIN.totp_secret,
+        ],
+      );
+      log(`Control-plane admin ready: ${CONTROL_PLANE_ADMIN.email}.`);
+    } else {
+      log('Control-plane schema not migrated here — admin user skipped.');
     }
 
     log(

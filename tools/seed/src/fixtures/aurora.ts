@@ -180,3 +180,14 @@ export const AURORA_OFFERS: readonly AuroraOfferFixture[] = [
     },
   },
 ];
+
+/** Control-plane admin (MER-7, seeded per its row). DEV credentials for the
+ * internal single-team tool — the password and TOTP secret are deliberately
+ * printable fixtures so the founder can sign in locally; production gets
+ * real credentials at deployment, never through the seed. */
+export const CONTROL_PLANE_ADMIN = {
+  user_id: 'usr_00SEEDADM1NC0NTR0LPANE0001',
+  email: 'admin@merited.test',
+  password: 'aurora-admin-dev',
+  totp_secret: 'GC6LROIAXSRZCWQ4FAH3K2SURHRZH7A2',
+} as const;

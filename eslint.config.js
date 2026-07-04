@@ -4,7 +4,7 @@ import noRefreshToken from './tools/lint-rules/no-refresh-token.js';
 const merited = { rules: { 'no-refresh-token': noRefreshToken } };
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/*.tsbuildinfo', 'BUILD-*.md'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/.next/**', 'apps/control-plane/next-env.d.ts', '**/*.tsbuildinfo', 'BUILD-*.md'] },
   ...tseslint.configs.recommended,
   {
     rules: {

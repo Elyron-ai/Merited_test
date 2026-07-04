@@ -1,3 +1,6 @@
+onlyBuiltDependencies:
+  - argon2
+  - sharp
 packages:
   - packages/*
   - apps/*
