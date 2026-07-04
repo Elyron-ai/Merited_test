@@ -371,3 +371,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 4 new — the staged Accept: swapping Passthrough↔Random preserves membership and the response SHAPE fingerprint byte-for-byte (score excluded as optional colour; every entry parses against `RankedOffer`) while the ranking actually differs; Passthrough stable/deterministic regardless of input order; RandomDecisioner deterministic per seed, different across seeds; Noop passes all, suppresses none. This test becomes B7's Phase-1 gate when RulesDecisioner lands.
 
 **Decision (SYN-37, appended to plan §3 in this commit):** eligibility exclusion labels — §3 codes where they fit, `OFFER_NOT_LIVE`/`STACKING_DEDUPED` as read-path-only literals.
+
+---
+
+## CORE-6 — Eligibility, Phase 0 minimal · ✅ 2026-07-04
+
+**Built:** `modules/eligibility/filter.ts` — PURE `filterEligibility(candidates, {tier, now, commitmentStatuses})` with §5.4's FIXED order: (1) offer liveness (status + injected-clock window) → `OFFER_NOT_LIVE` (SYN-37); (2) tier → `TIER_INELIGIBLE`; (3) commitment liveness + cap from the trio's SYN-7 status reads, passed in as data — non-live → `COMMITMENT_ENDED`, cap reached → `CAP_EXHAUSTED`, and an UNKNOWN status excludes conservatively (an unverifiable promise is never shown); walletless/non-bounty offers (`commitment_id: null`) skip stage 3; (4) stacking-group dedupe among survivors, winner = lowest `offer_id` (Ph1's stacking rules replace the policy inside the same step). First failure wins per offer. `fetchCommitmentStatuses` batches one trio read per DISTINCT COR (CORE-11 wires the HTTP client). Returns the contracts `EligibilityResult`.
+
+**Tests:** 6 new (apps/core 46; workspace 267) — the Accept verbatim: the 8-offer fixture set covering all four outcomes, frozen clock, three runs, **canonical-JSON byte-compare identical**; exact per-offer outcomes asserted (2 eligible, 6 exclusions with their reasons in filter order); first-failure-wins (paused + tier-ineligible → `OFFER_NOT_LIVE`); unknown-COR conservative exclusion; tier flip re-admits the T1-only offer; batching dedupes CORs and drops nulls. Build/lint exit 0.
+
+**Deviation/notes:** the Accept's "simulator seeded to a fixed state" is realised as a fixed status map injected as data — the pure function never does IO, so the trio simulator round-trip is exercised where the wiring lives (CORE-11's pipeline test and CORE-14's e2e), keeping this suite hermetic and byte-stable.
