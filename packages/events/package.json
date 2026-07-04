@@ -14,7 +14,8 @@
     "test": "vitest run --passWithNoTests",
     "db:migrate": "node scripts/migrate.mjs",
     "db:check": "node scripts/check-migrations.mjs",
-    "verify-chain": "node dist/cli/verify-chain.js"
+    "verify-chain": "node dist/cli/verify-chain.js",
+    "projections:rebuild": "node dist/projections/rebuild-cli.js"
   },
   "devDependencies": {
     "@types/node": "catalog:",

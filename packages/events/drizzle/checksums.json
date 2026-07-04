@@ -1,5 +1,6 @@
 {
   "0000_baseline.sql": "08c210900280509d633283f056280d788b81436c63a0d75dd675ba55a188829e",
   "0001_events_table.sql": "90b801c756d30a4966b36c09e660b4d455c391a4f02a9efecec1f5e4ad957325",
-  "0002_ledger_permissions.sql": "b1a4ff029108cb75de2c7bcabfcbe12343d407492a6e3ece1541b13ad0aea7fe"
+  "0002_ledger_permissions.sql": "b1a4ff029108cb75de2c7bcabfcbe12343d407492a6e3ece1541b13ad0aea7fe",
+  "0003_projections.sql": "f9f7bcd2be96774ac77efe613f8a41066445685225d8ef57776606e4295c973a"
 }

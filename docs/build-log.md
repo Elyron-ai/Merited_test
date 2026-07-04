@@ -133,3 +133,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** compile-and-implement smoke test (in-memory ReplayCache/RateLimiter/Mailer exercised). Workspace build/test/lint exit 0. Also cleaned an unused import left in verify-chain.ts (caught by lint before commit this time).
 
 **Deviations:** none. Port semantics deliberately minimal — consuming tasks refine via contracts-first PRs (per task row).
+
+---
+
+## FND-12 — Projections framework + rebuild runner (B2 pt 3) · ✅ 2026-07-04
+
+**Built:** `projections/framework.ts` (`Projection` interface with `reset`; per-event apply+cursor in ONE transaction; `runProjection` live tail over FND-11; `catchUp` single-pass; `rebuildProjection` = wipe + replay from seq 0); `projection_cursors` + reference table migration (0003 — mutable by design, unlike the ledger); reference projection `events_by_type_day`; `rebuild-cli.ts` behind `pnpm projections:rebuild` (B19's analytics:rebuild aliases this pattern in Ph 1).
+
+**Tests:** 32/32 events-package total. New integration: incremental build (7 events) vs wipe+rebuild-from-0 → **byte-identical snapshots**; cursor persisted (7) → fresh runner resumes, new event lands, cursor 8, count never double-applied. Root `pnpm projections:rebuild` runs green.
+
+**Deviations:** rebuild uses DELETE not TRUNCATE (works within the app role's grants); projection tables live in the events schema for now — analytics (PH1-19) may move its own to a dedicated schema.
