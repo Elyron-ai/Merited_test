@@ -10,12 +10,12 @@ afterAll(() => {
   rmSync(outRoot, { recursive: true, force: true });
 });
 
-describe('demo Act 1 steps 1–7 (VAL-12 accept — the §9 gate sentence, machine-asserted)', () => {
+describe('demo Act 1 (VAL-12 steps 1–7 + VAL-13 steps 8–9 — the §9 gate sentence, machine-asserted)', () => {
   it('runs end-to-end in CI mode with every printed number asserted and artefacts written', async () => {
     const lines: string[] = [];
     const result = await runAct1({ mode: 'ci', outRoot, print: (line) => lines.push(line) });
 
-    expect(result.steps).toBe(7);
+    expect(result.steps).toBe(9);
     // the gate sentence's waypoints all produced artefacts
     for (const artefact of [
       'step-01-seed.json',
@@ -26,6 +26,9 @@ describe('demo Act 1 steps 1–7 (VAL-12 accept — the §9 gate sentence, machi
       'step-05-verdict.json',
       'step-06-entries.json',
       'step-07-statement-aurora.json',
+      'step-08-negatives.json',
+      'step-09-trace.txt',
+      'step-09-chain-head.txt',
     ]) {
       expect(existsSync(path.join(outRoot, 'act1', artefact)), artefact).toBe(true);
     }
@@ -38,5 +41,10 @@ describe('demo Act 1 steps 1–7 (VAL-12 accept — the §9 gate sentence, machi
     for (const check of ['sig chain ✓', 'replay ✓', 'window ✓', 'quote ✓', 'terms ✓']) {
       expect(lines.some((l) => l.includes(check)), check).toBe(true);
     }
+    // §10 step 8: both refusals printed with their first-class reason codes
+    expect(lines.some((l) => l.includes('TOKEN_REPLAYED'))).toBe(true);
+    expect(lines.some((l) => l.includes('QUOTE_EXPIRED'))).toBe(true);
+    // §9 gate: chain verified and the head hash printed
+    expect(lines.some((l) => /chain verified: \d+ events · head [0-9a-f]{64}/.test(l))).toBe(true);
   }, 120_000);
 });

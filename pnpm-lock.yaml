@@ -346,6 +346,9 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.1
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.44.7(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.22.0)
@@ -491,9 +494,15 @@ importers:
       '@merited/core':
         specifier: workspace:*
         version: link:../../apps/core
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@merited/fake-aurora':
         specifier: workspace:*
         version: link:../../apps/fake-aurora
+      '@merited/otel':
+        specifier: workspace:*
+        version: link:../../packages/otel
       '@merited/seed':
         specifier: workspace:*
         version: link:../seed
@@ -503,6 +512,9 @@ importers:
       '@merited/valet':
         specifier: workspace:*
         version: link:../../apps/valet
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.1
       pg:
         specifier: 'catalog:'
         version: 8.22.0

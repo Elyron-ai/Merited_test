@@ -29,6 +29,9 @@
     "@merited/seed": "workspace:*",
     "@merited/trio": "workspace:*",
     "@merited/valet": "workspace:*",
-    "pg": "catalog:"
+    "pg": "catalog:",
+    "@merited/events": "workspace:*",
+    "@merited/otel": "workspace:*",
+    "@opentelemetry/api": "catalog:"
   }
 }

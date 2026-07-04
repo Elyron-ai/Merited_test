@@ -29,6 +29,7 @@
     "zod": "catalog:",
     "drizzle-orm": "catalog:",
     "pg": "catalog:",
-    "json-canonicalize": "catalog:"
+    "json-canonicalize": "catalog:",
+    "@opentelemetry/api": "catalog:"
   }
 }

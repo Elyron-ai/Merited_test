@@ -1,4 +1,6 @@
+import './otel-first.js';
 import { existsSync } from 'node:fs';
+import { context, trace, type Span } from '@opentelemetry/api';
 import {
   AttributionTokenClaims,
   NettingRunResult,
@@ -33,6 +35,7 @@ import { migrateTrio } from '../../../apps/trio/scripts/migrate.mjs';
 import { migrateValet } from '../../../apps/valet/scripts/migrate.mjs';
 import { runSeed, type SeedResult } from '@merited/seed';
 import { AURORA_MERCHANT_ID } from '@merited/seed';
+import { verifyChain } from '@merited/events';
 import { runAct, type ActResult, type DemoStep, type RunActOptions } from './harness.js';
 
 /**
@@ -67,6 +70,12 @@ export interface Act1Handles {
   flow: Act1Flow;
   trioGet(path: string): Promise<Response>;
   trioPost(path: string, body: unknown): Promise<Response>;
+  /** §8/B21: steps 3–5 run inside ONE root span, so read → mint → checkout
+   * → webhook → verify → ledger all share a single trace ID (step 9's proof). */
+  inFlow<T>(fn: () => Promise<T>): Promise<T>;
+  flowTraceId(): string;
+  /** Short-TTL core factory for D5's on-camera QUOTE_EXPIRED (step 8b). */
+  shortTtlCore(): Promise<{ quotes: QuoteClient; close(): Promise<void> }>;
 }
 
 export const act1Steps = (h: Act1Handles): DemoStep[] => [
@@ -131,7 +140,7 @@ export const act1Steps = (h: Act1Handles): DemoStep[] => [
       await h.quotes.ensureRegistered();
       let quote: OfferQuote | undefined;
       for (const term of searchTermsFrom('spa day under £120')) {
-        const read = await h.quotes.readOffers({ text: term }); // no sub_hash: T3
+        const read = await h.inFlow(() => h.quotes.readOffers({ text: term })); // no sub_hash: T3
         quote = read.quotes.find((q) => q.token !== null && q.price.final.amount <= 12000);
         if (quote) break;
       }
@@ -161,11 +170,13 @@ export const act1Steps = (h: Act1Handles): DemoStep[] => [
     narrative: 'Valet checks out the spa day at FakeShop, carrying the attribution token into the order.',
     run: async (ctx) => {
       const rail = await h.rail();
-      const confirmation = await rail.checkout({
-        sku: 'sku_spa_day',
-        attribution_token: h.flow.quote!.token,
-        errand_id: newId('ern'),
-      });
+      const confirmation = await h.inFlow(() =>
+        rail.checkout({
+          sku: 'sku_spa_day',
+          attribution_token: h.flow.quote!.token,
+          errand_id: newId('ern'),
+        }),
+      );
       ctx.print(`Order ${confirmation.order_number} confirmed at ${pounds(confirmation.total_pence)} — webhook ${confirmation.webhook}.`);
       await ctx.artefact('order.json', JSON.stringify(confirmation, null, 2));
       return confirmation;
@@ -183,7 +194,7 @@ export const act1Steps = (h: Act1Handles): DemoStep[] => [
       "Aurora's webhook reached the Grade-B adapter, which built and custody-signed a Conversion Claim. The trio verified it.",
     run: async (ctx) => {
       const poller = new VerdictPoller({ client: h.quotes });
-      const verdict = await poller.poll(h.flow.quote!.quote_id);
+      const verdict = await h.inFlow(() => poller.poll(h.flow.quote!.quote_id));
       if (verdict.type !== 'CLAIM_VERIFIED') throw new Error(`verdict ${JSON.stringify(verdict)}`);
       h.flow.claimId = verdict.claim_id;
       const claim = await h.quotes.getQuoteClaim(h.flow.quote!.quote_id);
@@ -262,6 +273,96 @@ export const act1Steps = (h: Act1Handles): DemoStep[] => [
       }
     },
   },
+  {
+    number: 8,
+    title: 'The negative cases, on the same rails',
+    narrative:
+      'Prove the refusals on camera: the very same token again, and a claim against a quote that has already expired. §3 reason codes are first-class.',
+    run: async (ctx) => {
+      // 8a — resubmit the SAME token through a fresh checkout
+      const rail = await h.rail();
+      await rail.checkout({
+        sku: 'sku_spa_day',
+        attribution_token: h.flow.quote!.token,
+        errand_id: newId('ern'),
+      });
+      const poller = new VerdictPoller({ client: h.quotes });
+      const replay = await poller.poll(h.flow.quote!.quote_id);
+      ctx.print(`  resubmitted token → rejected (${replay.type === 'CLAIM_REJECTED' ? replay.reason_code : '??'}) ✗`);
+
+      // 8b — a two-second quote (D5's env-gated MERITED_QUOTE_TTL_S, here the
+      // same lever through the in-process core), the ONLY permitted wait
+      const short = await h.shortTtlCore();
+      let expiredQuote: OfferQuote | undefined;
+      try {
+        const read = await short.quotes.readOffers({ text: 'spa day' });
+        expiredQuote = read.quotes.find((q) => q.token !== null);
+        if (!expiredQuote) throw new Error('short-TTL core issued no payable quote');
+        // wait past the quote's OWN expiry plus a second of truncation margin
+        // (placed_at is second-truncated; landing ON the boundary would pass)
+        const waitMs = Date.parse(expiredQuote.expires_at) + 1200 - Date.now();
+        await new Promise((resolve) => setTimeout(resolve, Math.max(waitMs, 0)));
+        await rail.checkout({
+          sku: 'sku_spa_day',
+          attribution_token: expiredQuote.token,
+          errand_id: newId('ern'),
+        });
+      } finally {
+        await short.close();
+      }
+      const expired = await poller.poll(expiredQuote.quote_id);
+      ctx.print(`  claim on a two-second quote, after it lapsed → rejected (${expired.type === 'CLAIM_REJECTED' ? expired.reason_code : '??'}) ✗`);
+      await ctx.artefact('negatives.json', JSON.stringify({ replay, expired }, null, 2));
+      return { replay, expired };
+    },
+    assert: (result) => {
+      const r = result as { replay: { type: string; reason_code?: string }; expired: { type: string; reason_code?: string } };
+      if (r.replay.type !== 'CLAIM_REJECTED' || r.replay.reason_code !== 'TOKEN_REPLAYED') {
+        throw new Error(`8a expected TOKEN_REPLAYED, got ${JSON.stringify(r.replay)}`);
+      }
+      if (r.expired.type !== 'CLAIM_REJECTED' || r.expired.reason_code !== 'QUOTE_EXPIRED') {
+        throw new Error(`8b expected QUOTE_EXPIRED, got ${JSON.stringify(r.expired)}`);
+      }
+    },
+  },
+  {
+    number: 9,
+    title: 'One trace, one chain',
+    narrative:
+      'The whole conversion is ONE trace — read, mint, checkout, webhook, verdict, ledger — and the ledger it wrote verifies hash by hash.',
+    run: async (ctx) => {
+      const { rows } = await h.pool.query(
+        `SELECT trace_id FROM events.events WHERE type = 'ConversionVerified' ORDER BY seq LIMIT 1`,
+      );
+      const ledgerTraceId = rows[0]?.trace_id as string | null;
+      const template = process.env['MERITED_TRACE_URL_TEMPLATE'] ?? 'trace {trace_id}';
+      ctx.print(`  ${template.replace('{trace_id}', h.flowTraceId())}`);
+      const client = await h.pool.connect();
+      try {
+        const verification = await verifyChain(client);
+        if (!verification.ok) throw new Error(`chain broken at seq ${verification.broken_seq}`);
+        ctx.print(`  chain verified: ${verification.count} events · head ${verification.head}`);
+        await ctx.artefact('trace.txt', `${h.flowTraceId()}\n`);
+        await ctx.artefact('chain-head.txt', `${verification.head}\n`);
+        return { ledgerTraceId, flowTraceId: h.flowTraceId(), verification };
+      } finally {
+        client.release();
+      }
+    },
+    assert: (result) => {
+      const r = result as {
+        ledgerTraceId: string | null;
+        flowTraceId: string;
+        verification: { ok: boolean; count?: number };
+      };
+      // the claim-verdict ledger event carries the SAME trace id as the
+      // initial readOffers call (§8's sentence, end to end)
+      if (r.ledgerTraceId !== r.flowTraceId) {
+        throw new Error(`trace mismatch: ledger ${r.ledgerTraceId} ≠ flow ${r.flowTraceId}`);
+      }
+      if (!r.verification.ok) throw new Error('verify-chain failed');
+    },
+  },
 ];
 
 export interface RunAct1Options extends Partial<Pick<RunActOptions, 'mode' | 'outRoot' | 'print' | 'paceMs'>> {
@@ -300,6 +401,8 @@ export const runAct1 = async (options: RunAct1Options = {}): Promise<ActResult> 
 
   let shop: FastifyInstance | null = null;
   let rail: FakeShopRail | null = null;
+  let flowSpan: Span | null = null;
+  let flowContext: ReturnType<typeof trace.setSpan> | null = null;
   const handles: Act1Handles = {
     pool,
     appUrl,
@@ -326,6 +429,31 @@ export const runAct1 = async (options: RunAct1Options = {}): Promise<ActResult> 
       return rail;
     },
     flow: {},
+    inFlow: async <T,>(fn: () => Promise<T>): Promise<T> => {
+      if (!flowSpan) {
+        flowSpan = trace.getTracer('merited-demo').startSpan('act1-conversion');
+        flowContext = trace.setSpan(context.active(), flowSpan);
+      }
+      return context.with(flowContext!, fn);
+    },
+    flowTraceId: () => {
+      if (!flowSpan) throw new Error('flow span not started — step 3 runs first');
+      return flowSpan.spanContext().traceId;
+    },
+    shortTtlCore: async () => {
+      const shortCore = createSimulatedCore({
+        databaseUrl: appUrl,
+        trioBaseUrl: trioUrl,
+        trioServiceToken: SERVICE_TOKEN,
+        signerSecret: SIGNER_SECRET,
+        quoteTtlS: 2,
+      });
+      const shortUrl = await shortCore.listen();
+      return {
+        quotes: new QuoteClient({ baseUrl: shortUrl, store: new PostgresCredentialsStore(pool) }),
+        close: () => shortCore.close(),
+      };
+    },
     trioGet: (path) =>
       fetch(`${trioUrl}${path}`, { headers: { 'x-merited-service-token': SERVICE_TOKEN } }),
     trioPost: (path, body) =>
@@ -345,6 +473,7 @@ export const runAct1 = async (options: RunAct1Options = {}): Promise<ActResult> 
       ...(options.paceMs !== undefined ? { paceMs: options.paceMs } : {}),
     });
   } finally {
+    if (flowSpan) (flowSpan as Span).end();
     if (shop) await (shop as FastifyInstance).close();
     await core.close();
     await trio.close();

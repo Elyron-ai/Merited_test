@@ -43,6 +43,13 @@
       "when": 1783310000000,
       "tag": "0005_valet_emitter_fence",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783313000000,
+      "tag": "0006_trace_metadata",
+      "breakpoints": true
     }
   ]
 }

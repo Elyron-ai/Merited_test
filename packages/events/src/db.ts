@@ -18,4 +18,11 @@ const DEFAULT_APP_URL = 'postgres://merited_app:merited_app_dev@localhost:5432/m
 /** Runtime pool — merited_app only (no DDL; ledger UPDATE/DELETE revoked). */
 export const createAppPool = (
   url: string = process.env['MERITED_DATABASE_URL'] ?? DEFAULT_APP_URL,
-): pg.Pool => new pg.Pool({ connectionString: assertUrlRole(url, 'merited_app') });
+): pg.Pool => {
+  const pool = new pg.Pool({ connectionString: assertUrlRole(url, 'merited_app') });
+  // Idle clients may error at any time (server restart, admin termination);
+  // without a handler that is a process-killing uncaught exception. The pool
+  // discards errored idles and the next checkout reconnects — repo idiom.
+  pool.on('error', () => {});
+  return pool;
+};

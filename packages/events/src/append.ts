@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { newId, type MeritedEventName } from '@merited/contracts';
 import type pg from 'pg';
 import { EVENT_CATALOGUE, isCatalogueEvent } from './catalogue.js';
@@ -59,10 +60,13 @@ export const appendEvent = async (
   const thisHash = chainHash(prevHash, canonical);
   const evtId = newId('evt');
 
+  // §8/B21 correlation METADATA — outside the hashed body, nullable when no
+  // trace context is active. Never part of the chain formula.
+  const traceId = trace.getActiveSpan()?.spanContext().traceId ?? null;
   const inserted = await tx.query<{ seq: string }>(
-    `INSERT INTO events.events (evt_id, type, body, prev_hash, this_hash)
-     VALUES ($1, $2, $3::jsonb, $4, $5) RETURNING seq`,
-    [evtId, name, canonical, prevHash, thisHash],
+    `INSERT INTO events.events (evt_id, type, body, prev_hash, this_hash, trace_id)
+     VALUES ($1, $2, $3::jsonb, $4, $5, $6) RETURNING seq`,
+    [evtId, name, canonical, prevHash, thisHash, traceId],
   );
   const seq = Number(inserted.rows[0]!.seq);
   // Wake subscribers on commit (FND-11); delivery itself never depends on this.
