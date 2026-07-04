@@ -58,11 +58,23 @@ export class GradeBOrderProcessor implements OrderProcessor {
       { merchant_id: merchant.merchant_id, signing_key_ref: merchant.signing_key_ref },
       this.deps.signer,
     );
+    return this.submitFormedClaim(claim, merchant);
+  }
 
+  /**
+   * The single write funnel (P2 applied to the write side — MER-5's
+   * `POST /v1/claims` forwards FORMED claims through this same path):
+   * `ConversionClaimed` + intake row transactionally, trio verify, verdict
+   * persisted, §3 reason codes returned verbatim.
+   */
+  async submitFormedClaim(
+    claim: ConversionClaim,
+    merchant: Merchant,
+  ): Promise<{ status: number; body: Record<string, unknown> }> {
     // ConversionClaimed carries the token's decoded refs — metadata only,
     // trust stays with the trio. An undecodable token still gets submitted
     // (the trio answers SIG_INVALID; both sides see why).
-    const tokenClaims = decodeTokenClaims(order.token);
+    const tokenClaims = decodeTokenClaims(claim.attribution_token);
     await inTx(this.deps.pool, async (tx) => {
       if (tokenClaims) {
         await appendEvent(tx, 'ConversionClaimed', {

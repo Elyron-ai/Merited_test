@@ -4,3 +4,4 @@ export { verifyWebhookSignature, type WebhookVerification } from './verify.js';
 export { GradeBOrderProcessor, type GradeBProcessorDeps } from './processor.js';
 export { normaliseOrder } from './normalise.js';
 export { buildSignedClaim, decodeTokenClaims } from './claim-builder.js';
+export { registerClaimsRoutes, type ClaimsApiDeps, type ClaimSubmitter } from './claims-routes.js';
