@@ -48,3 +48,29 @@ export class FakeShopRail implements CheckoutRail {
     return (await response.json()) as CheckoutConfirmation;
   }
 }
+
+/**
+ * Product resolution for VAL-6's driver: browse the shop's PUBLIC catalogue
+ * (`GET /skus` — a customer-visible surface, P5) and pick the product whose
+ * name best matches the brief. Null when nothing overlaps.
+ */
+export const shopCatalogueSkuResolver = (shopBaseUrl: string) => {
+  const base = shopBaseUrl.replace(/\/$/, '');
+  return async (brief: { text: string }): Promise<string | null> => {
+    const response = await fetch(`${base}/skus`, { signal: AbortSignal.timeout(5000) });
+    if (response.status !== 200) return null;
+    const { skus } = (await response.json()) as { skus: Array<{ sku: string; name: string }> };
+    const words = brief.text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+    let best: string | null = null;
+    let bestScore = 0;
+    for (const entry of skus) {
+      const name = entry.name.toLowerCase();
+      const score = words.filter((word) => name.includes(word)).length;
+      if (score > bestScore) {
+        best = entry.sku;
+        bestScore = score;
+      }
+    }
+    return best;
+  };
+};

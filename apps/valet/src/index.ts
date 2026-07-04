@@ -29,3 +29,6 @@ export {
 } from './ports/checkout-rail.js';
 export { VerdictPoller, VerdictTimeoutError, type VerdictEvent } from './ports/verdict-poller.js';
 export { AutoSkipGate, type ApprovalGate, type ApprovalOutcome } from './ports/approval-gate.js';
+export { ErrandDriver, InvalidDispatchError, type DriverDeps } from './errand/driver.js';
+export { shopCatalogueSkuResolver } from './ports/checkout-rail.js';
+export { type ApprovalContext } from './ports/approval-gate.js';
