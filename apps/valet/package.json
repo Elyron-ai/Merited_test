@@ -16,7 +16,8 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "fast-check": "^4.8.0"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*"
