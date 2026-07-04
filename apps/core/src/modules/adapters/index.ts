@@ -1,0 +1,2 @@
+// Vendor adapters over the contracts ports (rate-limiter lands with CORE-1).
+export * from './rate-limiter/index.js';

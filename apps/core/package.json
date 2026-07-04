@@ -11,14 +11,28 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "dev": "MERITED_DATABASE_URL=postgres://merited_app:merited_app_dev@localhost:5432/merited MERITED_REDIS_URL=redis://localhost:6379 tsx src/main.ts",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:check": "node ../../packages/events/scripts/check-migrations.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "drizzle-kit": "catalog:",
+    "tsx": "^4.23.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@merited/contracts": "workspace:*"
+    "@merited/contracts": "workspace:*",
+    "@merited/events": "workspace:*",
+    "@merited/otel": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "fastify": "catalog:",
+    "fastify-type-provider-zod": "^4.0.2",
+    "ioredis": "^5.11.1",
+    "pg": "catalog:",
+    "zod": "catalog:"
   }
 }
