@@ -716,7 +716,7 @@ The merchant-side failure mode is a token going in and no claim coming out. The 
 | MER-3 — ✅ done 2026-07-04 | Grade-B webhook endpoint: per-merchant auth, HMAC verification, idempotency | M | MER-2, FND-6/CORE-1 | A |
 | MER-4 — ✅ done 2026-07-04 | Normalisation → claim build → custodied signing → trio verify POST | M | MER-3, TRIO-5/6/8, FND-8 | A |
 | MER-5 — ✅ done 2026-07-04 | Claims API: `POST /v1/claims` (merchant auth) + `GET /v1/claims/:id` | S | MER-4 | A |
-| MER-6 | Under-reporting event-completeness tests + structured rejection logging | S | MER-4 | A |
+| MER-6 — ✅ done 2026-07-04 | Under-reporting event-completeness tests + structured rejection logging | S | MER-4 | A |
 | MER-7 | Control-plane scaffold: Next.js 15, credential + TOTP auth, session | M | FND-1/2, FND-3 | B (parallel to A from MER-2 onward) |
 | MER-8 | Control plane: merchant CRUD + keypair issuance screens | M | MER-7, MER-2 | B |
 | MER-9 | Control plane: offer authoring (mechanics union) + commercial config | L | MER-7, CORE-2/5 | B |
