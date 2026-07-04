@@ -111,6 +111,9 @@ importers:
       '@merited/otel':
         specifier: workspace:*
         version: link:../../packages/otel
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1

@@ -17,19 +17,20 @@
     "db:check": "node ../../packages/events/scripts/check-migrations.mjs"
   },
   "devDependencies": {
+    "@merited/trio": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "drizzle-kit": "catalog:",
     "fast-check": "^4.8.0",
     "tsx": "^4.23.0",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "@merited/trio": "workspace:*"
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "@merited/events": "workspace:*",
     "@merited/otel": "workspace:*",
+    "@merited/signing": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",

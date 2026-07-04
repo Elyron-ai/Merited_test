@@ -30,6 +30,7 @@ describe('OpenAPI docs (TRIO-14 accept)', () => {
       '/trio/commitments',
       '/trio/commitments/{id}/end',
       '/trio/commitments/{id}',
+      '/trio/keys/merchant',
       '/trio/tokens/mint',
       '/trio/claims/verify',
       '/trio/claims/reverse',

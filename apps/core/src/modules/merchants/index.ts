@@ -1,2 +1,8 @@
-// Merchants module — owned by MER-2, consumed here. Layout frozen day one (CORE-1, §1).
-export {};
+// Merchants module (MER-2): CRUD, webhook secrets, custodied-key issuance.
+export {
+  MerchantsService,
+  type CreateMerchantInput,
+  type IssuedWebhookSecret,
+  type TrioKeyIssuer,
+} from './service.js';
+export { TrioKeysClient, type TrioKeysClientOptions } from './trio-keys-client.js';

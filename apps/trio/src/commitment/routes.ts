@@ -1,4 +1,10 @@
-import { CommitmentDraft, CommitmentEndRequest, type CommitmentSigningService } from '@merited/contracts';
+import {
+  CommitmentDraft,
+  CommitmentEndRequest,
+  MerchantKeyRequest,
+  type CommitmentSigningService,
+  type MerchantKeyService,
+} from '@merited/contracts';
 import type { FastifyInstance } from 'fastify';
 import { sendTrioError } from '../shared/deps.js';
 
@@ -31,6 +37,20 @@ export const registerCommitmentRoutes = (
   app.get('/trio/commitments/:id', async (req, reply) => {
     try {
       return await service.status((req.params as { id: string }).id);
+    } catch (error) {
+      return sendTrioError(error, reply);
+    }
+  });
+};
+
+/** SYN-22 custodied keypair issuance (same PH1-24 swap seam). */
+export const registerMerchantKeyRoutes = (
+  app: FastifyInstance,
+  service: MerchantKeyService,
+): void => {
+  app.post('/trio/keys/merchant', async (req, reply) => {
+    try {
+      return await service.issueMerchantKey(MerchantKeyRequest.parse(req.body));
     } catch (error) {
       return sendTrioError(error, reply);
     }

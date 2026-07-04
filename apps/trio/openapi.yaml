@@ -397,6 +397,55 @@ paths:
                       - code
                 required:
                   - error
+  /trio/keys/merchant:
+    post:
+      summary: Issue a custodied merchant keypair — SYN-22
+      description: "Custodied signing-key issuance (the §7 text omits this endpoint; the contract was added by MER-2 per SYN-22). Returns the key REFERENCE and public half only — private material never leaves trio custody (FakeSigner in Phase 0; KMS-enveloped Ed25519 in PH1-24). Idempotent: the reference is deterministic per merchant."
+      security: *a2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                merchant_id:
+                  type: string
+                  pattern: ^mer_[0-9A-HJKMNP-TV-Z]{26}$
+              required:
+                - merchant_id
+      responses:
+        "200":
+          description: Key reference + public key.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signing_key_ref:
+                    type: string
+                    minLength: 1
+                  public_key:
+                    type: string
+                    minLength: 1
+                required:
+                  - signing_key_ref
+                  - public_key
+        "400":
+          description: Malformed request (`VALIDATION_FAILED`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                    required:
+                      - code
+                required:
+                  - error
   /trio/tokens/mint:
     post:
       summary: Mint a quote-bound attribution token — §7.2

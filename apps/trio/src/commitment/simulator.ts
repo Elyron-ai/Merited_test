@@ -1,6 +1,7 @@
 import {
   Commitment,
   CommitmentDraft,
+  MerchantKeyRequest,
   newId,
   pence,
   type CommitmentCreateResponse,
@@ -8,6 +9,8 @@ import {
   type CommitmentEndResponse,
   type CommitmentSigningService,
   type CommitmentStatus,
+  type MerchantKeyResponse,
+  type MerchantKeyService,
 } from '@merited/contracts';
 import { appendEvent, canonicalJson } from '@merited/events';
 import {
@@ -139,5 +142,22 @@ export class CommitmentSimulator implements CommitmentSigningService {
       [commitmentId],
     );
     return rows.length ? Commitment.parse(rows[0]!.body) : null;
+  }
+}
+
+/**
+ * Custodied merchant keypair issuance SIMULATOR (MER-2 → SYN-22; same
+ * PH1-24 swap unit as commitment signing). Only the key REFERENCE and the
+ * public half ever cross the wire — private material stays in custody
+ * (FakeSigner now; KMS-enveloped Ed25519 in Phase 1). Idempotent by
+ * construction: the ref is deterministic per merchant.
+ */
+export class MerchantKeySimulator implements MerchantKeyService {
+  constructor(private readonly deps: TrioDeps) {}
+
+  async issueMerchantKey(requestInput: MerchantKeyRequest): Promise<MerchantKeyResponse> {
+    const request = MerchantKeyRequest.parse(requestInput);
+    const signing_key_ref = merchantKeyRef(request.merchant_id);
+    return { signing_key_ref, public_key: await this.deps.signer.getPublicKey(signing_key_ref) };
   }
 }

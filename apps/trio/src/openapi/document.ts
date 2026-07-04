@@ -9,6 +9,8 @@ import {
   CommitmentEndRequest,
   CommitmentEndResponse,
   CommitmentStatus,
+  MerchantKeyRequest,
+  MerchantKeyResponse,
   MintRequest,
   MintResponse,
   NettingRunRequest,
@@ -162,6 +164,23 @@ export const buildOpenApiDocument = (): ReturnType<OpenApiGeneratorV3['generateD
         content: { 'application/json': { schema: CommitmentStatus } },
       },
       404: errorBody('Unknown commitment (`COMMITMENT_NOT_FOUND`).'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/trio/keys/merchant',
+    summary: 'Issue a custodied merchant keypair — SYN-22',
+    description:
+      'Custodied signing-key issuance (the §7 text omits this endpoint; the contract was added by MER-2 per SYN-22). Returns the key REFERENCE and public half only — private material never leaves trio custody (FakeSigner in Phase 0; KMS-enveloped Ed25519 in PH1-24). Idempotent: the reference is deterministic per merchant.',
+    security,
+    request: { body: { content: { 'application/json': { schema: MerchantKeyRequest } } } },
+    responses: {
+      200: {
+        description: 'Key reference + public key.',
+        content: { 'application/json': { schema: MerchantKeyResponse } },
+      },
+      400: errorBody('Malformed request (`VALIDATION_FAILED`).'),
     },
   });
 

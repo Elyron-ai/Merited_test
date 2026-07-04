@@ -24,6 +24,7 @@ describe('merchant-side contracts (MER-1 accept)', () => {
         {
           merchant_id: FIXTURE_IDS.merchant,
           name: 'Aurora Experiences',
+          slug: 'aurora-experiences',
           status: 'active',
           commercial: {
             take_rate_bps: 2000,

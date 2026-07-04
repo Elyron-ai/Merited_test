@@ -23,9 +23,12 @@ export type MerchantCommercial = z.infer<typeof MerchantCommercial>;
 export const Merchant = z.object({
   merchant_id: Id('mer'),
   name: z.string().min(1),
+  /** URL-safe routing handle (MER-3's `:merchant_slug` webhook path). */
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   status: z.enum(['active', 'suspended']),
   commercial: MerchantCommercial,
-  signing_key_ref: z.string(),
+  /** Custodied key reference — null until MER-2's keypair issuance runs. */
+  signing_key_ref: z.string().nullable(),
   created_at: z.string().datetime(),
 });
 export type Merchant = z.infer<typeof Merchant>;

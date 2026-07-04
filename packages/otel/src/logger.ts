@@ -13,8 +13,17 @@ export const REDACT_PATHS = [
   'access_token',
   '*.refresh_token',
   '*.access_token',
+  'api_key',
+  '*.api_key',
+  'secret',
+  '*.secret',
+  'webhook_secret',
+  '*.webhook_secret',
   'req.headers.authorization',
   'headers.authorization',
+  'req.headers["x-merited-agent-key"]',
+  'req.headers["x-merited-merchant-key"]',
+  'req.headers["x-merited-service-token"]',
 ];
 
 export const createLogger = (name: string, stream?: DestinationStream): Logger =>

@@ -1,8 +1,8 @@
 import { FakeSigner } from '@merited/signing';
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
-import { CommitmentSimulator } from './commitment/simulator.js';
-import { registerCommitmentRoutes } from './commitment/routes.js';
+import { CommitmentSimulator, MerchantKeySimulator } from './commitment/simulator.js';
+import { registerCommitmentRoutes, registerMerchantKeyRoutes } from './commitment/routes.js';
 import { systemClock } from './shared/clock.js';
 import { FixtureDirectory, VerifiedDirectory } from './shared/ports/directory.js';
 import { createTrioServer } from './shared/server.js';
@@ -41,6 +41,7 @@ export const createSimulatedTrio = (options: SimulatedTrioOptions): SimulatedTri
 
   const app = createTrioServer({ serviceToken: options.serviceToken });
   registerCommitmentRoutes(app, commitments);
+  registerMerchantKeyRoutes(app, new MerchantKeySimulator(deps));
   registerMintRoutes(app, new MintSimulator(deps, commitments));
   registerVerifyRoutes(app, new VerifySimulator(deps, new VerifiedDirectory(directory, signer)));
   registerSettlementRoutes(
