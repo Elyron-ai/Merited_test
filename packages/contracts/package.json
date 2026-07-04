@@ -15,11 +15,12 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "fast-check": "^4.8.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {
-    "zod": "catalog:",
-    "ulidx": "catalog:"
+    "ulidx": "catalog:",
+    "zod": "catalog:"
   }
 }

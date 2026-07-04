@@ -381,3 +381,11 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Tests:** 6 new (apps/core 46; workspace 267) — the Accept verbatim: the 8-offer fixture set covering all four outcomes, frozen clock, three runs, **canonical-JSON byte-compare identical**; exact per-offer outcomes asserted (2 eligible, 6 exclusions with their reasons in filter order); first-failure-wins (paused + tier-ineligible → `OFFER_NOT_LIVE`); unknown-COR conservative exclusion; tier flip re-admits the T1-only offer; batching dedupes CORs and drops nulls. Build/lint exit 0.
 
 **Deviation/notes:** the Accept's "simulator seeded to a fixed state" is realised as a fixed status map injected as data — the pure function never does IO, so the trio simulator round-trip is exercised where the wiring lives (CORE-11's pipeline test and CORE-14's e2e), keeping this suite hermetic and byte-stable.
+
+---
+
+## CORE-8 — `applyMechanics` pure pricing function · ✅ 2026-07-04
+
+**Built:** `packages/contracts/src/pricing.ts` (in contracts for wallet-UI display parity, SYN-13): `applyMechanics(list, mechanics) → {final, mechanics_applied}` — integer-pence only, `floor` on every bps computation, discounts clamp at 0, price-setters clamp at list, threshold gates add no label when unmet, points/tier/access/basket-dependent variants price-neutral with label (SYN-38, appended to plan §3 in this commit). Exhaustive switch with `assertNever` — a 28th union variant fails compilation until priced.
+
+**Tests:** 37 new (contracts 104; workspace 304) — the Accept verbatim: table-driven rows covering every one of the 27 variants (a coverage meta-assert enforces exactly 27 types appear, threshold gates tested both sides, clamps both directions); rounding edges (1p × 3333bps, 1bps on 8450, 0p lists, over-list fixed_off); 1000-run property: `0 ≤ final ≤ list`, integer, `GBP_pence`, for every variant. Build/lint exit 0.
