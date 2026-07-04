@@ -79,3 +79,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Deviations:** custom Node migration runner instead of `drizzle-kit migrate` (gives us the role assertion + checksum gate in one place; drizzle-kit still generates future SQL). **Fix applied:** `init.sql` gained `GRANT CREATE ON DATABASE merited TO merited_migrate` (was missing; applied to the live volume manually — clean machines get it from init.sql).
 
 **Security self-review (ledger DDL zone):** DDL restricted to the migrate role mechanically; runtime role asserted at pool construction; checksum guard makes applied history tamper-evident at the repo level (chain-level tamper evidence lands with FND-10/13); no secrets in migrations or logs.
+
+---
+
+## FND-10 — Events append core: table, hashing, chain (B2 pt 2) · ✅ 2026-07-04
+
+**Built:** `canonical-json.ts` (RFC 8785 via json-canonicalize behind one swappable function; `assertHashSafe` rejects floats/undefined/NaN/non-plain objects pre-hash — D1); `hash.ts` (`this_hash = sha256(prev ‖ canonical_json(body))`, genesis 64×'0' — D2); `schema.ts` (drizzle def, §3 row shape); `append.ts` (`appendEvent(tx, …)` — catalogue check → Zod parse → hash-safety → `pg_advisory_xact_lock` → head read → insert in the CALLER'S transaction = transactional outbox; plus `appendEventInNewTx` convenience); `verify.ts` (`verifyChain` — gap/linkage/type-mirror/hash recompute, batched; FND-13's CLI will wrap it). Migrations `0001_events_table` (+ explicit grants) and `0002_ledger_permissions` (`REVOKE UPDATE, DELETE … FROM merited_app`) applied to the compose DB.
+
+**Tests:** 24/24 across 6 files. Unit: canonicalisation stable across key permutations (hash-equality property), lexicographic ordering, unicode determinism, §3 formula against independent sha256 with genesis constant, float/NaN/Infinity/undefined/Date rejection. Integration (fresh DB per run): genesis prev_hash = 64×'0'; unregistered type rejected with no write; invalid payload rejected; **32 concurrent appends → gapless chain, verifyChain ok**; UPDATE and DELETE as merited_app → **42501**; admin-role tamper of a body detected by verifyChain at the exact seq. Workspace build/test/lint exit 0.
+
+**Deviations:** none. Teardown note: test pools swallow late idle-client FATALs caused by `DROP DATABASE … WITH (FORCE)` (teardown race, not product code).
+
+**Security self-review (ledger zone — P1):** append validates type against the frozen catalogue and body against Zod before hashing; hash-unsafe data cannot enter the chain; appends serialised via advisory xact lock (no interleaved heads); inserted body is the canonical string actually hashed; append-only enforced at the DB role level and tamper-evidence proven end-to-end (admin mutation → verify failure at seq); no secrets in event bodies (FND-7 review holds); runtime role asserted merited_app.
