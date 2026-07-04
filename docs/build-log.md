@@ -197,3 +197,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 5/5 integration — claims schema-valid, sid derivation, walletless `apr: null`, ledger emission; B26 re-mint (same qid/fresh jti/apr + persisted mandate_ref); TTL capped by a 120s window; 422 snapshot-beyond-exp + 409 non-live commitment; downstream-opacity discipline (claims only ever read from the response). Workspace build/test/lint exit 0.
 
 **Security self-review (trio zone):** tokens carry no secrets (claims are public by design; the fake sig binds them to the platform mint key); mint refuses non-live commitments and oversized quote windows; the wallet-path marker (`mandate_ref`) is recorded at mint from Core's request — verification will treat it as the trio's own record, never trusting the claim (SYN-8); nonce hashed, never stored raw.
+
+---
+
+## TRIO-6 — Replay store (real Postgres unique-jti logic, kept file) · ✅ 2026-07-04
+
+**Built:** `verification/replay-store.ts` — `consumeToken(tx, {jti, qid, claim_id})` with `ON CONFLICT DO NOTHING` over the jti PK **and** the SYN-9 per-qid unique; distinguishes `replayed_by: 'jti' | 'qid'`; consumption is written in the caller's transaction so a rejected claim rolls back and never burns the token (SYN-9). This file is production code — retained through the PH1-25 swap; the Redis fast-path in front is PH1-25 hardening, never authoritative.
+
+**Tests:** 4/4 integration on real Postgres — sequential replay by jti; **16 parallel consumptions → exactly 1 consumed, 15 replayed**; re-minted token (same qid, fresh jti) blocked by qid (the double-bounty path is structurally closed); rollback-leaves-consumable (rejected claims don't burn). Workspace test/lint exit 0.
+
+**Security self-review (trio zone):** replay decision rests solely on Postgres unique constraints (no read-then-write race — conflict resolution is the constraint itself); both replay dimensions covered; consumption atomicity with the verdict guaranteed by transaction scope; no trust in caller-supplied state beyond the ids being consumed.
