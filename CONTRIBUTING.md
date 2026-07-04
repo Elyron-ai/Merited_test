@@ -50,6 +50,21 @@ PR template asks you to confirm this on every PR.
   editing it is a red flag — stop and treat it as a contract bug, never a
   test to fix.
 
+## Plan maintenance (XC-11)
+
+`BUILD-PLAN.md` is a living document and the single source of task state:
+
+- **States live in the task's row**: `— ✅ done <date>` · `— 🚧 doing` ·
+  `— ⛔ blocked: <reason>`; no marker means todo. The state changes in the
+  SAME commit as the work it describes — never in a separate tidy-up.
+- **Task IDs are immutable** and appear in every PR title and commit
+  subject (`feat(TASK-ID): …`). Superseded tasks are struck through, never
+  renumbered; new tasks append to their workstream table (synthesis
+  decisions append to §3 as new SYN rows).
+- **Weekly status sweep**: every marker re-checked against reality, logged
+  in `docs/build-log.md` as `Plan sweep — <date>`. A CI test keeps ✅ rows
+  and build-log entries in lockstep between sweeps.
+
 ## The verify loop
 
 ```sh

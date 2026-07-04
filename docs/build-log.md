@@ -889,3 +889,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Built:** `docs/risk-register.md` — the twelve XC.6 risks seeded verbatim (L/I, mitigation, owner) plus a **Phase 0 posture column** recording where each mitigation actually stands today (R1's drop-flag rehearsal live, threat-notes cross-references, R3's controls all in force with LEAD-5 commissioning a Gate 1 item, R4 zero post-freeze wire changes, R5 proven by the green `gate:0` end-to-end, R6's naming screen flagged as an open founder action, R9's first quarterly watch due 2026-10). The fortnightly review ritual is written into the doc (walk every open risk, date-stamped log, new risks take the next R-number, closures need evidence), the review log opens with today's seeding entry, and the **first review is set: 2026-07-17**.
 
 **Tests:** 2 new (workspace 536) — all twelve rows present each with an owner; the next-review date, fortnightly ritual and review log exist. Full workspace build/test/lint green.
+
+---
+
+## XC-11 — Plan maintenance process · 🚧 process live 2026-07-04
+
+**Built:** the deliverables in full; the Accept is time-gated by design (two CONSECUTIVE weekly sweeps) so the row reads 🚧 until sweep 2. BUILD-PLAN §0 gains the state-marker legend (`— ✅ done <date>` · `— 🚧 doing` · `— ⛔ blocked: <reason>`; no marker = todo; states change in the same commit as the work). CONTRIBUTING gains `## Plan maintenance (XC-11)` (immutable IDs in every PR title/commit subject, append-never-renumber, SYN rows for new decisions, the weekly sweep ritual). The sweep's mechanical half is now a CI TEST (`plan-sweep.test.js`): every ✅-marked task row must have a build-log entry naming it, and every commit since the process began must carry a task ID — plan state and history cannot drift apart between sittings.
+
+**Plan sweep — 2026-07-04 (sweep 1):** 83 task rows marked ✅ · 83 build-log task entries · 1:1 (CI-checked). Unmarked Phase-0 rows: XC-11 only (this row). TRIO-17, XC-13 and all PH1+/LEAD rows correctly unmarked (later phases, §0.1). Commit history: every commit since the harness landed is `feat(TASK-ID): …`; the five pre-process commits are the spec/plan/harness planning era. State: ACCURATE. Sweep 2 due 2026-07-11 — completing the Accept and flipping this row ✅.
+
+**Tests:** 3 new (workspace 539). Full workspace build/test/lint green.
