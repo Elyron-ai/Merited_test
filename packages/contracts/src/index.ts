@@ -31,3 +31,4 @@ export type * from './ports/index.js';
 export * from './trio/index.js';
 export * from './trio/mint-client.js';
 export * from './trio/keys.js';
+export { Brief, Errand, ErrandEvent, ErrandState } from './valet/errand.js';

@@ -8,6 +8,7 @@ import { Money } from '../money.js';
 import { RejectionReasonCode } from '../reasons.js';
 import { IdentityTier } from '../tier.js';
 import { AttributionTokenClaims } from '../token.js';
+import { ErrandState } from '../valet/errand.js';
 import { eventBody } from './envelope.js';
 
 /**
@@ -210,9 +211,8 @@ export const ErrandStateChanged = eventBody(
   z.object({
     errand_id: Id('ern'),
     agent_id: Id('agt'),
-    // Plain strings until VAL-1 lands the ErrandState enum (contracts-first tighten).
-    from: z.string(),
-    to: z.string(),
+    from: ErrandState,
+    to: ErrandState,
     at: datetime,
     quote_id: Id('qte').nullable(),
     claim_id: Id('clm').nullable(),
