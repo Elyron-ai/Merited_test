@@ -18,3 +18,5 @@ export { Mandate } from './mandate.js';
 export { AgentCtx, ConsumerCtx } from './ctx.js';
 export { OrderConfirmed } from './order.js';
 export * from './fixtures.js';
+export * from './events/index.js';
+export { EVENT_FIXTURES } from './events/fixtures.js';

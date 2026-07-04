@@ -1,2 +1,2 @@
-// @merited/events — scaffold placeholder (FND-1). Real content arrives with its workstream tasks.
-export const PACKAGE_NAME = '@merited/events';
+// @merited/events — hash-chained ledger (B2). Catalogue here; append core lands with FND-10.
+export * from './catalogue.js';

@@ -55,3 +55,15 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Tests:** 40/40 — golden round-trip per object (11), IdentityLink key-name sweep (/token|refresh|access|secret/i → none), mandate limit-ordering refinements, commitment bounty refinement, quote-≤-token-exp and approval-quote-binding predicates.
 
 **Deviations:** none. Note: `ConsumerCtx`/`AgentCtx` kept minimal per §4 — CORE tasks extend via contracts-first PRs if they need more signals.
+
+---
+
+## FND-7 — Event body schemas + catalogue (B2 pt 1) · ✅ 2026-07-04
+
+**Built:** all 20 event bodies (§3 nineteen + `CommitmentEnded`, SYN-3) as `{type, v:1, data}` envelopes in `contracts/src/events/` (D2/D9 — type+version inside the hashed body); explicit payloads per event with golden fixtures; `LedgerEntryPosted` carries a balance refinement (Σdr = Σcr rejected otherwise); `ConversionRejected.reason_code` bound to the 12-code enum; `ErrandStateChanged.from/to` left as strings until VAL-1 lands the enum (noted for contracts-first tightening). `packages/events/src/catalogue.ts`: frozen name→schema registry + `isCatalogueEvent` guard for FND-10's append path.
+
+**Tests:** contracts 7 files green (incl. 5 event suites: exactly-20 meta-test, per-fixture round-trips, reason-code enforcement, unbalanced-set rejection, version/type-literal rejection); events package registry tests (frozen, exactly 20, guard). Workspace build/test/lint green (exit 0).
+
+**Deviations:** none. The "append rejects unregistered types" accept clause is FND-10's to prove — the guard it will use is tested here.
+
+**Security self-review (ledger-adjacent):** event payloads carry no secrets (tokens appear only as claims/jti, never token strings; refresh tokens structurally absent); balance refinement prevents unbalanced ledger postings entering the chain; fixtures use fake-prefixed signatures only.
