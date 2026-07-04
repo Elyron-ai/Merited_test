@@ -123,7 +123,12 @@ describe('merchant-side contracts (MER-1 accept)', () => {
         if (entry.isDirectory()) walk(full);
         else if (entry.name.endsWith('.ts')) {
           const source = readFileSync(full, 'utf8');
-          if (/(?:interface|type)\s+Merchant\b|const\s+Merchant\s*=\s*z\.object/.test(source)) {
+          // definitions only — type-only IMPORTS of the contracts shape are the point
+          if (
+            /(?:^|\n)\s*(?:export\s+)?(?:interface\s+Merchant\b|type\s+Merchant\s*=|const\s+Merchant\s*=\s*z\.object)/.test(
+              source,
+            )
+          ) {
             offenders.push(path.relative(repoRoot, full));
           }
         }
