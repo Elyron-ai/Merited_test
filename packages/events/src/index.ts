@@ -6,3 +6,4 @@ export * from './append.js';
 export * from './verify.js';
 export { createAppPool, assertUrlRole } from './db.js';
 export { events, eventsSchema } from './schema.js';
+export * from './deliver/subscriber.js';

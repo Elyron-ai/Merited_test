@@ -103,3 +103,13 @@ One entry per task, newest last. Format: task, what was built, test results, dev
 **Deviations:** none. TRIO-2 remains subsumed (SYN-1) — the trio lane builds on this package as-is.
 
 **Security self-review (signing zone):** fakes are prefix-tagged so they can never pass for production signatures; keyRef inside the MAC input makes cross-hierarchy forgery structurally impossible; constant-time comparison; no KMS SDK dependency introduced; secrets never appear in errors (tested), and the AAD-free GCM envelope is documented as fake-only.
+
+---
+
+## FND-11 — Outbox delivery: LISTEN/NOTIFY + subscriber · ✅ 2026-07-04
+
+**Built:** `pg_notify('merited_events', seq)` wired into the append transaction (fires on commit; delivery never depends on it); `deliver/subscriber.ts` — `subscribe({pool, fromSeq, handler, …})` with LISTEN as wake-up only and a cursor-ordered poll as the authoritative path; strict seq order, at-least-once semantics documented (cursor advances only after the handler resolves; caller persists the resume cursor — FND-12's cursor table builds on this).
+
+**Tests:** 27/27 events-package total. New integration: strict-order delivery riding NOTIFY alone (poll effectively off); NOTIFY suppressed (`useListen: false`) → poll delivers within one 50ms interval; stop mid-stream → resume from `cursor()` with no gaps and no repeats.
+
+**Deviations:** `notify.ts` folded into `append.ts` (one query in the same tx) rather than a separate file — same behaviour, less indirection.

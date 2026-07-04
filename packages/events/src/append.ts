@@ -45,7 +45,10 @@ export const appendEvent = async (
      VALUES ($1, $2, $3::jsonb, $4, $5) RETURNING seq`,
     [evtId, name, canonical, prevHash, thisHash],
   );
-  return { seq: Number(inserted.rows[0]!.seq), evt_id: evtId, this_hash: thisHash };
+  const seq = Number(inserted.rows[0]!.seq);
+  // Wake subscribers on commit (FND-11); delivery itself never depends on this.
+  await tx.query("SELECT pg_notify('merited_events', $1)", [String(seq)]);
+  return { seq, evt_id: evtId, this_hash: thisHash };
 };
 
 /** Convenience for emitters with no surrounding business transaction. */
