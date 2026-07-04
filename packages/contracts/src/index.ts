@@ -18,6 +18,7 @@ export { Mandate } from './mandate.js';
 export { AgentCtx, ConsumerCtx } from './ctx.js';
 export { Segment, SEGMENTS } from './segment.js';
 export * from './pipeline.js';
+export * from './api.js';
 export { applyMechanics, type AppliedPricing } from './pricing.js';
 export { OrderConfirmed } from './order.js';
 export { Merchant, MerchantCommercial } from './merchant.js';

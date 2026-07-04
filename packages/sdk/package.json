@@ -14,7 +14,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
+    "@merited/core": "workspace:*",
+    "@merited/events": "workspace:*",
+    "@merited/signing": "workspace:*",
+    "@merited/trio": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

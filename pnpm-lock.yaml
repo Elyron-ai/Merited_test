@@ -397,9 +397,27 @@ importers:
         specifier: workspace:*
         version: link:../contracts
     devDependencies:
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../../apps/core
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../events
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../signing
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../../apps/trio
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.20.0
+      pg:
+        specifier: 'catalog:'
+        version: 8.22.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
