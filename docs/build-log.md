@@ -899,3 +899,9 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Plan sweep — 2026-07-04 (sweep 1):** 83 task rows marked ✅ · 83 build-log task entries · 1:1 (CI-checked). Unmarked Phase-0 rows: XC-11 only (this row). TRIO-17, XC-13 and all PH1+/LEAD rows correctly unmarked (later phases, §0.1). Commit history: every commit since the harness landed is `feat(TASK-ID): …`; the five pre-process commits are the spec/plan/harness planning era. State: ACCURATE. Sweep 2 due 2026-07-11 — completing the Accept and flipping this row ✅.
 
 **Tests:** 3 new (workspace 539). Full workspace build/test/lint green.
+
+---
+
+## Gate 0 checklist run · 2026-07-04 (phase boundary — STOPPED, gate not crossed)
+
+`pnpm gate:0 --record` at Phase 0 close-out: **6 automated criteria pass, 0 fail — verdict GREEN** (result table appended to `docs/gates/phase-0.md`; the six automated boxes ticked against the run). The full aggregate replayed end-to-end inside the run: workspace 539 tests, lint, the frozen 42-test contract suite, verify-chain, the demo-E2E trio of suites, and the clean-machine bootstrap (act 1's nine steps: splits −£12.00/+£7.20/+£2.40/£2.40 · TOKEN_REPLAYED · QUOTE_EXPIRED · one trace · chain verified over 20 events). Remaining before the gate can be RATIFIED — all founder actions, per §0.1 the build does not cross until then: (1) record `pnpm demo:act1` (human mode) as the asset; (2) ratify the gate at a sitting (minute the decision under the run record); (3) XC-11 sweep 2 due 2026-07-11 flips the last row ✅. PH1-24…26/30 may begin early ONLY under SYN-25's exception — that is the founder's call to make explicitly, not the loop's. Build loop stopped at the boundary.
