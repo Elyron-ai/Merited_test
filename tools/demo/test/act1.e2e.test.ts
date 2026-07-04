@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { runAct1 } from './act1.js';
+import { runAct1 } from '../src/act1.js';
 
 const outRoot = mkdtempSync(path.join(os.tmpdir(), 'merited-act1-'));
 
@@ -10,7 +10,7 @@ afterAll(() => {
   rmSync(outRoot, { recursive: true, force: true });
 });
 
-describe('demo Act 1 (VAL-12 steps 1–7 + VAL-13 steps 8–9 — the §9 gate sentence, machine-asserted)', () => {
+describe('the repo\'s single E2E (VAL-14, §8) — Act 1 in CI mode, all 9 steps', () => {
   it('runs end-to-end in CI mode with every printed number asserted and artefacts written', async () => {
     const lines: string[] = [];
     const result = await runAct1({ mode: 'ci', outRoot, print: (line) => lines.push(line) });

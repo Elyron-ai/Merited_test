@@ -703,3 +703,15 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Verification (CI-equivalent local runs — the workflow itself executes on GitHub once merged):** every job's exact command sequence run locally and green — jobs 2/3/5 are this session's standing verify loop (build, lint, full suite against real compose Postgres — 440 tests); job 4's filter set green in 3 packages; job 6's checksum guard green across events/core/trio/valet AND proven to turn RED on a tampered applied migration (exit 1 naming the file, then restored); the broken-chain-reds-job-5 property holds by construction — the verify-chain suite inside job 5 tampers a chain and asserts detection on every run. Remaining GitHub-side: "required checks on main" is a repository setting (list all six job names), and the first green run on `main` lands when this branch merges — both recorded here as the follow-through.
 
 **Deviation/notes:** the unit lane is per-package rather than per-file filtered — the honest docker-free boundary in this repo is the package (everything else boots Postgres); the trio's statement-PDF test self-guards on Chromium presence, so the integration job needs no browser install (the PDF render is fully exercised by the demo-e2e slot's environment and locally).
+
+---
+
+## VAL-14 — The repo's single E2E CI test · ✅ 2026-07-04
+
+**Built:** `tools/demo/test/act1.e2e.test.ts` (grown behind the skeleton exactly as the row prescribed — it began life inside VAL-12 and moved to its canonical home here) — a Vitest test calling the SAME `runAct(act1Steps)` in CI mode against compose Postgres + trio simulators + Core + FakeShop, asserting all 9 steps: the gate-sentence artefacts (seed → commitment → quote+claims → order → verdict → entries → statement), the five verification ticks, both §10 step-8 reason codes, and the verified chain head. CI workflow job `demo-e2e` filled into FND-16's reserved slot: compose up → build → migrate → run the test → compose down. This is the repo's ONLY repo-level E2E by design (§8); everything else stays module-level.
+
+**Quarantine-proofing (the Accept's second half):** fixed IDs — every entity comes from VAL-9's hand-written ULID fixtures (D6); injected TTL — the QUOTE_EXPIRED case uses the in-process core's `quoteTtlS: 2`, no trio hooks (SYN-30); no sleeps except the quote wait, which is EXPIRY-RELATIVE (sleeps until the quote's own `expires_at` + a truncation margin) rather than a fixed duration; each run builds a throwaway database, so parallel or repeated runs cannot collide.
+
+**Tests:** the suite relocated, not duplicated (workspace 440; full suite + lint green). The GitHub-side green run lands when the branch merges — same follow-through note as FND-16.
+
+**Deviation/notes:** none.
