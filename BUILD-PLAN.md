@@ -710,7 +710,7 @@ The merchant-side failure mode is a token going in and no claim coming out. The 
 
 | ID | Task | Size | Depends on | Parallel lane |
 |---|---|---|---|---|
-| MER-1 | Merchant-side contracts in `packages/contracts` | S | FND-3/4/5 | — (blocks all MER) |
+| MER-1 — ✅ done 2026-07-04 | Merchant-side contracts in `packages/contracts` | S | FND-3/4/5 | — (blocks all MER) |
 | MER-2 | Merchants module: CRUD, webhook secrets, custodied-key issuance | M | MER-1, FND-7/10/11, FND-8, TRIO-1/4 | A |
 | MER-3 | Grade-B webhook endpoint: per-merchant auth, HMAC verification, idempotency | M | MER-2, FND-6/CORE-1 | A |
 | MER-4 | Normalisation → claim build → custodied signing → trio verify POST | M | MER-3, TRIO-5/6/8, FND-8 | A |

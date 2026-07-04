@@ -401,3 +401,13 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 **Security self-review (token-client zone, XC.7):** the mint request is schema-validated before leaving the process; the service token is sent only to the configured trio base URL and never logged; responses are Zod-parsed — a tampered or malformed 200 becomes a typed failure, not trusted data; no-retry policy closes the duplicate-jti/orphan-token channel by construction; timeouts are hard (AbortSignal), so a slow trio cannot stall the read path; error messages carry status codes only, never request contents.
 
 **Deviation/notes:** initial traceparent implementation hand-rolled the header — replaced with the existing `injectTraceparent` helper (repo idiom; requires the app's `initOtel`, which every boot does via `@merited/otel/register`).
+
+---
+
+## MER-1 — Merchant-side contracts · ✅ 2026-07-04
+
+**Built (contracts-first, all additive):** `merchant.ts` — `Merchant` with `commercial` config (take-rate/commission bps, both windows, `budgets.per_offer_default` nullable Money — the fields CORE-5 folds into commitment drafts) and `signing_key_ref` as a KEY REFERENCE only (private material stays behind KMS/FakeSigner custody, SYN-22/32). `webhooks.ts` — Grade-B wire conventions as constants (`x-merited-signature`, `x-merited-timestamp`, `idempotency-key`, 300s max skew) and `FakeShopOrderWebhook`, the NATIVE payload deliberately shaped unlike `OrderConfirmed` (nested minor-unit money, raw order number, basket lines) so MER-4's normaliser genuinely transforms and drops data at the boundary. `control-plane.ts` — `ControlPlaneUser`/`ControlPlaneSession` (no hash/secret material in shapes). `OrderConfirmed` + `CommerceAdapter` already existed from FND-6 (reused, not redefined — likewise `ConversionClaim` and the reason enum).
+
+**Tests:** 4 new (contracts 108; workspace 313) — the Accept verbatim: all new schemas round-trip through Zod (incl. header constants pinned); the under-reporting denominator join — `TokenMinted.claims.cid` and `QuoteIssued.commitment_id` both reach `merchant_id` through the COR fixture (the executable promise B19's mint-vs-claim monitor builds on); the native-vs-normalised shape divergence asserted; and the grep lint sweeping every `apps/*/src`, `packages/*/src` (except contracts) and `tools/*/src` for stray `Merchant` type definitions — zero offenders. Build/lint exit 0.
+
+**Deviation/notes:** `budgets` given the minimal concrete shape `{per_offer_default: Money | null}` (the row says only "budgets"); extend contracts-first if MER-8's commercial form needs more.
