@@ -18,6 +18,12 @@ import { HostedLinkService } from './modules/linking/hosted/hosted-link-service.
 import { LinkTokenStore } from './modules/linking/link-token-store.js';
 import { MandateService } from './modules/mandates/mandate-service.js';
 import { MandateWideningError } from './modules/mandates/attenuation.js';
+import {
+  ApprovalsService,
+  PgQuoteReader,
+  type QuoteGateway,
+  type ReMint,
+} from './modules/notifications/approvals.js';
 import { PushService, WebPushTransport, type PushTransport } from './modules/notifications/push.js';
 import { generateVapidKeys, type VapidConfig } from './modules/notifications/vapid.js';
 import { PdStore } from './modules/pd-store/pd-store.js';
@@ -53,6 +59,11 @@ export interface WalletServerOptions {
    * when omitted) and the push delivery seam (CapturingPushTransport in CI). */
   vapid?: VapidConfig;
   pushTransport?: PushTransport;
+  /** PH1-18: quote reads (Pg over core.quotes by default) and the trio
+   * re-mint call — core's TrioTokenClient injected as a function. With no
+   * reMint wired, approve fails closed with REMINT_FAILED. */
+  quoteGateway?: QuoteGateway;
+  reMint?: ReMint;
 }
 
 const readCookie = (header: string | undefined, name: string): string | undefined =>
@@ -102,6 +113,14 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     transport: options.pushTransport ?? new WebPushTransport(),
     vapid: options.vapid ?? { ...generateVapidKeys(), subject: 'mailto:dev@merited.test' },
     clock,
+  });
+  const approvals = new ApprovalsService({
+    pool: options.pool,
+    mandates,
+    quotes: options.quoteGateway ?? new PgQuoteReader(options.pool),
+    reMint: options.reMint ?? (() => Promise.resolve(null)), // fail closed
+    clock,
+    push,
   });
 
   const app = Fastify();
@@ -283,6 +302,33 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   app.post('/v1/mandates/:id/revoke', async (req, reply) => {
     const revoked = await mandates.revoke({ mandateId: (req.params as { id: string }).id });
     return reply.send({ revoked });
+  });
+
+  // ── approvals (PH1-18, B26) ────────────────────────────────────────────────
+  app.post('/v1/quotes/:id/approve', async (req, reply) => {
+    const body = (req.body ?? {}) as { mandate_id?: string };
+    if (!body.mandate_id) return reply.code(400).send({ error: { code: 'MANDATE_ID_REQUIRED' } });
+    const idempotencyKey = req.headers['idempotency-key'];
+    const result = await approvals.approve({
+      consumerRef: req.consumerRef,
+      quoteId: (req.params as { id: string }).id,
+      mandateId: body.mandate_id,
+      ...(typeof idempotencyKey === 'string' ? { idempotencyKey } : {}),
+    });
+    if (result.outcome === 'approved') return reply.send(result);
+    const status = result.outcome === 'QUOTE_NOT_FOUND' ? 404 : 409;
+    return reply.code(status).send({ error: { code: result.outcome } });
+  });
+
+  app.post('/v1/quotes/:id/decline', async (req, reply) => {
+    const body = (req.body ?? {}) as { mandate_id?: string };
+    if (!body.mandate_id) return reply.code(400).send({ error: { code: 'MANDATE_ID_REQUIRED' } });
+    const result = await approvals.decline({
+      consumerRef: req.consumerRef,
+      quoteId: (req.params as { id: string }).id,
+      mandateId: body.mandate_id,
+    });
+    return reply.send(result);
   });
 
   // ── web push (PH1-17, B25) ─────────────────────────────────────────────────

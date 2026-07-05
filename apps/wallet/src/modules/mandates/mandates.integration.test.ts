@@ -214,4 +214,9 @@ describe('mandate routes require a session (PH1-16, authn on every route)', () =
     expect((await fetch(`${baseUrl}/v1/mandates/mnd_x/attenuate`, { method: 'POST' })).status).toBe(401);
     expect((await fetch(`${baseUrl}/v1/mandates/mnd_x/revoke`, { method: 'POST' })).status).toBe(401);
   });
+
+  it('no cookie → 401 on approve and decline (PH1-18 routes)', async () => {
+    expect((await fetch(`${baseUrl}/v1/quotes/qte_x/approve`, { method: 'POST' })).status).toBe(401);
+    expect((await fetch(`${baseUrl}/v1/quotes/qte_x/decline`, { method: 'POST' })).status).toBe(401);
+  });
 });

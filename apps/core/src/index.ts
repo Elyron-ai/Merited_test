@@ -15,6 +15,7 @@ export { OffersRepository } from './modules/offers/repository.js';
 export { OffersService, type OfferDraftInput } from './modules/offers/service.js';
 export { OfferPublisher, type BountyInput } from './modules/offers/publisher.js';
 export { TrioCommitmentsClient } from './modules/offers/trio-commitments-client.js';
+export { TrioTokenClient, type TokenClientOptions } from './modules/token-client/client.js';
 export { RulesStore, ruleExcludes, type EligibilityRuleDraft } from './modules/eligibility/exclusions.js';
 export { consumerValueScore, dedupeStacking } from './modules/eligibility/stacking.js';
 export { RulesDecisioner, decisionerFor } from './modules/decisioning/index.js';

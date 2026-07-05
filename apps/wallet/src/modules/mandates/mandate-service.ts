@@ -6,7 +6,7 @@ import {
   type MandateGrantRequest,
   type Money,
 } from '@merited/contracts';
-import { appendEventInNewTx } from '@merited/events';
+import { appendEventInNewTx, canonicalJson } from '@merited/events';
 import type { Signer } from '@merited/signing';
 import type pg from 'pg';
 import { attenuationViolations, MandateWideningError } from './attenuation.js';
@@ -28,44 +28,18 @@ import { attenuationViolations, MandateWideningError } from './attenuation.js';
  */
 const ATTEST_KEY = 'platform/attestations';
 
-// Structural (plain-string) shapes for the canonical serialisers — the branded
-// IDs are enforced by Mandate.parse/Approval.parse, not needed to sign bytes.
-interface MandateCanonical {
-  mandate_id: string;
-  consumer_ref: string;
-  agent_id: string;
-  scopes: readonly string[];
-  limits: { per_txn: Money; per_month: Money; categories: readonly string[] };
-  merchants: readonly string[];
-  data_sharing: { email: boolean; purchase_history: boolean; loyalty_ids: boolean };
-  pre_authorised_up_to: Money;
-  status: string;
-  exp: string;
-}
-
-const canonicalMandate = (m: MandateCanonical): string =>
-  [
-    m.mandate_id,
-    m.consumer_ref,
-    m.agent_id,
-    m.scopes.join(','),
-    `${m.limits.per_txn.amount}:${m.limits.per_txn.currency}`,
-    `${m.limits.per_month.amount}:${m.limits.per_month.currency}`,
-    m.limits.categories.join(','),
-    m.merchants.join(','),
-    `${m.data_sharing.email}:${m.data_sharing.purchase_history}:${m.data_sharing.loyalty_ids}`,
-    `${m.pre_authorised_up_to.amount}:${m.pre_authorised_up_to.currency}`,
-    m.status,
-    m.exp,
-  ].join('\n');
-
-const canonicalApproval = (a: {
-  approval_id: string;
-  mandate_id: string;
-  quote_id: string;
-  mode: string;
-  exp: string;
-}): string => [a.approval_id, a.mandate_id, a.quote_id, a.mode, a.exp].join('\n');
+/**
+ * Attestation payload = canonical JSON of the record minus its attestation
+ * field — the EXACT convention the trio's `VerifiedDirectory` verifies before
+ * trusting any approval/mandate at claim time (apps/trio directory.ts, P3:
+ * never trust monolith input unverified). Datetimes are normalised to
+ * `Date.toISOString()` before signing AND storing, so a record read back from
+ * timestamptz columns re-verifies byte-for-byte.
+ */
+const attestationPayload = (record: Record<string, unknown>): string => {
+  const { attestation: _a, ...rest } = record;
+  return canonicalJson(rest);
+};
 
 export type AuthoriseResult =
   | { outcome: 'pre_authorised'; approval: Approval }
@@ -89,9 +63,10 @@ export class MandateService {
       mandate_id: newId('mnd'),
       consumer_ref: input.consumerRef,
       ...input.request,
+      exp: new Date(input.request.exp).toISOString(),
       status: 'active' as const,
     };
-    const attestation = await this.deps.signer.sign(ATTEST_KEY, canonicalMandate(draft));
+    const attestation = await this.deps.signer.sign(ATTEST_KEY, attestationPayload(draft));
     const mandate = Mandate.parse({ ...draft, attestation });
     await this.insert(mandate, null);
     await appendEventInNewTx(this.deps.pool, 'MandateGranted', { mandate });
@@ -130,9 +105,9 @@ export class MandateService {
       },
       pre_authorised_up_to: input.patch.pre_authorised_up_to ?? parent.pre_authorised_up_to,
       status: 'active' as const,
-      exp: input.patch.exp ?? parent.exp,
+      exp: new Date(input.patch.exp ?? parent.exp).toISOString(),
     };
-    const attestation = await this.deps.signer.sign(ATTEST_KEY, canonicalMandate(childDraft));
+    const attestation = await this.deps.signer.sign(ATTEST_KEY, attestationPayload(childDraft));
     const child = Mandate.parse({ ...childDraft, attestation });
 
     const violations = attenuationViolations(parent, child);
@@ -193,6 +168,34 @@ export class MandateService {
     return { outcome: 'APPROVAL_MISSING' };
   }
 
+  /**
+   * Issue an EXPLICIT approval (PH1-18, §6.4) — the consumer said yes on the
+   * approval screen. Same live-status/limit checks as the checkout gate, same
+   * `recordApproval` code path the pre_authorised branch uses (single-use per
+   * quote, `ApprovalGranted` emitted once). `exp = quote.expires_at`.
+   */
+  async approveExplicitForQuote(input: {
+    consumerRef: string;
+    mandateId: string;
+    quoteId: string;
+    orderValue: Money;
+    quoteExpiresAt: string;
+  }): Promise<AuthoriseResult> {
+    const mandate = await this.get(input.mandateId);
+    if (!mandate || mandate.status !== 'active') return { outcome: 'MANDATE_REVOKED' };
+    if (mandate.consumer_ref !== input.consumerRef) return { outcome: 'MANDATE_REVOKED' }; // not yours → no oracle
+    if (Date.parse(mandate.exp) <= this.deps.clock.now().getTime()) return { outcome: 'MANDATE_REVOKED' };
+    if (!mandate.scopes.includes('checkout:execute')) return { outcome: 'CHECKOUT_SCOPE_MISSING' };
+    if (input.orderValue.amount > mandate.limits.per_txn.amount) return { outcome: 'LIMIT_EXCEEDED' };
+
+    const existing = await this.approvalFor(input.quoteId);
+    if (existing) {
+      return { outcome: existing.mode === 'pre_authorised' ? 'pre_authorised' : 'approved', approval: existing };
+    }
+    const approval = await this.recordApproval(mandate, input.quoteId, 'explicit', input.quoteExpiresAt);
+    return { outcome: 'approved', approval };
+  }
+
   async get(mandateId: string): Promise<Mandate | null> {
     const { rows } = await this.deps.pool.query<MandateRow>(
       `SELECT mandate_id, consumer_ref, agent_id, scopes, limits, merchants, data_sharing,
@@ -228,10 +231,10 @@ export class MandateService {
       mandate_id: mandate.mandate_id,
       quote_id: quoteId,
       mode,
-      approved_at: this.nowIso(),
-      exp,
+      approved_at: this.deps.clock.now().toISOString(),
+      exp: new Date(exp).toISOString(), // = quote.expires_at, normalised
     };
-    const attestation = await this.deps.signer.sign(ATTEST_KEY, canonicalApproval(draft));
+    const attestation = await this.deps.signer.sign(ATTEST_KEY, attestationPayload(draft));
     const approval = Approval.parse({ ...draft, attestation });
     // single-use per quote (UNIQUE quote_id); a race loses here and re-reads
     const inserted = await this.deps.pool.query(
@@ -246,7 +249,7 @@ export class MandateService {
     return approval;
   }
 
-  private async approvalFor(quoteId: string): Promise<Approval | null> {
+  async approvalFor(quoteId: string): Promise<Approval | null> {
     const { rows } = await this.deps.pool.query<ApprovalRow>(
       `SELECT approval_id, mandate_id, quote_id, mode, approved_at, exp, attestation
          FROM wallet.approvals WHERE quote_id = $1`,

@@ -426,6 +426,9 @@ importers:
       '@merited/fake-aurora':
         specifier: workspace:*
         version: link:../fake-aurora
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../trio
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
