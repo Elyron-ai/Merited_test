@@ -19,7 +19,8 @@
     "demo:act1": "pnpm --filter @merited/demo act1",
     "gate:0": "pnpm --filter @merited/demo gate:0",
     "analytics:rebuild": "pnpm --filter @merited/core analytics:rebuild",
-    "gate:1": "pnpm --filter @merited/demo gate:1"
+    "gate:1": "pnpm --filter @merited/demo gate:1",
+    "ml:train": "pnpm --filter @merited/ml-decisioner train"
   },
   "devDependencies": {
     "@types/node": "catalog:",

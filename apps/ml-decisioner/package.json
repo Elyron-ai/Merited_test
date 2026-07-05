@@ -1,0 +1,21 @@
+{
+  "name": "@merited/ml-decisioner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "train": "python3 training/train.py"
+  },
+  "devDependencies": {
+    "@merited/contracts": "workspace:*",
+    "@merited/core": "workspace:*",
+    "@merited/events": "workspace:*",
+    "@merited/seed": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

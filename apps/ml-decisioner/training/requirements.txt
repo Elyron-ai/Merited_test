@@ -1,0 +1,4 @@
+# PH2-8 training deps. lightgbm is OPTIONAL — the pipeline falls back to a
+# stdlib logistic regression so `analytics:rebuild → train` runs anywhere.
+psycopg2-binary>=2.9
+lightgbm>=4.0

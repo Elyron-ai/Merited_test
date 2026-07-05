@@ -289,6 +289,36 @@ importers:
         specifier: 'catalog:'
         version: 3.2.6(@types/node@22.20.0)(tsx@4.23.0)(yaml@2.9.0)
 
+  apps/ml-decisioner:
+    devDependencies:
+      '@merited/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../core
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@merited/seed':
+        specifier: workspace:*
+        version: link:../../tools/seed
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.0
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.20.0
+      pg:
+        specifier: 'catalog:'
+        version: 8.22.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.6(@types/node@22.20.0)(tsx@4.23.0)(yaml@2.9.0)
+
   apps/trio:
     dependencies:
       '@asteasolutions/zod-to-openapi':
