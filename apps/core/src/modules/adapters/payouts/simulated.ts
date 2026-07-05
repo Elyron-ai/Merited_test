@@ -103,7 +103,9 @@ export class TrioStatementsClient implements StatementsSource {
  * converges on the same artefacts.
  */
 export const settlementPayoutsProjection = (
-  rail: SimulatedPayouts,
+  // PH2-6: ANY PayoutRail — SimulatedPayouts (statements only) or
+  // StripeConnectPayouts (test-mode Connect transfers), same worker.
+  rail: PayoutRail,
   statements: StatementsSource,
   pool: pg.Pool,
 ): Projection => ({
@@ -140,6 +142,15 @@ export const settlementPayoutsProjection = (
         amount: position.amount,
         idempotency_key: `${data.netting_run_id}/${position.party}`,
       });
+      // the platform's OWN execution record, rail-agnostic: SimulatedPayouts
+      // already wrote this row (no-op here); a vendor rail leaves the same
+      // auditable artefact. Idempotency key = the netting fold, so replays
+      // and rebuilds converge on one row.
+      await pool.query(
+        `INSERT INTO core.payout_statements (transfer_ref, account_ref, amount_pence, currency, idempotency_key)
+         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (idempotency_key) DO NOTHING`,
+        [transfer_ref, account_ref, position.amount.amount, position.amount.currency, `${data.netting_run_id}/${position.party}`],
+      );
       // enrich the artefact with the fold it came from (driver-level metadata)
       await pool.query(
         `UPDATE core.payout_statements

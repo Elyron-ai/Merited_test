@@ -1,6 +1,6 @@
 // @merited/core — Core platform monolith (CORE-1 skeleton; §1 module tree).
 export { createCoreServer, type CoreServer } from './server.js';
-export { loadCoreEnv, type CoreEnv } from './env.js';
+export { loadCoreEnv, loadStripeEnv, LIVE_RAILS_APPROVED, LiveKeyRefusedError, type CoreEnv, type StripeEnv } from './env.js';
 export { createCoreDb, type CoreDb } from './db.js';
 export { CoreHttpError } from './http-error.js';
 export {
@@ -27,3 +27,4 @@ export { analyticsProjection, bountyFor } from './modules/analytics/projections/
 export { MintVsClaimMonitor, type MerchantHealth, type MonitorOptions } from './modules/analytics/mint-vs-claim-monitor.js';
 export { HeadPublicationJob, type HeadPublicationJobDeps } from './modules/audit/head-publication-job.js';
 export { SimulatedPayouts, TrioStatementsClient, settlementPayoutsProjection, type StatementsSource } from './modules/adapters/payouts/simulated.js';
+export { StripeConnectPayouts, StripeError, payoutRailFromEnv, type StripeConnectOptions } from './modules/adapters/payouts/stripe-connect.js';
