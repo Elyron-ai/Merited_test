@@ -18,7 +18,8 @@
     "test": "vitest run --passWithNoTests",
     "dev": "MERITED_DATABASE_URL=postgres://merited_app:merited_app_dev@localhost:5432/merited MERITED_REDIS_URL=redis://localhost:6379 tsx src/main.ts",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:check": "node ../../packages/events/scripts/check-migrations.mjs"
+    "db:check": "node ../../packages/events/scripts/check-migrations.mjs",
+    "analytics:rebuild": "node dist/modules/analytics/rebuild.js"
   },
   "devDependencies": {
     "@merited/fake-aurora": "workspace:*",

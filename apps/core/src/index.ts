@@ -23,3 +23,4 @@ export { FakeAuroraLoyalty } from './modules/adapters/loyalty/fake-aurora.js';
 export { StaticTableLoyalty } from './modules/adapters/loyalty/static-table.js';
 export { FakeAuroraIdpAdapter } from './modules/adapters/idp/fake-aurora.js';
 export { IdpRegistry } from './modules/adapters/idp/registry.js';
+export { analyticsProjection, bountyFor } from './modules/analytics/projections/index.js';

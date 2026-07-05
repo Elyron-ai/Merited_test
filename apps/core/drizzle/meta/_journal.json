@@ -71,6 +71,13 @@
       "when": 1783450000000,
       "tag": "0009_loyalty",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783450001000,
+      "tag": "0010_analytics",
+      "breakpoints": true
     }
   ]
 }

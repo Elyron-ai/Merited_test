@@ -17,7 +17,8 @@
     "verify-chain": "pnpm -r run verify-chain",
     "projections:rebuild": "pnpm -r run projections:rebuild",
     "demo:act1": "pnpm --filter @merited/demo act1",
-    "gate:0": "pnpm --filter @merited/demo gate:0"
+    "gate:0": "pnpm --filter @merited/demo gate:0",
+    "analytics:rebuild": "pnpm --filter @merited/core analytics:rebuild"
   },
   "devDependencies": {
     "@types/node": "catalog:",
