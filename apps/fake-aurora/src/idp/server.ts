@@ -185,6 +185,12 @@ export const createFakeAuroraIdp = async (options: FakeAuroraIdpOptions): Promis
     return reply.send(claimsForScopes(member, token.scopes));
   });
 
+  // ── brand-initiated revocation signal (PH1-12): members the brand has
+  //    unlinked. Merited polls this (poll fallback) or receives the push.
+  app.get('/revocations', async () => ({
+    revoked_subs: AURORA_IDP_MEMBERS.filter((m) => m.status === 'revoked').map((m) => m.sub),
+  }));
+
   // ── revocation (RFC 7009): invalidate a refresh token ─────────────────────
   app.post('/revoke', async (req, reply) => {
     const body = req.body as Record<string, string>;

@@ -20,3 +20,5 @@ export { consumerValueScore, dedupeStacking } from './modules/eligibility/stacki
 export { RulesDecisioner, decisionerFor } from './modules/decisioning/index.js';
 export { FakeAuroraLoyalty } from './modules/adapters/loyalty/fake-aurora.js';
 export { StaticTableLoyalty } from './modules/adapters/loyalty/static-table.js';
+export { FakeAuroraIdpAdapter } from './modules/adapters/idp/fake-aurora.js';
+export { IdpRegistry } from './modules/adapters/idp/registry.js';
