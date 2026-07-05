@@ -128,6 +128,37 @@ export const freeConversionCap = async (tx: pg.ClientBase, commitmentId: string)
   );
 };
 
+/**
+ * PH1-26 concurrency guard: lock the commitment's counter row and re-check
+ * cap and budget INSIDE the verdict transaction. Stage 5's early read is a
+ * fast-path only — two concurrent different-jti claims on a cap-1
+ * commitment both pass stage 5; this lock serialises them so exactly one
+ * applies. Returns the refusal reason instead of applying when the counter
+ * cannot cover the conversion; nothing is written on refusal (SYN-9: a
+ * rejected claim burns nothing).
+ */
+export const lockAndCheckCounters = async (
+  tx: pg.ClientBase,
+  commitmentId: string,
+  bountyPence: number,
+  maxConversions: number | null,
+): Promise<{ ok: true } | { ok: false; reason: 'CAP_EXHAUSTED' | 'BUDGET_EXHAUSTED' }> => {
+  const { rows } = await tx.query<{ conversions_used: number; budget_remaining_pence: string | null }>(
+    `SELECT conversions_used, budget_remaining_pence
+       FROM trio.counters WHERE commitment_id = $1 FOR UPDATE`,
+    [commitmentId],
+  );
+  const row = rows[0];
+  if (!row) return { ok: false, reason: 'CAP_EXHAUSTED' }; // no counter row = never mintable
+  if (maxConversions !== null && row.conversions_used >= maxConversions) {
+    return { ok: false, reason: 'CAP_EXHAUSTED' };
+  }
+  if (row.budget_remaining_pence !== null && Number(row.budget_remaining_pence) < bountyPence) {
+    return { ok: false, reason: 'BUDGET_EXHAUSTED' };
+  }
+  return { ok: true };
+};
+
 /** Counters live in Settlement, outside the immutable COR (arch §2.2). */
 export const applyConversionCounters = async (
   tx: pg.ClientBase,

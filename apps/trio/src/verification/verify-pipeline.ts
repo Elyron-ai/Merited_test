@@ -24,6 +24,7 @@ import {
   applyConversionCounters,
   bountyFor,
   conversionEntrySet,
+  lockAndCheckCounters,
   mandateMonthSpend,
   monthKey,
   recordMandateSpend,
@@ -105,6 +106,32 @@ export class VerifySimulator {
     return inTx(this.deps.pool, async (tx) => {
       let response: VerifyResponse;
       if (outcome.verdict === 'verified') {
+        // PH1-26: lock + re-check the commitment counters FIRST — the row
+        // lock serialises concurrent claims on one commitment, so a cap or
+        // budget can never double-spend (stage 5's read was a fast path).
+        // Nothing is written on refusal: the token is not burnt (SYN-9).
+        const counters = await lockAndCheckCounters(
+          tx,
+          outcome.minted.cid,
+          outcome.bounty,
+          outcome.maxConversions,
+        );
+        if (!counters.ok) {
+          response = { verdict: 'rejected', reason_code: counters.reason };
+          await appendEvent(tx, 'ConversionRejected', {
+            claim_id: claim.claim_id,
+            merchant_id: claim.merchant_id,
+            jti: outcome.minted.jti,
+            reason_code: counters.reason,
+            rejected_at: this.now(),
+          });
+          await tx.query(
+            `INSERT INTO trio.idempotency_keys (scope, key, request_hash, response)
+             VALUES ('claims/verify', $1, $2, $3::jsonb)`,
+            [options.idempotencyKey, requestHash, canonicalJson(response)],
+          );
+          return response;
+        }
         // Consume + post + counters in ONE transaction with the verdict.
         const consumption = await consumeToken(tx, {
           jti: outcome.minted.jti,
@@ -176,7 +203,13 @@ export class VerifySimulator {
   private async pipeline(
     claim: VerifyRequest,
   ): Promise<
-    | { verdict: 'verified'; minted: MintedRow; entries: ReturnType<typeof conversionEntrySet>; bounty: number }
+    | {
+        verdict: 'verified';
+        minted: MintedRow;
+        entries: ReturnType<typeof conversionEntrySet>;
+        bounty: number;
+        maxConversions: number | null;
+      }
     | Rejection
   > {
     const reject = (reason: RejectionReasonCode, jti?: string): Rejection => ({
@@ -319,6 +352,6 @@ export class VerifySimulator {
       claimId: claim.claim_id,
       grossPence: claim.order.gross_value.amount,
     });
-    return { verdict: 'verified', minted, entries, bounty };
+    return { verdict: 'verified', minted, entries, bounty, maxConversions: cor.terms.max_conversions };
   }
 }
