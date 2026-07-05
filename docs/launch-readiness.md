@@ -25,7 +25,7 @@ Code), **F+B** = both.
 | A9 | Load/rate-limit behaviour under production-shaped traffic (per-agent + per-merchant limits, Redis-backed limiter, replay-cache hit rates) | B | Phase 2 hardening | ⬜ open |
 | A10 | Wallet UI cross-browser + accessibility pass (six screens; push permission prompts differ per browser) | B | PH2-3 | ⬜ open |
 | A11 | `pnpm demo:act2` recorded with `VALET_DETERMINISTIC=1` (the Phase-2 gate asset) | F+B | PH2-12 | ⬜ open |
-| A12 | Shopify dev-store end-to-end: install → cart-attribute token → `orders/paid` → verified claim | F+B | PH3-5, needs B7 creds | ⬜ open |
+| A12 | Shopify dev-store end-to-end: install → cart-attribute token → `orders/paid` → verified claim | F+B | Code side ready (PH3-5 ✅): point the store's `orders/paid` webhook at `/v1/merchants/:slug/shopify/orders-paid`, register the app secret as the merchant webhook secret, theme/checkout extension writes the `merited_token` cart attribute. Needs B7 creds | ⬜ open |
 | A13 | Reference-verifier clean-container run: network egress disabled, proof pack only, tamper byte → fail | B | PH3-8/PH3-10 | ⬜ open |
 | A14 | Control-plane e2e flake under full parallel load (Next boot + TOTP window — seen at the Gate-1 run, 12:25 table): confirm CI runner sizing or serialise those suites | B | before CI is authoritative for others | ⬜ open |
 
@@ -85,7 +85,7 @@ real key is an env change, never a code change — the standing rule).
 | PH3-2 | Protocol conformance harness + UCP/ACP token-transport mapping (resolve arch §8 Q2 first; Zod schemas contracts-first) | M | ✅ done 2026-07-05 |
 | PH3-3 | UCP ProtocolAdapter (offer-out + callback-in → signed claim; Valet UCP rail) | L | ✅ done 2026-07-05 |
 | PH3-4 | ACP ProtocolAdapter (same shape; Valet ACP rail) | L | ✅ done 2026-07-05 |
-| PH3-5 | Shopify app Grade A (cart-attribute token, orders/paid, CommerceAdapter parity with FakeShop) | L |
+| PH3-5 | Shopify app Grade A (cart-attribute token, orders/paid, CommerceAdapter parity with FakeShop) | L | ✅ done 2026-07-05 — CI legs green vs simulated store; dev-store run stays open as A12 |
 | PH3-6 | Self-serve merchant onboarding, zero manual steps end-to-end | L |
 | PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M |
 | PH3-8 | Reference verifier (`packages/verifier/`, offline, clean-container proof) | L |

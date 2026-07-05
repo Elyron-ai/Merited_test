@@ -1,7 +1,7 @@
 // @merited/contracts — the single source of shared types (BUILD-SPEC §1).
 export { ID_PREFIXES, Id, newId } from './ids.js';
 export type { IdPrefix, MeritedId } from './ids.js';
-export { Money, pence } from './money.js';
+export { Money, pence, poundsToPence, penceToPounds } from './money.js';
 export { REJECTION_REASON_CODES, RejectionReasonCode } from './reasons.js';
 export { defineEnv, EnvValidationError } from './env.js';
 export * from './offer/mechanics/index.js';
@@ -27,6 +27,7 @@ export { applyMechanics, type AppliedPricing } from './pricing.js';
 export { OrderConfirmed } from './order.js';
 export { Merchant, MerchantCommercial } from './merchant.js';
 export * from './webhooks.js';
+export * from './shopify.js';
 export { ControlPlaneUser, ControlPlaneSession } from './control-plane.js';
 export * from './fixtures.js';
 export * from './events/index.js';

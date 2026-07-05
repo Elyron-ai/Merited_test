@@ -10,6 +10,7 @@ import { registerClaimsRoutes } from './modules/adapters/grade-b/claims-routes.j
 import { registerGradeBWebhook } from './modules/adapters/grade-b/routes.js';
 import { registerUcpCheckoutRoute } from './modules/adapters/ucp/routes.js';
 import { registerAcpOrderRoute } from './modules/adapters/acp/routes.js';
+import { registerShopifyOrdersPaidRoute } from './modules/adapters/commerce/routes.js';
 import { AgentsService } from './modules/agents/service.js';
 import { decisionerFor } from './modules/decisioning/index.js';
 import { RuleGuardrails } from './modules/guardrails/index.js';
@@ -152,6 +153,12 @@ export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCor
     processor,
   });
   registerAcpOrderRoute(app, {
+    pool,
+    merchants,
+    limiter: new InMemoryRateLimiter({ limit: 1000, windowS: 3600 }),
+    processor,
+  });
+  registerShopifyOrdersPaidRoute(app, {
     pool,
     merchants,
     limiter: new InMemoryRateLimiter({ limit: 1000, windowS: 3600 }),

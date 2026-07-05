@@ -28,6 +28,7 @@ export {
   type CheckoutRequest,
 } from './ports/checkout-rail.js';
 export { AcpCheckoutRail, type AcpRailOptions } from './ports/acp-rail.js';
+export { ShopifyCheckoutRail } from './ports/shopify-rail.js';
 export { UcpCheckoutRail, type UcpRailOptions } from './ports/ucp-rail.js';
 export { VerdictPoller, VerdictTimeoutError, type VerdictEvent } from './ports/verdict-poller.js';
 export { AutoSkipGate, WalletApprovalGate, type ApprovalGate, type ApprovalOutcome } from './ports/approval-gate.js';
