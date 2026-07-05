@@ -16,11 +16,14 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "openid-client": "^6.1.7"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "fastify": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "jose": "^5.9.6",
+    "@fastify/formbody": "^8.0.1"
   }
 }
