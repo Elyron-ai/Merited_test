@@ -14,6 +14,10 @@ export const JsonLdOffer = z.object({
   identifier: z.string(),
   name: z.string(),
   description: z.string(),
+  /** PH3-9: present on entries rendered per SKU (list-scoped offers) — the
+   * merchant's own SKU string, the SAME identifier Shopify line items and
+   * FakeShop baskets carry. */
+  sku: z.string().optional(),
   price: z.string().regex(/^\d+\.\d{2}$/),
   priceCurrency: z.literal('GBP'),
   availabilityStarts: z.string().datetime(),

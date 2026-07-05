@@ -30,7 +30,21 @@ export interface EligibilityInput {
   agentId?: string | null;
   segment?: Segment;
   rules?: readonly EligibilityRule[];
+  /** PH3-9: the SKU the read asked for (`?sku=`) — null/absent = no
+   * narrowing. Enforcement is read/quote-time ONLY; verification never
+   * sees SKUs (§3's enum stays closed). */
+  sku?: string | null;
 }
+
+/** PH3-9 SKU-scope match: `'all'` matches every SKU; a list scope matches
+ * its members; a `bundle` offer ALSO matches any SKU the bundle contains
+ * (its `sku_refs` resolve at read time). PURE — same rule the repository
+ * pre-filter applies in SQL. */
+export const skuMatches = (offer: EligibleOffer['offer'], sku: string): boolean => {
+  if (offer.sku_scope === 'all') return true;
+  if (offer.sku_scope.includes(sku)) return true;
+  return offer.mechanics.type === 'bundle' && offer.mechanics.sku_refs.includes(sku);
+};
 
 export const filterEligibility = (
   candidates: readonly EligibleOffer[],
@@ -54,6 +68,12 @@ export const filterEligibility = (
     // 2 — tier
     if (!offer.identity_tiers.includes(input.tier)) {
       excluded.push({ offer_id: offer.offer_id, reason: 'TIER_INELIGIBLE' });
+      continue;
+    }
+
+    // 2b — SKU scope (PH3-9): only when the read asked for a SKU
+    if (input.sku && !skuMatches(offer, input.sku)) {
+      excluded.push({ offer_id: offer.offer_id, reason: 'SKU_MISMATCH' });
       continue;
     }
 

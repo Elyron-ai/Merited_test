@@ -37,14 +37,12 @@ export class OfferFeed {
     const response = await this.deps.readOffers.read(input);
     const anonymous = input.agent.agent_id === null;
 
-    const items = await Promise.all(
-      response.quotes.map(async (quote: OfferQuote, index: number) => {
-        const record = await this.deps.repository.get(quote.offer_id);
-        const offer = record!.offer;
-        return {
-          '@type': 'ListItem' as const,
-          position: index + 1,
-          item: {
+    const entries = (
+      await Promise.all(
+        response.quotes.map(async (quote: OfferQuote) => {
+          const record = await this.deps.repository.get(quote.offer_id);
+          const offer = record!.offer;
+          const item = {
             '@type': 'Offer' as const,
             identifier: offer.offer_id,
             name: offer.title,
@@ -63,10 +61,21 @@ export class OfferFeed {
                   'merited:expires_at': quote.expires_at,
                 }
               : {}),
-          },
-        };
-      }),
-    );
+          };
+          // PH3-9: list-scoped offers render ONE ENTRY PER SKU — the
+          // merchant's own SKU strings, the same identifiers Shopify line
+          // items carry; 'all'-scoped offers keep their single entry
+          if (offer.sku_scope === 'all') return [item];
+          return offer.sku_scope.map((sku) => ({ ...item, sku }));
+        }),
+      )
+    ).flat();
+
+    const items = entries.map((item, index) => ({
+      '@type': 'ListItem' as const,
+      position: index + 1,
+      item,
+    }));
 
     return JsonLdOfferFeed.parse({
       '@context': 'https://schema.org',

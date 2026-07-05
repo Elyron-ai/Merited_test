@@ -36,6 +36,7 @@ export const EligibilityExclusionReason = z.union([
   z.literal('OFFER_NOT_LIVE'),
   z.literal('STACKING_DEDUPED'),
   z.literal('MERCHANT_EXCLUDED'), // §5.4 merchant-exclusion stage (PH1-3)
+  z.literal('SKU_MISMATCH'), // PH3-9: read-path SKU scope — NOT a §3 claim code
 ]);
 export type EligibilityExclusionReason = z.infer<typeof EligibilityExclusionReason>;
 

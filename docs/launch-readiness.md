@@ -89,7 +89,7 @@ real key is an env change, never a code change — the standing rule).
 | PH3-6 | Self-serve merchant onboarding, zero manual steps end-to-end | L | ✅ done 2026-07-05 |
 | PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M | ✅ done 2026-07-05 |
 | PH3-8 | Reference verifier (`packages/verifier/`, offline, clean-container proof) | L | ✅ done 2026-07-05 |
-| PH3-9 | SKU-level offer granularity end-to-end (eligibility, quoting, JSON-LD, Shopify mapping, bundle sku_refs) | M |
+| PH3-9 | SKU-level offer granularity end-to-end (eligibility, quoting, JSON-LD, Shopify mapping, bundle sku_refs) | M | ✅ done 2026-07-05 |
 | PH3-10 | Phase-3 gate run; evidence in `docs/gates/phase-3.md` | S |
 | GAP-9 | Proof-pack EXPORT tooling: production endpoint/CLI that assembles a `merited-proof-pack/1` for a given claim (today the pack builder lives in the verifier test harness — fine for the gate, not merchant-facing). Discovered during PH3-8; no plan row covers it. | — |
 

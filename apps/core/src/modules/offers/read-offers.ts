@@ -151,6 +151,7 @@ export class ReadOffers {
           agentId: input.agent.agent_id,
           segment: identity.segment,
           rules,
+          sku: input.query.sku ?? null, // PH3-9: SKU scope in the pure chain too
         });
         span.setAttribute('eligible.count', result.eligible.length);
         span.setAttribute(

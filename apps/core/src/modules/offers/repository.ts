@@ -129,8 +129,14 @@ export class OffersRepository {
     if (query.offerId) conditions.push(eq(offers.offer_id, query.offerId));
     if (query.merchantId) conditions.push(eq(offers.merchant_id, query.merchantId));
     if (query.sku) {
+      // PH3-9: 'all' matches everything; a list scope matches members; a
+      // bundle offer also matches any SKU its sku_refs contain (the same
+      // rule as the pure pipeline's skuMatches)
       conditions.push(
-        sql`(${offers.sku_scope} = to_jsonb('all'::text) OR ${offers.sku_scope} @> jsonb_build_array(${query.sku}::text))`,
+        sql`(${offers.sku_scope} = to_jsonb('all'::text)
+          OR ${offers.sku_scope} @> jsonb_build_array(${query.sku}::text)
+          OR (${offers.mechanics}->>'type' = 'bundle'
+              AND ${offers.mechanics}->'sku_refs' @> jsonb_build_array(${query.sku}::text)))`,
       );
     }
     if (query.text) {
