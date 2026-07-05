@@ -23,7 +23,7 @@ export default async function MerchantDetail({ params }: { params: Promise<{ id:
       <h1>{merchant.name}</h1>
       <p>Slug: <code>{merchant.slug}</code> · Status: {merchant.status}</p>
 
-      <p><a href={`/merchants/${merchant.merchant_id}/rules`}>Exclusion rules →</a> · <a href={`/merchants/${merchant.merchant_id}/health`}>Health →</a></p>
+      <p><a href={`/merchants/${merchant.merchant_id}/rules`}>Exclusion rules →</a> · <a href={`/merchants/${merchant.merchant_id}/health`}>Health →</a> · <a href={`/merchants/${merchant.merchant_id}/dashboard`}>Dashboard →</a></p>
       <h2>Commercial configuration</h2>
       <form action={`/api/merchants/${merchant.merchant_id}`} method="post" style={{ display: 'grid', gap: '0.5rem', maxWidth: '24rem' }}>
         <label>Name <input name="name" defaultValue={merchant.name} required /></label>

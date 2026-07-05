@@ -65,7 +65,7 @@ real key is an env change, never a code change — the standing rule).
 | Task | What | Size | Status |
 |---|---|---|---|
 | PH2-1 | B8 guardrails full: margin floor, budget pacing λ, brand rules, points-preference under low λ; `BUDGET_EXHAUSTED` flips reads to `no_offer` visible in analytics within one cycle | L | ✅ done 2026-07-05 |
-| PH2-2 | Merchant dashboard over B19 projections (under-reporting, rejections-with-why, budget burn, conversions) — no new data collection | M | ⬜ |
+| PH2-2 | Merchant dashboard over B19 projections (under-reporting, rejections-with-why, budget burn, conversions) — no new data collection | M |✅ done 2026-07-05 |
 | PH2-6 | Stripe Connect payouts behind `PayoutRail` + payout worker on `SettlementNetted`; same adapter contract test as SimulatedPayouts; env-loader guard refuses live keys until LEAD-2+LEAD-5 resolved | L | ⬜ |
 | PH2-4 | Valet full: wallet-driven errands, mandate in ctx, AWAITING_APPROVAL live, notification/approval loop, re-minted `apr` token to checkout; kill/restart resumes | L | ⬜ |
 | PH2-3 | Wallet UI — six screens (home/balances, linked accounts, mandate, offers-for-you, errand, activity&settlement); expect 2–3 slices | L | ⬜ |

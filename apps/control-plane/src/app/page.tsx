@@ -17,9 +17,10 @@ export default async function Dashboard() {
       <h1>Merited control plane</h1>
       <p>Signed in as {session.email}.</p>
       <ul>
-        <li>Merchants — arrives with MER-8</li>
-        <li>Offers — arrives with MER-9</li>
-        <li>Claims — arrives with MER-10</li>
+        <li><a href="/merchants">Merchants</a></li>
+        <li><a href="/offers">Offers</a></li>
+        <li><a href="/claims">Claims</a></li>
+        <li><a href="/dashboard">Platform dashboard</a></li>
       </ul>
       <form action="/api/logout" method="post">
         <button type="submit">Sign out</button>

@@ -20,7 +20,19 @@ export const REASON_COPY: Record<RejectionReasonCode, string> = {
   LIMIT_EXCEEDED: 'The order breached the mandate’s spending limits.',
 };
 
+/**
+ * PH2-2: read-path guardrail suppressions (SYN-41 `OfferSuppressed`) land in
+ * the same WHY table as verify-path rejections. The two read-path-only codes
+ * get their own copy here; `BUDGET_EXHAUSTED` reuses the §3 line above.
+ */
+export const SUPPRESSION_COPY: Record<string, string> = {
+  BRAND_DENYLIST: 'Your brand rules exclude this offer (denylisted category or term).',
+  MARGIN_CEILING_EXCEEDED: 'The offer gives away more margin than your configured ceiling allows.',
+};
+
 export const explain = (code: string): string =>
-  (REASON_COPY as Record<string, string>)[code] ?? 'No explanation is available for this code.';
+  (REASON_COPY as Record<string, string>)[code] ??
+  SUPPRESSION_COPY[code] ??
+  'No explanation is available for this code.';
 
 export const ALL_REASON_CODES = REJECTION_REASON_CODES;
