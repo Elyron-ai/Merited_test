@@ -46,6 +46,10 @@ export const ErrandEvent = z.discriminatedUnion('type', [
     type: z.literal('APPROVAL_GRANTED'),
     approval_id: Id('apr'),
     mode: Approval.shape.mode,
+    /** PH2-4: the RE-MINTED `apr`-bearing token (same qid, fresh jti) the
+     * errand must carry to checkout — the pre-approval token has apr:null
+     * and dies APPROVAL_MISSING at verify (§6.4). Null on legacy events. */
+    token: z.string().nullable().optional(),
   }),
   z.object({ type: z.literal('APPROVAL_SKIPPED'), reason: z.string().min(1) }),
   z.object({ type: z.literal('APPROVAL_DECLINED') }),

@@ -1,4 +1,6 @@
 import {
+  ApprovalRequestCreate,
+  ApprovalRequestStatus,
   HostedLinkStartRequest,
   HostedLinkVerifyRequest,
   MandateAttenuateRequest,
@@ -24,6 +26,7 @@ import {
   type QuoteGateway,
   type ReMint,
 } from './modules/notifications/approvals.js';
+import { ApprovalRequestsService } from './modules/notifications/approval-requests.js';
 import { PushService, WebPushTransport, type PushTransport } from './modules/notifications/push.js';
 import { generateVapidKeys, type VapidConfig } from './modules/notifications/vapid.js';
 import { PdStore } from './modules/pd-store/pd-store.js';
@@ -64,6 +67,8 @@ export interface WalletServerOptions {
    * reMint wired, approve fails closed with REMINT_FAILED. */
   quoteGateway?: QuoteGateway;
   reMint?: ReMint;
+  /** PH2-4: offer/merchant copy for approval-request push payloads. */
+  quoteCopyFor?(quoteId: string): Promise<{ offer_title: string; merchant_name: string } | null>;
   /** TRIO-17: service token guarding the /internal/directory/* lookup routes
    * the trio's HttpDirectory calls. Routes exist ONLY when this is set. */
   directoryServiceToken?: string;
@@ -125,6 +130,15 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     clock,
     push,
   });
+  const approvalRequests = new ApprovalRequestsService({
+    pool: options.pool,
+    mandates,
+    approvals,
+    quotes: options.quoteGateway ?? new PgQuoteReader(options.pool),
+    clock,
+    push,
+    ...(options.quoteCopyFor ? { quoteCopyFor: options.quoteCopyFor } : {}),
+  });
 
   const app = Fastify();
   void app.register(formbody);
@@ -133,6 +147,9 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   app.addHook('preHandler', async (req, reply) => {
     // TRIO-17: internal directory routes carry their own service-token guard
     if (req.url.startsWith('/internal/directory/')) return;
+    // PH2-4: agent-facing approval requests — no consumer session (the agent
+    // is not the consumer); requesting grants nothing, the mandate decides
+    if (req.url.startsWith('/v1/approval-requests')) return;
     if (PUBLIC.has(req.url.split('?')[0]!)) return;
     const cookie = readCookie(req.headers.cookie, WALLET_SESSION_COOKIE);
     const consumerRef = cookie ? await sessions.validate(cookie) : null;
@@ -320,6 +337,7 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       mandateId: body.mandate_id,
       ...(typeof idempotencyKey === 'string' ? { idempotencyKey } : {}),
     });
+    await approvalRequests.recordDecision((req.params as { id: string }).id, result);
     if (result.outcome === 'approved') return reply.send(result);
     const status = result.outcome === 'QUOTE_NOT_FOUND' ? 404 : 409;
     return reply.code(status).send({ error: { code: result.outcome } });
@@ -333,7 +351,28 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       quoteId: (req.params as { id: string }).id,
       mandateId: body.mandate_id,
     });
+    await approvalRequests.recordDecision((req.params as { id: string }).id, { outcome: 'declined' });
     return reply.send(result);
+  });
+
+  // ── approval requests (PH2-4, §6.6) — agent-facing, sessionless ───────────
+  app.post('/v1/approval-requests', async (req, reply) => {
+    const parsed = ApprovalRequestCreate.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { code: 'APPROVAL_REQUEST_INVALID', detail: parsed.error.issues } });
+    }
+    const request = await approvalRequests.create({
+      quoteId: parsed.data.quote_id,
+      mandateId: parsed.data.mandate_id,
+    });
+    if (!request) return reply.code(404).send({ error: { code: 'QUOTE_OR_MANDATE_NOT_FOUND' } });
+    return reply.code(201).send({ request: ApprovalRequestStatus.parse(request) });
+  });
+
+  app.get('/v1/approval-requests/:quoteId', async (req, reply) => {
+    const request = await approvalRequests.status((req.params as { quoteId: string }).quoteId);
+    if (!request) return reply.code(404).send({ error: { code: 'APPROVAL_REQUEST_NOT_FOUND' } });
+    return reply.send({ request: ApprovalRequestStatus.parse(request) });
   });
 
   // ── trio directory lookups (TRIO-17) ───────────────────────────────────────

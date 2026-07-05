@@ -81,7 +81,9 @@ const fieldsFrom = (event: ErrandEvent): Partial<Record<'quote_id' | 'token' | '
     case 'QUOTE_RECEIVED':
       return { quote_id: event.quote_id, token: event.token };
     case 'APPROVAL_GRANTED':
-      return { approval_id: event.approval_id };
+      // PH2-4: the re-minted apr token replaces the pre-approval one — the
+      // original has apr:null and dies APPROVAL_MISSING at verify (§6.4)
+      return { approval_id: event.approval_id, ...(event.token ? { token: event.token } : {}) };
     case 'CLAIM_VERIFIED':
       return { claim_id: event.claim_id };
     default:

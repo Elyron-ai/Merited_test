@@ -34,6 +34,9 @@ export const OffersQuery = z.object({
   sku: z.string().optional(),
   text: z.string().max(200).optional(),
   consumer_ref: z.string().optional(),
+  /** PH2-4 (§6.6): the consumer's mandate travels in consumer_ctx — quotes
+   * read under it mint approval-required tokens (apr demanded at verify). */
+  mandate_ref: z.string().optional(),
   sub_hash: z.string().optional(),
   member_ref: z.string().optional(),
   hashed_email: z.string().optional(),

@@ -14,6 +14,8 @@ export interface ReadQuery {
   text?: string;
   /** Seeded-T1 handle (§5.3) from the brief, when the consumer gave one. */
   sub_hash?: string;
+  /** PH2-4 (§6.6): the errand's mandate — minted tokens demand approval. */
+  mandate_ref?: string;
 }
 
 /**
@@ -60,6 +62,7 @@ export class QuoteClient {
     return (await this.client()).readOffers({
       ...(query.text ? { text: query.text } : {}),
       ...(query.sub_hash ? { sub_hash: query.sub_hash } : {}),
+      ...(query.mandate_ref ? { mandate_ref: query.mandate_ref } : {}),
     });
   }
 

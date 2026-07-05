@@ -16,16 +16,18 @@
     "valet": "tsx src/cli.ts"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:",
-    "fast-check": "^4.8.0",
-    "@types/pg": "catalog:",
     "@merited/core": "workspace:*",
-    "@merited/trio": "workspace:*",
     "@merited/fake-aurora": "workspace:*",
+    "@merited/signing": "workspace:*",
+    "@merited/trio": "workspace:*",
+    "@merited/wallet": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "fast-check": "^4.8.0",
     "fastify": "catalog:",
-    "tsx": "^4.23.0"
+    "tsx": "^4.23.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",

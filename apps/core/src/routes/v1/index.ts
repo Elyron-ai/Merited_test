@@ -58,6 +58,7 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
   const consumerFrom = (query: OffersQuery) => {
     const consumer = {
       ...(query.consumer_ref ? { consumer_ref: query.consumer_ref as `usr_${string}` } : {}),
+      ...(query.mandate_ref ? { mandate_ref: query.mandate_ref as `mnd_${string}` } : {}),
       ...(query.sub_hash ? { sub_hash: query.sub_hash } : {}),
       ...(query.member_ref ? { member_ref: query.member_ref } : {}),
       ...(query.hashed_email ? { hashed_email: query.hashed_email } : {}),

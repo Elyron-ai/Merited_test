@@ -4,5 +4,6 @@
   "0002_link_attempts.sql": "6a40b7c236041f3ae58fe0043eafc392e0f3bddf69e807a6e9b8560f5c74216b",
   "0003_hosted_link_attempts.sql": "084342585f5e14d46a2c3fec8341595daef9246827a54b86dc71d898ffa8e1d5",
   "0004_mandates.sql": "5f10cc03a59cc748fa6d27ee96bc1fe3e9b06f484b0fbc8f0d71dcd8c742b66b",
-  "0005_approval_idempotency.sql": "942761a277e0f61dbc68195e681aadc5b99f576d2686a51dfcf655c0c9289ab5"
+  "0005_approval_idempotency.sql": "942761a277e0f61dbc68195e681aadc5b99f576d2686a51dfcf655c0c9289ab5",
+  "0006_approval_requests.sql": "b2871859614376ee798363d2b359af6fe14d506105fa41b10f498e90d30a0215"
 }

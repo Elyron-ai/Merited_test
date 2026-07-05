@@ -115,6 +115,9 @@ export class ErrandDriver {
           const read = await this.deps.quotes.readOffers({
             text: term,
             ...(stored.errand.sub_hash ? { sub_hash: stored.errand.sub_hash } : {}),
+            // PH2-4 (§6.6): the mandate travels in consumer_ctx — tokens
+            // minted under it demand an approval before they convert (§6.4)
+            ...(stored.errand.mandate_id ? { mandate_ref: stored.errand.mandate_id } : {}),
           });
           const top = read.quotes.find((q) => q.token !== null && q.price.final.amount <= ceiling);
           if (top) return { type: 'QUOTE_RECEIVED', quote_id: top.quote_id, token: top.token };
@@ -130,14 +133,25 @@ export class ErrandDriver {
           quote_id: quote.quote.quote_id,
           final: quote.quote.price.final,
           expires_at: quote.quote.expires_at,
+          mandate_id: stored.errand.mandate_id as MeritedId<'mnd'> | null,
         });
       }
-      case 'AWAITING_APPROVAL':
-        // Phase 0 never enters here (AutoSkipGate); a wallet gate blocks
-        // until granted/declined/expired. Watchdog still applies:
-        return (await this.quoteExpired(stored))
-          ? { type: 'TIMED_OUT', cause: 'quote expired awaiting approval' }
-          : null;
+      case 'AWAITING_APPROVAL': {
+        // PH2-4: the live wait. Watchdog first, then poll the wallet for the
+        // consumer's decision — null keeps the errand parked (kill/restart
+        // safe: everything here re-derives from Postgres + the clock).
+        if (await this.quoteExpired(stored)) {
+          return { type: 'TIMED_OUT', cause: 'quote expired awaiting approval' };
+        }
+        if (!this.deps.gate.check) return null;
+        const quote = await this.deps.quotes.getQuote(stored.errand.quote_id!);
+        return this.deps.gate.check({
+          quote_id: quote.quote.quote_id,
+          final: quote.quote.price.final,
+          expires_at: quote.quote.expires_at,
+          mandate_id: stored.errand.mandate_id as MeritedId<'mnd'> | null,
+        });
+      }
       case 'APPROVED':
         return (await this.quoteExpired(stored))
           ? { type: 'TIMED_OUT', cause: 'quote expired before execution' }

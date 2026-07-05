@@ -368,9 +368,15 @@ importers:
       '@merited/fake-aurora':
         specifier: workspace:*
         version: link:../fake-aurora
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
       '@merited/trio':
         specifier: workspace:*
         version: link:../trio
+      '@merited/wallet':
+        specifier: workspace:*
+        version: link:../wallet
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0

@@ -206,6 +206,9 @@ export class ReadOffers {
           tier: identity.tier,
           segment: identity.segment,
           consumer_ref: input.consumer?.consumer_ref ?? null,
+          // PH2-4 (§6.6): a mandate in consumer_ctx makes every minted token
+          // approval-demanding — apr is checked at verify (§6.4)
+          mandate_ref: input.consumer?.mandate_ref ?? null,
           listPriceFor: this.deps.listPriceFor,
         });
         span.setAttribute('quotes.count', issued.length);

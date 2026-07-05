@@ -26,6 +26,9 @@ export interface QuoteCtx {
   tier: IdentityTier;
   segment: Segment;
   consumer_ref?: MeritedId<'usr'> | null;
+  /** PH2-4: minting under a mandate — the token carries mandate_ref and
+   * verification demands an approval (`apr`) before it converts (§6.4). */
+  mandate_ref?: MeritedId<'mnd'> | null;
   session_nonce?: string;
   /** SKU list-price source (MER-11's fixture module, wired by CORE-11). */
   listPriceFor(offer: Offer): Money;
@@ -92,7 +95,7 @@ export class QuoteService {
         aid: ctx.agent.agent_id,
         tier: ctx.tier,
         session_nonce: ctx.session_nonce ?? quoteId,
-        quote: { expires_at: isoS(expiresAt), mandate_ref: null },
+        quote: { expires_at: isoS(expiresAt), mandate_ref: ctx.mandate_ref ?? null },
       });
       if (minted.ok) {
         token = minted.minted.token;

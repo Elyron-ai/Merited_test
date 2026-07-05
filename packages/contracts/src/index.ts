@@ -13,6 +13,7 @@ export { AttributionTokenClaims } from './token.js';
 export { IdentityLink } from './identity-link.js';
 export { OfferQuote, quoteExpiryWithinToken } from './quote.js';
 export { Approval, approvalIsQuoteBound } from './approval.js';
+export { ApprovalRequestCreate, ApprovalRequestStatus } from './approval-request.js';
 export { ConversionClaim } from './claim.js';
 export { Mandate, MandateGrantRequest, MandateAttenuateRequest } from './mandate.js';
 export { AgentCtx, ConsumerCtx } from './ctx.js';
