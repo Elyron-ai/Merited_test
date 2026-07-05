@@ -84,3 +84,23 @@ describe('no-refresh-token (FND-15 accept — §6.3 lint rule + negative fixture
     expect(offenders).toEqual([]);
   });
 });
+
+describe('PH1-1 extension — response surfaces are strict like contracts', () => {
+  it('a refresh_token key in a routes file or the OpenAPI document errors', () => {
+    const code = `export const shape = { refresh_token: value };`;
+    expect(lint(code, 'apps/wallet/src/modules/linking/routes.ts')).toHaveLength(1);
+    expect(lint(code, 'apps/core/src/routes/v1/index.ts')).toHaveLength(1);
+    expect(lint(code, 'apps/trio/src/openapi/document.ts')).toHaveLength(1);
+    expect(lint(code, 'apps/control-plane/src/app/api/login/route.ts')).toHaveLength(1);
+  });
+
+  it('fake-aurora is exempt — the external IdP fake speaks real OAuth field names', () => {
+    const code = `export const tokenResponse = { access_token: a, refresh_token: r };`;
+    expect(lint(code, 'apps/fake-aurora/src/idp/routes.ts')).toHaveLength(0);
+  });
+
+  it('linking STORAGE internals (non-route files) still handle tokens; loggers still refuse', () => {
+    expect(lint(`const refresh_token = decrypt(row);`, 'apps/wallet/src/modules/linking/store.ts')).toHaveLength(0);
+    expect(lint(`log.info({ refresh_token });`, 'apps/wallet/src/modules/linking/store.ts')).toHaveLength(1);
+  });
+});

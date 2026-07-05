@@ -35,6 +35,7 @@ export const EligibilityExclusionReason = z.union([
   RejectionReasonCode,
   z.literal('OFFER_NOT_LIVE'),
   z.literal('STACKING_DEDUPED'),
+  z.literal('MERCHANT_EXCLUDED'), // §5.4 merchant-exclusion stage (PH1-3)
 ]);
 export type EligibilityExclusionReason = z.infer<typeof EligibilityExclusionReason>;
 

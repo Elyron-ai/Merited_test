@@ -18,6 +18,16 @@ const isContracts = (filename) =>
   /packages[\\/]contracts[\\/]/.test(filename) && !/contracts[\\/]src[\\/]ports[\\/]/.test(filename);
 const isWalletLinkingInternals = (filename) =>
   /apps[\\/]wallet[\\/]src[\\/]modules[\\/]linking[\\/]/.test(filename);
+// PH1-1 extension (§6.3 accept): route handlers and the OpenAPI document
+// are RESPONSE-SHAPE surfaces — token keys are banned there like contracts.
+// apps/fake-aurora is exempt: it IS the external IdP fake (MER-11/P5) and
+// must speak OAuth's real field names on its own wire.
+const isResponseSurface = (filename) =>
+  !/apps[\\/]fake-aurora[\\/]/.test(filename) &&
+  (/src[\\/]openapi[\\/]/.test(filename) ||
+    /routes\.[jt]sx?$/.test(filename) ||
+    /src[\\/]routes[\\/]/.test(filename) ||
+    /src[\\/]app[\\/].*route\.[jt]sx?$/.test(filename));
 
 const nameOf = (key) => {
   if (!key) return null;
@@ -47,7 +57,7 @@ export default {
     },
     messages: {
       contractToken:
-        "'{{name}}' must not appear in packages/contracts — credentials are never contract types (§6.3)",
+        "'{{name}}' must not appear here — credentials are never contract types or response-surface shapes (contracts, routes, OpenAPI — §6.3)",
       loggedToken:
         "'{{name}}' must not be passed to a logger — token fields are secrets (§6.3); rely on typed fields the redactor covers, or drop it",
     },
@@ -55,7 +65,7 @@ export default {
   },
   create(context) {
     const filename = context.filename ?? context.getFilename();
-    const contracts = isContracts(filename);
+    const contracts = isContracts(filename) || isResponseSurface(filename);
     const accessExempt = isWalletLinkingInternals(filename);
 
     const banned = (name) => {
