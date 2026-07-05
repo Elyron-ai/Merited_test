@@ -84,7 +84,7 @@ real key is an env change, never a code change — the standing rule).
 | PH3-1 | JSON-LD offer feed (anonymous = untokenised + register_to_earn; registered = tokenised via canonical path) | M | ✅ done 2026-07-05 |
 | PH3-2 | Protocol conformance harness + UCP/ACP token-transport mapping (resolve arch §8 Q2 first; Zod schemas contracts-first) | M | ✅ done 2026-07-05 |
 | PH3-3 | UCP ProtocolAdapter (offer-out + callback-in → signed claim; Valet UCP rail) | L | ✅ done 2026-07-05 |
-| PH3-4 | ACP ProtocolAdapter (same shape; Valet ACP rail) | L |
+| PH3-4 | ACP ProtocolAdapter (same shape; Valet ACP rail) | L | ✅ done 2026-07-05 |
 | PH3-5 | Shopify app Grade A (cart-attribute token, orders/paid, CommerceAdapter parity with FakeShop) | L |
 | PH3-6 | Self-serve merchant onboarding, zero manual steps end-to-end | L |
 | PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M |

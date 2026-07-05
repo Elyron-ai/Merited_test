@@ -17,6 +17,8 @@ export { UcpStubAdapter, AcpStubAdapter } from './modules/adapters/protocol/stub
 export { protocolConformanceSuite, fixtureQuote, type ConformanceCase } from './modules/adapters/protocol/harness.js';
 export { UcpAdapter } from './modules/adapters/ucp/adapter.js';
 export { registerUcpCheckoutRoute, type UcpRouteDeps } from './modules/adapters/ucp/routes.js';
+export { AcpAdapter } from './modules/adapters/acp/adapter.js';
+export { registerAcpOrderRoute, type AcpRouteDeps } from './modules/adapters/acp/routes.js';
 export { OffersService, type OfferDraftInput } from './modules/offers/service.js';
 export { OfferPublisher, type BountyInput } from './modules/offers/publisher.js';
 export { TrioCommitmentsClient } from './modules/offers/trio-commitments-client.js';
