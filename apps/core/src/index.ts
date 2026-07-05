@@ -26,3 +26,4 @@ export { IdpRegistry } from './modules/adapters/idp/registry.js';
 export { analyticsProjection, bountyFor } from './modules/analytics/projections/index.js';
 export { MintVsClaimMonitor, type MerchantHealth, type MonitorOptions } from './modules/analytics/mint-vs-claim-monitor.js';
 export { HeadPublicationJob, type HeadPublicationJobDeps } from './modules/audit/head-publication-job.js';
+export { SimulatedPayouts, TrioStatementsClient, settlementPayoutsProjection, type StatementsSource } from './modules/adapters/payouts/simulated.js';

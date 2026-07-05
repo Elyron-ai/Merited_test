@@ -85,6 +85,13 @@
       "when": 1783450002000,
       "tag": "0011_merchant_health",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783450003000,
+      "tag": "0012_payouts",
+      "breakpoints": true
     }
   ]
 }
