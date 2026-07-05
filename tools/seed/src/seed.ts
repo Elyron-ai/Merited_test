@@ -45,6 +45,7 @@ const formatPence = (amount: number): string => `£${(amount / 100).toFixed(2)}`
  */
 const RESET_TARGETS = [
   'core.eligibility_rules',
+  'core.loyalty_credits',
   'core.claims_intake',
   'core.idempotency_keys',
   'core.quotes',

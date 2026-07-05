@@ -18,3 +18,5 @@ export { TrioCommitmentsClient } from './modules/offers/trio-commitments-client.
 export { RulesStore, ruleExcludes, type EligibilityRuleDraft } from './modules/eligibility/exclusions.js';
 export { consumerValueScore, dedupeStacking } from './modules/eligibility/stacking.js';
 export { RulesDecisioner, decisionerFor } from './modules/decisioning/index.js';
+export { FakeAuroraLoyalty } from './modules/adapters/loyalty/fake-aurora.js';
+export { StaticTableLoyalty } from './modules/adapters/loyalty/static-table.js';

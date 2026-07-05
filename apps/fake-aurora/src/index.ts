@@ -6,3 +6,4 @@ export { CATALOGUE, skuByRef, type CatalogueSku } from './shop/catalogue.js';
 export { deliverOrderWebhook, type DeliveryResult, type WebhookDeliveryOptions } from './shop/webhook-sender.js';
 export { createFakeAuroraIdp, type FakeAuroraIdp, type FakeAuroraIdpOptions } from './idp/server.js';
 export { AURORA_IDP_MEMBERS, claimsForScopes, memberBySub, memberByUsername } from './idp/members.js';
+export { createFakeAuroraLoyalty, type FakeAuroraLoyalty } from './loyalty/server.js';

@@ -64,6 +64,13 @@
       "when": 1783430000000,
       "tag": "0008_eligibility_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783450000000,
+      "tag": "0009_loyalty",
+      "breakpoints": true
     }
   ]
 }
