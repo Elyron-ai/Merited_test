@@ -475,12 +475,24 @@ importers:
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/core':
+        specifier: workspace:*
+        version: link:../core
       '@merited/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@merited/fake-aurora':
+        specifier: workspace:*
+        version: link:../fake-aurora
+      '@merited/seed':
+        specifier: workspace:*
+        version: link:../../tools/seed
       '@merited/signing':
         specifier: workspace:*
         version: link:../../packages/signing
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../trio
       '@merited/wallet':
         specifier: workspace:*
         version: link:../wallet
@@ -496,6 +508,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
+      fastify:
+        specifier: 'catalog:'
+        version: 5.9.0
       pg:
         specifier: 'catalog:'
         version: 8.22.0

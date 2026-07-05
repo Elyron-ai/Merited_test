@@ -4,6 +4,10 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newId } from '@merited/contracts';
+import { FakeAuroraIdpAdapter, IdpRegistry } from '@merited/core';
+import { createSimulatedCore, type SimulatedCore } from '@merited/core/testing';
+import { createFakeAuroraIdp, type FakeAuroraIdp } from '@merited/fake-aurora';
+import { createSimulatedTrio, type SimulatedTrio } from '@merited/trio/testing';
 import { FakeSigner } from '@merited/signing';
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
@@ -13,9 +17,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrate } from '../../../packages/events/scripts/migrate.mjs';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — plain-JS script module
+import { migrateCore } from '../../core/scripts/migrate.mjs';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — plain-JS script module
+import { migrateTrio } from '../../trio/scripts/migrate.mjs';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — plain-JS script module
 import { migrateWallet } from '../../wallet/scripts/migrate.mjs';
 import { buildWalletServer } from '../../wallet/src/server.js';
 import { SmtpMailer } from '../../wallet/src/lib/mailer/smtp.js';
+import { runSeed } from '../../../tools/seed/src/seed.js';
+import { AURORA_MEMBERS } from '../../../tools/seed/src/fixtures/aurora.js';
 
 /**
  * PH2-3 slice 1 (screens 1–3): the UI renders ONLY from the wallet API's
@@ -30,8 +42,16 @@ const dbName = `merited_wui_${Date.now().toString(36)}`;
 const UI_PORT = 5850 + Math.floor(Math.random() * 100);
 const UI = `http://127.0.0.1:${UI_PORT}`;
 
+const SERVICE_TOKEN = 'wui-service-token';
+const SIGNER_SECRET = 'trio-test-secret';
+const gold = AURORA_MEMBERS.find((m) => m.loyalty_tier === 'Gold' && m.status === 'active')!;
+
 let admin: pg.Client;
 let pool: pg.Pool;
+let trio: SimulatedTrio;
+let core: SimulatedCore;
+let idp: FakeAuroraIdp;
+let seededMerchant = '';
 let walletApi: FastifyInstance;
 let ui: ChildProcess | null = null;
 let cookie = '';
@@ -67,19 +87,45 @@ beforeAll(async () => {
   await admin.query(`CREATE DATABASE ${dbName} OWNER merited_migrate`);
   const adminUrl = `postgres://merited_migrate:merited_migrate_dev@localhost:5432/${dbName}`;
   await migrate(adminUrl);
+  await migrateCore(adminUrl);
+  await migrateTrio(adminUrl);
   await migrateWallet(adminUrl);
   const appUrl = `postgres://merited_app:merited_app_dev@localhost:5432/${dbName}`;
-  pool = new pg.Pool({ connectionString: appUrl, max: 5 });
+  pool = new pg.Pool({ connectionString: appUrl, max: 10 });
   pool.on('error', () => {});
 
-  // wallet API with the magic link pointing at the UI's /verify relay
+  // screen 4's world: seeded offers on the real trio+core
+  await runSeed({ databaseUrl: appUrl, serviceToken: SERVICE_TOKEN, signerSecret: SIGNER_SECRET, log: () => {} });
+  trio = createSimulatedTrio({ databaseUrl: appUrl, serviceToken: SERVICE_TOKEN, signerSecret: SIGNER_SECRET });
+  const trioUrl = await trio.listen();
+  core = createSimulatedCore({
+    databaseUrl: appUrl,
+    trioBaseUrl: trioUrl,
+    trioServiceToken: SERVICE_TOKEN,
+    signerSecret: SIGNER_SECRET,
+  });
+  const coreUrl = await core.listen();
+  seededMerchant = (await core.merchants.list())[0]!.merchant_id;
+
+  // wallet API with the magic link pointing at the UI's /verify relay,
+  // plus the FakeAurora IdP behind the registry for the link button
   const apiPort = await freePort();
+  const idpIssuer = `http://127.0.0.1:${await freePort()}`;
+  idp = await createFakeAuroraIdp({ issuer: idpIssuer, clientId: 'wui-client', clientSecret: 'wui-secret' });
+  const callbackUrl = `http://127.0.0.1:${apiPort}/v1/links/callback`;
+  const registry = new IdpRegistry();
+  registry.register(
+    'aurora-club',
+    new FakeAuroraIdpAdapter({ issuer: idpIssuer, clientId: 'wui-client', clientSecret: 'wui-secret', redirectUri: callbackUrl }),
+  );
   walletApi = buildWalletServer({
     pool,
     mailer: new SmtpMailer({ host: 'localhost', port: 1025, from: 'noreply@merited.test' }),
     sessionSecret: 'wui-session',
     verifyBaseUrl: `${UI}/verify`,
-    signer: new FakeSigner('wui-secret'),
+    signer: new FakeSigner(SIGNER_SECRET),
+    resolveIdpAdapter: (programme) => registry.resolve(programme),
+    linkCallbackUrl: callbackUrl,
   });
   await walletApi.listen({ port: apiPort, host: '127.0.0.1' });
 
@@ -91,6 +137,7 @@ beforeAll(async () => {
     env: {
       ...process.env,
       MERITED_WALLET_API_URL: `http://127.0.0.1:${apiPort}`,
+      MERITED_CORE_API_URL: coreUrl,
       NODE_ENV: 'production',
     },
     stdio: 'pipe',
@@ -129,7 +176,7 @@ beforeAll(async () => {
   await pool.query(
     `INSERT INTO wallet.identity_links (link_id, consumer_ref, merchant_id, programme, member_ref, sub_hash, scopes)
      VALUES ($1, $2, $3, 'aurora-club', 'am_seed_cyn', $4, '["loyalty_ids","member_pricing"]'::jsonb)`,
-    [newId('lnk'), consumerRef, newId('mer'), 'q'.repeat(64)],
+    [newId('lnk'), consumerRef, seededMerchant, gold.sub_hash],
   );
   await pool.query(
     `INSERT INTO wallet.points_credits (claim_id, consumer_ref, programme, member_ref, points, order_ref_hash, quote_id, gross_pence)
@@ -142,6 +189,9 @@ beforeAll(async () => {
 afterAll(async () => {
   ui?.kill('SIGTERM');
   await walletApi.close();
+  await idp.close();
+  await core.close();
+  await trio.close();
   await pool.end();
   await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
   await admin.end();
@@ -164,6 +214,60 @@ describe('PH2-3 slice 1: screens 1–3 over the wallet API alone', () => {
     expect(anon.headers.get('location')).toContain('/login');
     const { html } = await get('/login');
     expect(html).toContain('sign-in link');
+  });
+
+  it('screen 4 (offers for you): T1 quotes through the ORDINARY agent read API — P5, no backdoor', async () => {
+    const { status, html } = await get('/offers');
+    expect(status).toBe(200);
+    expect(html).toContain('data-tier="T1"'); // the link's sub_hash resolved T1
+    expect(html).toMatch(/£\d+\.\d{2}/); // member pricing in pounds from pence
+  });
+
+  it('screen 2: the link button starts the REAL OIDC dance — browser sent to the brand IdP', async () => {
+    const response = await fetch(`${UI}/api/links/start`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      body: new URLSearchParams({ merchant_id: seededMerchant, programme: 'aurora-club' }).toString(),
+      redirect: 'manual',
+    });
+    expect(response.status).toBe(303);
+    const location = response.headers.get('location')!;
+    expect(location).toContain('/authorize'); // the FakeAurora IdP authorise URL
+    expect(location).toContain('code_challenge'); // PKCE rides from the wallet
+  });
+
+  it('screen 6 (activity): credits and locked-price approvals from ledger-derived rows only', async () => {
+    // an approval the consumer made, joined to its quote's locked price
+    await pool.query(
+      `INSERT INTO core.quotes (quote_id, offer_id, commitment_id, agent_id, tier, segment,
+                                list_amount, final_amount, mechanics_applied, expires_at, inputs_snapshot)
+       VALUES ('qte_00WV1ACT0V0TY000000000001', 'off_00WV1ACT0FFER000000000001', 'com_00WV1ACTC0MM0T00000000001',
+               'agt_00WV1ACTAGENT000000000001', 'T1', 't1-gold-new', 8450, 7183, '[]'::jsonb,
+               now() + interval '10 minutes', '{}'::jsonb)`,
+    );
+    await pool.query(
+      `INSERT INTO wallet.mandates (mandate_id, consumer_ref, agent_id, scopes, limits, merchants,
+                                    data_sharing, pre_authorised_up_to, status, exp, attestation)
+       VALUES ('mnd_00WV1ACTMANDATE0000000001', $1, 'agt_00WV1ACTAGENT000000000001',
+               '["checkout:execute"]'::jsonb,
+               '{"per_txn":{"amount":10000,"currency":"GBP_pence"},"per_month":{"amount":50000,"currency":"GBP_pence"},"categories":[]}'::jsonb,
+               '["*"]'::jsonb, '{"email":false,"purchase_history":false,"loyalty_ids":true}'::jsonb,
+               '{"amount":2000,"currency":"GBP_pence"}'::jsonb, 'active', now() + interval '30 days', 'fake:a')`,
+      [consumerRef],
+    );
+    await pool.query(
+      `INSERT INTO wallet.approvals (approval_id, mandate_id, quote_id, mode, exp, attestation)
+       VALUES ('apr_00WV1ACTAPPR0VED000000001', 'mnd_00WV1ACTMANDATE0000000001',
+               'qte_00WV1ACT0V0TY000000000001', 'explicit', now() + interval '10 minutes', 'fake:b')`,
+    );
+
+    const { status, html } = await get('/activity');
+    expect(status).toBe(200);
+    expect(html).toContain('data-credit="aurora-club"'); // what you earned
+    expect(html).toContain('>84<');
+    expect(html).toContain('data-approval-mode="explicit"'); // the locked price
+    expect(html).toContain('£71.83');
+    expect(html).toContain('No errands yet'); // errand trail arrives with screen 5
   });
 
   it('screen 2 (linked accounts): scopes visible; REVOKE is live and immediate', async () => {

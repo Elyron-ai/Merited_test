@@ -201,7 +201,7 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   // ── session-scoped read models (PH2-3: what the wallet UI renders) ────────
   app.get('/v1/links', async (req) => {
     const { rows } = await options.pool.query(
-      `SELECT link_id, merchant_id, programme, member_ref, scopes, status, linked_at
+      `SELECT link_id, merchant_id, programme, member_ref, sub_hash, scopes, status, linked_at
          FROM wallet.identity_links WHERE consumer_ref = $1 ORDER BY linked_at`,
       [req.consumerRef],
     );
@@ -232,6 +232,53 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       credits: rows,
       balances: [...balances.entries()].map(([programme, points]) => ({ programme, points })),
     };
+  });
+
+  /** PH2-3 screen 5 feed: the consumer's approval requests with the quote's
+   * locked price and deadline (core.quotes is readable in the single-DB
+   * phase — the same seam PgQuoteReader rides). */
+  app.get('/v1/approval-requests', async (req) => {
+    const { rows } = await options.pool.query(
+      `SELECT ar.quote_id, ar.status, ar.mode, ar.approval_id, ar.created_at, ar.decided_at,
+              q.final_amount::int AS final_pence, q.expires_at
+         FROM wallet.approval_requests ar
+         LEFT JOIN core.quotes q ON q.quote_id = ar.quote_id
+        WHERE ar.consumer_ref = $1 ORDER BY ar.created_at DESC LIMIT 50`,
+      [req.consumerRef],
+    );
+    return { requests: rows };
+  });
+
+  /** PH2-3 screen 6: the consumer-visible ledger tail — what the agent did
+   * (ErrandStateChanged, joined to the consumer through their approval
+   * requests), what was approved at which locked price, what was credited.
+   * Ledger + ledger-derived rows only (P1). */
+  app.get('/v1/activity', async (req) => {
+    const { rows: credits } = await options.pool.query(
+      `SELECT claim_id, programme, points::int, quote_id, credited_at
+         FROM wallet.points_credits WHERE consumer_ref = $1`,
+      [req.consumerRef],
+    );
+    const { rows: approvals } = await options.pool.query(
+      `SELECT a.approval_id, a.quote_id, a.mode, a.approved_at, q.final_amount::int AS final_pence
+         FROM wallet.approvals a
+         JOIN wallet.mandates m ON m.mandate_id = a.mandate_id
+         LEFT JOIN core.quotes q ON q.quote_id = a.quote_id
+        WHERE m.consumer_ref = $1`,
+      [req.consumerRef],
+    );
+    const { rows: errands } = await options.pool.query(
+      `SELECT e.body->'data'->>'errand_id' AS errand_id,
+              e.body->'data'->>'to' AS state,
+              e.body->'data'->>'quote_id' AS quote_id,
+              e.body->'data'->>'at' AS at
+         FROM events.events e
+         JOIN wallet.approval_requests ar ON ar.quote_id = e.body->'data'->>'quote_id'
+        WHERE e.type = 'ErrandStateChanged' AND ar.consumer_ref = $1
+        ORDER BY e.seq`,
+      [req.consumerRef],
+    );
+    return { credits, approvals, errands };
   });
 
   app.put('/v1/pd/:key', async (req, reply) => {

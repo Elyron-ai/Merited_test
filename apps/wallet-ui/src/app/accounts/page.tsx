@@ -55,6 +55,13 @@ export default async function Accounts() {
           {links.length === 0 && <tr><td colSpan={5}>No linked programmes.</td></tr>}
         </tbody>
       </table>
+      <h2>Link a programme</h2>
+      <form action="/api/links/start" method="post" style={{ display: 'grid', gap: '0.5rem', maxWidth: '22rem' }}>
+        <label>Merchant id <input name="merchant_id" placeholder="mer_…" required /></label>
+        <label>Programme <input name="programme" defaultValue="aurora-club" required /></label>
+        <button type="submit">Link via the brand&rsquo;s sign-in</button>
+      </form>
+
       <p style={{ maxWidth: '40rem' }}>
         Revoking a link removes the identity signal immediately: the very next offer read
         resolves you at T2/T3 and member pricing disappears — that is the consent working,

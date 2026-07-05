@@ -32,7 +32,8 @@ export default async function Home() {
       <h1>Your wallet</h1>
       <p>
         Signed in as <code>{me.consumer_ref}</code> ·{' '}
-        <a href="/accounts">Linked accounts</a> · <a href="/mandate">Valet mandate</a>
+        <a href="/accounts">Linked accounts</a> · <a href="/mandate">Valet mandate</a> ·{' '}
+        <a href="/offers">Offers for you</a> · <a href="/activity">Activity</a>
       </p>
 
       <h2>Points balances</h2>

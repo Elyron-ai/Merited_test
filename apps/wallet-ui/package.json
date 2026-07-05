@@ -16,13 +16,18 @@
   },
   "devDependencies": {
     "@merited/contracts": "workspace:*",
+    "@merited/core": "workspace:*",
     "@merited/events": "workspace:*",
+    "@merited/fake-aurora": "workspace:*",
+    "@merited/seed": "workspace:*",
     "@merited/signing": "workspace:*",
+    "@merited/trio": "workspace:*",
     "@merited/wallet": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "fastify": "catalog:",
     "pg": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
