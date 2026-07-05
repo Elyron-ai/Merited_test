@@ -11,4 +11,5 @@ export { LinkService } from './modules/linking/link-service.js';
 export { MandateService } from './modules/mandates/mandate-service.js';
 export { ApprovalsService, PgQuoteReader } from './modules/notifications/approvals.js';
 export { PushService, CapturingPushTransport, WebPushTransport } from './modules/notifications/push.js';
+export { pointsCreditProjection, pointsForGross, type PointsCreditDeps } from './modules/loyalty/points-credit.js';
 export { generateVapidKeys, vapidFromEnv, type VapidConfig } from './modules/notifications/vapid.js';

@@ -58,7 +58,7 @@ real key is an env change, never a code change — the standing rule).
 | **TRIO-17** | Live directory wiring: replace the fixture `TrioDirectory` with the HTTP client hitting wallet approval/mandate lookup endpoints (attestations still verified before trust). Wallet needs the lookup endpoints; trio needs the client. Needed by the Phase-2 gate mapping (Act-2 negatives). | S | ✅ done 2026-07-05 |
 | **XC-13** | Phase-1 hardening review pack `docs/reviews/ph1-hardening.md` (feeds LEAD-5): token-storage checklist, lint-rule evidence, rotation-runbook item, head-publication check, and the EXECUTED hosting decision (Q5 — founder). | S (doc) + Q5 (F) | 🚧 pack assembled 2026-07-05; awaits LEAD-5 sign-off + Q5 |
 | **XC-11** | Weekly plan-state sweep 2 (Accept completes) | — | ⬜ due 2026-07-11 |
-| Production wiring seams left deliberately open in Phase 1: send-on-quote push trigger (production caller of `PushService.sendQuoteNotification` — lands with PH2-4/PH2-11); points-credit production consumer (= PH2-10); native-Ed25519 KMS upgrade (LEAD-5 ratifies). | — | — | tracked below |
+| Production wiring seams left deliberately open in Phase 1: send-on-quote push trigger (production caller of `PushService.sendQuoteNotification` — lands with PH2-4/PH2-11); points-credit production consumer ✅ closed by PH2-10 (2026-07-05); native-Ed25519 KMS upgrade (LEAD-5 ratifies). | — | — | tracked below |
 
 ### C1 · Phase 2 — Optimiser & scale (Q1 27)
 
@@ -71,7 +71,7 @@ real key is an env change, never a code change — the standing rule).
 | PH2-3 | Wallet UI — six screens (home/balances, linked accounts, mandate, offers-for-you, errand, activity&settlement); expect 2–3 slices | L | ⬜ |
 | PH2-5 | Valet LLM brief-interpreter + `VALET_DETERMINISTIC=1` scripted fallback | M | ⬜ |
 | PH2-9 | 1pd enrichment: consented pd → `DecisionCtx` iff `mandate.data_sharing` permits; revocation strips on next read; never in agent-facing responses (lint+test) | M | ⬜ |
-| PH2-10 | Loyalty points-credit flow on wallet-path `ConversionVerified` (idempotent per claim; walletless credits nothing) | M | ⬜ |
+| PH2-10 | Loyalty points-credit flow on wallet-path `ConversionVerified` (idempotent per claim; walletless credits nothing) | M |✅ done 2026-07-05 (screen rendering = PH2-3) |
 | PH2-8 | Feature assembly + training pipeline (`apps/ml-decisioner/training/`, Python; ledger exhaust only; LEAD-4 synthetic traffic if thin) | M | ⬜ |
 | PH2-7 | ML sidecar via `Decisioner` HTTP impl + timeout fallback; CI decisioner-swap job diffs schemas (must be empty) | L | ⬜ |
 | PH2-11 | Demo Act 2 — all 9 §10 steps incl. both negative cases on camera; one trace brief→ledger | L | ⬜ |
