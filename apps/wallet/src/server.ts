@@ -3,6 +3,7 @@ import {
   HostedLinkVerifyRequest,
   MandateAttenuateRequest,
   MandateGrantRequest,
+  PushSubscription,
   type IdentityProviderAdapter,
   type LoyaltyLookup,
   type Mailer,
@@ -17,6 +18,8 @@ import { HostedLinkService } from './modules/linking/hosted/hosted-link-service.
 import { LinkTokenStore } from './modules/linking/link-token-store.js';
 import { MandateService } from './modules/mandates/mandate-service.js';
 import { MandateWideningError } from './modules/mandates/attenuation.js';
+import { PushService, WebPushTransport, type PushTransport } from './modules/notifications/push.js';
+import { generateVapidKeys, type VapidConfig } from './modules/notifications/vapid.js';
 import { PdStore } from './modules/pd-store/pd-store.js';
 import { FakeCrypter, FakeSigner, type Crypter, type Signer } from '@merited/signing';
 
@@ -46,6 +49,10 @@ export interface WalletServerOptions {
   /** PH1-16: signs mandate/approval attestations (platform attests in Ph 1).
    * FakeSigner in dev/test; the real Ed25519 signer via factory in prod. */
   signer?: Signer;
+  /** PH1-17: VAPID keys (env via `vapidFromEnv` in prod; ephemeral dev keys
+   * when omitted) and the push delivery seam (CapturingPushTransport in CI). */
+  vapid?: VapidConfig;
+  pushTransport?: PushTransport;
 }
 
 const readCookie = (header: string | undefined, name: string): string | undefined =>
@@ -88,6 +95,12 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   const mandates = new MandateService({
     pool: options.pool,
     signer: options.signer ?? new FakeSigner('wallet-mandate-dev'),
+    clock,
+  });
+  const push = new PushService({
+    pool: options.pool,
+    transport: options.pushTransport ?? new WebPushTransport(),
+    vapid: options.vapid ?? { ...generateVapidKeys(), subject: 'mailto:dev@merited.test' },
     clock,
   });
 
@@ -270,6 +283,16 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   app.post('/v1/mandates/:id/revoke', async (req, reply) => {
     const revoked = await mandates.revoke({ mandateId: (req.params as { id: string }).id });
     return reply.send({ revoked });
+  });
+
+  // ── web push (PH1-17, B25) ─────────────────────────────────────────────────
+  app.post('/v1/push/subscriptions', async (req, reply) => {
+    const parsed = PushSubscription.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { code: 'PUSH_SUBSCRIPTION_INVALID' } });
+    }
+    await push.register(req.consumerRef, parsed.data);
+    return reply.code(201).send({ ok: true });
   });
 
   return app;

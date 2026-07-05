@@ -16,22 +16,25 @@
     "verify-chain": "true"
   },
   "devDependencies": {
+    "@merited/core": "workspace:*",
+    "@merited/fake-aurora": "workspace:*",
     "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:",
     "@types/nodemailer": "^6.4.16",
     "@types/pg": "catalog:",
+    "@types/web-push": "^3.6.4",
     "fast-check": "^4.8.0",
-    "@merited/fake-aurora": "workspace:*",
-    "@merited/core": "workspace:*"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
+    "@fastify/formbody": "^8.0.1",
     "@merited/contracts": "workspace:*",
-    "nodemailer": "^6.9.16",
-    "@merited/signing": "workspace:*",
-    "pg": "catalog:",
-    "fastify": "catalog:",
     "@merited/events": "workspace:*",
-    "@fastify/formbody": "^8.0.1"
+    "@merited/signing": "workspace:*",
+    "fastify": "catalog:",
+    "nodemailer": "^6.9.16",
+    "pg": "catalog:",
+    "web-push": "^3.6.7",
+    "zod": "catalog:"
   }
 }
