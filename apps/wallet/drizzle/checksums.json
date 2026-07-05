@@ -1,3 +1,4 @@
 {
-  "0000_link_tokens.sql": "912530cbc517d6d065a1fbf2a13a8463e57a01ba40d845686ea470327f2bef5a"
+  "0000_link_tokens.sql": "912530cbc517d6d065a1fbf2a13a8463e57a01ba40d845686ea470327f2bef5a",
+  "0001_wallet_core.sql": "d8bec4223478dc45bc6bf0c7db5d9ae19d97e4f93cf33b26f18d4720aef231d9"
 }

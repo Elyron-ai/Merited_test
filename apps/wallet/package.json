@@ -28,6 +28,7 @@
     "@merited/contracts": "workspace:*",
     "nodemailer": "^6.9.16",
     "@merited/signing": "workspace:*",
-    "pg": "catalog:"
+    "pg": "catalog:",
+    "fastify": "catalog:"
   }
 }

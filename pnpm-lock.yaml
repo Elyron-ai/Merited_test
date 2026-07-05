@@ -389,6 +389,9 @@ importers:
       '@merited/signing':
         specifier: workspace:*
         version: link:../../packages/signing
+      fastify:
+        specifier: 'catalog:'
+        version: 5.9.0
       nodemailer:
         specifier: ^6.9.16
         version: 6.10.1
