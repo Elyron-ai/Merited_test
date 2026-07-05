@@ -39,3 +39,4 @@ export class RandomDecisioner implements Decisioner {
 
 export { RulesDecisioner, type RulesDecisionerOptions } from './rules-decisioner.js';
 export { decisionerFor } from './registry.js';
+export { HttpDecisioner, type HttpDecisionerOptions } from './http-decisioner.js';

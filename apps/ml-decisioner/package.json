@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --passWithNoTests",
-    "train": "python3 training/train.py"
+    "train": "python3 training/train.py",
+    "sidecar": "python3 sidecar/serve.py"
   },
   "devDependencies": {
     "@merited/contracts": "workspace:*",

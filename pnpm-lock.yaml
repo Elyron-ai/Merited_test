@@ -187,6 +187,9 @@ importers:
       '@merited/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@merited/seed':
+        specifier: workspace:*
+        version: link:../../tools/seed
       '@merited/trio':
         specifier: workspace:*
         version: link:../trio
