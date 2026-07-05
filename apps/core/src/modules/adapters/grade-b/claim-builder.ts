@@ -39,11 +39,23 @@ export const buildSignedClaim = async (
  * trio, not the adapter, decides trust). Returns null for opaque garbage. */
 export const decodeTokenClaims = (token: string): AttributionTokenClaims | null => {
   const parts = token.split('.');
-  if (parts.length !== 5) return null;
   try {
-    return AttributionTokenClaims.parse(
-      JSON.parse(Buffer.from(parts[3]!, 'base64url').toString('utf8')),
-    );
+    // Phase-0 pseudo-token: v4.public.fake.<claims-b64>.<sig>
+    if (parts.length === 5) {
+      return AttributionTokenClaims.parse(
+        JSON.parse(Buffer.from(parts[3]!, 'base64url').toString('utf8')),
+      );
+    }
+    // Real PASETO v4.public (PH1-27): payload = JSON({mc: claims}) with a
+    // 64-byte Ed25519 signature appended. This is METADATA extraction only —
+    // no verification happens or is implied here; the trio's own mint record
+    // and signature check remain the sole authority (SYN-8).
+    if (parts.length === 3 && parts[0] === 'v4' && parts[1] === 'public') {
+      const raw = Buffer.from(parts[2]!, 'base64url');
+      const payload = JSON.parse(raw.subarray(0, raw.length - 64).toString('utf8')) as { mc?: unknown };
+      return AttributionTokenClaims.parse(payload.mc);
+    }
+    return null;
   } catch {
     return null;
   }

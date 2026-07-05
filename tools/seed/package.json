@@ -28,6 +28,7 @@
     "@merited/core": "workspace:*",
     "@merited/trio": "workspace:*",
     "argon2": "^0.44.0",
-    "pg": "catalog:"
+    "pg": "catalog:",
+    "@merited/signing": "workspace:*"
   }
 }

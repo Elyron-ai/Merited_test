@@ -8,3 +8,7 @@ export { MagicLinkAuth } from './auth/magic-link.js';
 export { SessionStore, WALLET_SESSION_COOKIE } from './auth/session.js';
 export { PdStore } from './modules/pd-store/pd-store.js';
 export { LinkService } from './modules/linking/link-service.js';
+export { MandateService } from './modules/mandates/mandate-service.js';
+export { ApprovalsService, PgQuoteReader } from './modules/notifications/approvals.js';
+export { PushService, CapturingPushTransport, WebPushTransport } from './modules/notifications/push.js';
+export { generateVapidKeys, vapidFromEnv, type VapidConfig } from './modules/notifications/vapid.js';

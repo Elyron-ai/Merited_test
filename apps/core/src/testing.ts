@@ -34,6 +34,9 @@ export interface SimulatedCoreOptions {
   listPriceFor?(offer: Offer): Money;
   /** PH1-4: registry name (rules | passthrough | random:<seed>); default rules. */
   decisioner?: string;
+  /** PH1-27: inject the REAL Ed25519 signer (shared with the trio) so claim
+   * signatures verify on real rails; FakeSigner(signerSecret) otherwise. */
+  signer?: import('@merited/signing').Signer;
 }
 
 export interface SimulatedCore {
@@ -59,7 +62,7 @@ export interface SimulatedCore {
 export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCore => {
   const pool = new pg.Pool({ connectionString: options.databaseUrl, max: 10 });
   pool.on('error', () => {});
-  const signer = new FakeSigner(options.signerSecret);
+  const signer = options.signer ?? new FakeSigner(options.signerSecret);
   const trioTarget = { baseUrl: options.trioBaseUrl, serviceToken: options.trioServiceToken };
 
   const repository = new OffersRepository(drizzle(pool));

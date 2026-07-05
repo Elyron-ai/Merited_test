@@ -644,12 +644,18 @@ importers:
       '@merited/seed':
         specifier: workspace:*
         version: link:../seed
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
       '@merited/trio':
         specifier: workspace:*
         version: link:../../apps/trio
       '@merited/valet':
         specifier: workspace:*
         version: link:../../apps/valet
+      '@merited/wallet':
+        specifier: workspace:*
+        version: link:../../apps/wallet
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -693,6 +699,9 @@ importers:
       '@merited/core':
         specifier: workspace:*
         version: link:../../apps/core
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
       '@merited/trio':
         specifier: workspace:*
         version: link:../../apps/trio

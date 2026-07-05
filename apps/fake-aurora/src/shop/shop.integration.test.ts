@@ -86,9 +86,9 @@ describe('FakeShop storefront (MER-11 accept)', () => {
       .update(webhookSignaturePayload(timestamp, delivery.raw), 'utf8')
       .digest('hex');
     expect(delivery.headers[WEBHOOK_SIGNATURE_HEADER]).toBe(expected);
-    // idempotency key = order number; traceparent forwarded (§8 one trace)
+    // idempotency key = shop domain : order number (scoped per store, PH1-27)
     const payload = FakeShopOrderWebhook.parse(JSON.parse(delivery.raw));
-    expect(delivery.headers[IDEMPOTENCY_KEY_HEADER]).toBe(String(payload.order.number));
+    expect(delivery.headers[IDEMPOTENCY_KEY_HEADER]).toBe(`${payload.shop_domain}:${payload.order.number}`);
     // trace forwarding is otel-instrumentation's job (proven in MER-12's e2e)
     expect(payload.order.attribution.merited_token).toBe('v4.public.fake.tok.sig');
     expect(payload.order.total.amount_minor).toBe(8450);

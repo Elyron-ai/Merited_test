@@ -76,7 +76,8 @@ export const createFakeShop = (options: FakeShopOptions): FastifyInstance => {
       delivery = await deliverOrderWebhook(order, {
         adapterUrl: options.adapterUrl,
         secret: options.webhookSecret,
-        idempotencyKey: String(order.order.number),
+        // scoped by shop domain: two stores' order #1001 are DIFFERENT orders
+        idempotencyKey: `${options.shopDomain}:${order.order.number}`,
       });
     }
 

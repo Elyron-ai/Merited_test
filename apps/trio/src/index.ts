@@ -3,3 +3,4 @@
 // PH1-24…26, behind the unchanged contract suite).
 export { createTrioServer } from './shared/server.js';
 export { systemClock, type Clock } from './shared/clock.js';
+export { PgKeyStore } from './shared/pg-key-store.js';

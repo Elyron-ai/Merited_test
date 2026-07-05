@@ -22,6 +22,8 @@ export interface SeedOptions {
   resetDatabaseUrl?: string;
   serviceToken?: string;
   signerSecret?: string;
+  /** PH1-27: inject the REAL signer so the seeded CORs/keys verify on real rails. */
+  signer?: import('@merited/signing').Signer;
   log?: (line: string) => void;
 }
 
@@ -96,13 +98,14 @@ export const runSeed = async (options: SeedOptions): Promise<SeedResult> => {
   let trio: SimulatedTrio | null = null;
   let core: SimulatedCore | null = null;
   try {
-    trio = createSimulatedTrio({ databaseUrl: options.databaseUrl, serviceToken, signerSecret });
+    trio = createSimulatedTrio({ databaseUrl: options.databaseUrl, serviceToken, signerSecret, ...(options.signer ? { signer: options.signer } : {}) });
     const trioUrl = await trio.listen();
     core = createSimulatedCore({
       databaseUrl: options.databaseUrl,
       trioBaseUrl: trioUrl,
       trioServiceToken: serviceToken,
       signerSecret,
+      ...(options.signer ? { signer: options.signer } : {}),
     });
 
     // 1. Merchant — fixed ID; on re-run the existing record is kept as-is.

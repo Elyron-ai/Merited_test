@@ -14,7 +14,8 @@
     "test": "vitest run --passWithNoTests",
     "act1": "tsx src/bootstrap.ts",
     "act1:bare": "tsx src/act1.ts",
-    "gate:0": "tsx src/gate0.ts"
+    "gate:0": "tsx src/gate0.ts",
+    "e2e:phase1": "tsx src/e2e-phase1.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -34,6 +35,8 @@
     "pg": "catalog:",
     "@merited/events": "workspace:*",
     "@merited/otel": "workspace:*",
-    "@opentelemetry/api": "catalog:"
+    "@opentelemetry/api": "catalog:",
+    "@merited/wallet": "workspace:*",
+    "@merited/signing": "workspace:*"
   }
 }
