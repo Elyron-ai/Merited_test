@@ -237,9 +237,9 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   /** PH2-3 screen 5 feed: the consumer's approval requests with the quote's
    * locked price and deadline (core.quotes is readable in the single-DB
    * phase — the same seam PgQuoteReader rides). */
-  app.get('/v1/approval-requests', async (req) => {
+  app.get('/v1/me/approval-requests', async (req) => {
     const { rows } = await options.pool.query(
-      `SELECT ar.quote_id, ar.status, ar.mode, ar.approval_id, ar.created_at, ar.decided_at,
+      `SELECT ar.quote_id, ar.mandate_id, ar.status, ar.mode, ar.approval_id, ar.created_at, ar.decided_at,
               q.final_amount::int AS final_pence, q.expires_at
          FROM wallet.approval_requests ar
          LEFT JOIN core.quotes q ON q.quote_id = ar.quote_id
