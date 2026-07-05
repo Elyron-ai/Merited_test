@@ -24,7 +24,7 @@ import { migrate } from '../../../../../packages/events/scripts/migrate.mjs';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — plain-JS script module
 import { migrateTrio } from '../../../../trio/scripts/migrate.mjs';
-import { PassthroughDecisioner } from '../decisioning/index.js';
+import { decisionerFor, PassthroughDecisioner } from '../decisioning/index.js';
 import { NoopGuardrails } from '../guardrails/index.js';
 import { IdentityStore } from '../identity/store.js';
 import { MerchantsService } from '../merchants/service.js';
@@ -46,6 +46,7 @@ let admin: pg.Client;
 let pool: pg.Pool;
 let trio: SimulatedTrio;
 let readOffers: ReadOffers;
+let baseDeps: ConstructorParameters<typeof ReadOffers>[0];
 
 const commercial: MerchantCommercial = {
   take_rate_bps: 2000,
@@ -119,7 +120,7 @@ beforeAll(async () => {
   await publisher.publish(displayOnly.offer_id); // no bounty, no COR
   await offers.createDraft(mkOffer('Unpublished draft'));
 
-  readOffers = new ReadOffers({
+  baseDeps = {
     repository,
     identity: new IdentityStore(pool),
     decisioner: new PassthroughDecisioner(),
@@ -131,7 +132,8 @@ beforeAll(async () => {
     clock: { now: () => new Date() },
     commitmentStatusFor: (cid) => commitmentsClient.status(cid),
     listPriceFor: () => pence(8450),
-  });
+  };
+  readOffers = new ReadOffers(baseDeps);
 });
 
 afterAll(async () => {
@@ -196,6 +198,51 @@ describe('readOffers pipeline assembly (CORE-11 accept)', () => {
       query: { merchant_id: newId('mer') },
     });
     expect(byMerchant.quotes).toHaveLength(0);
+  });
+
+  it('PH1-4 accept: swapping RulesDecisioner for RandomDecisioner changes ranking ONLY — no schema/API diffs', async () => {
+    // (re-used verbatim at the Phase-2 gate for the ML sidecar swap)
+    await pool.query(
+      `INSERT INTO core.aurora_club_members (member_ref, sub_hash, loyalty_tier, status) VALUES
+       ('AUR-9002', 'swap-proof-gold', 'Gold', 'active')`,
+    );
+    const run = async (name: string) => {
+      const instance = new ReadOffers({ ...baseDeps, decisioner: decisionerFor(name) });
+      const response = await instance.read({
+        agent: { agent_id: agentId },
+        consumer: { sub_hash: 'swap-proof-gold' }, // T1 → two payable quotes
+        query: {},
+      });
+      expect(OfferReadResponse.parse(response)).toEqual(response); // schema identical
+      return response;
+    };
+    const rules = await run('rules');
+    // find the first seed whose shuffle disagrees with rules order — the
+    // PRNG is fixed, so this walk is deterministic run to run
+    let random = await run('random:1');
+    for (const seed of [2, 3, 4, 5, 6]) {
+      if (
+        random.quotes.map((q) => q.offer_id).join() !== rules.quotes.map((q) => q.offer_id).join()
+      )
+        break;
+      random = await run(`random:${seed}`);
+    }
+
+    // every NON-ORDERING field identical: normalise away per-mint volatility
+    // (fresh quote ids/tokens/expiries are minted per read BY DESIGN)
+    const normalise = (response: typeof rules) =>
+      response.quotes
+        .map(({ quote_id: _q, token, expires_at: _e, ...rest }) => ({
+          ...rest,
+          payable: token !== null,
+        }))
+        .sort((a, b) => (a.offer_id < b.offer_id ? -1 : 1));
+    expect(normalise(random)).toEqual(normalise(rules));
+
+    // …and ranking is genuinely what changed
+    expect(random.quotes.map((q) => q.offer_id)).not.toEqual(
+      rules.quotes.map((q) => q.offer_id),
+    );
   });
 
   it('a T1 consumer signal unlocks the tier-gated offer through the same pipeline', async () => {

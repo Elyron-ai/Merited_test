@@ -13,6 +13,8 @@ export const loadCoreEnv = (source: Record<string, string | undefined> = process
       MERITED_DATABASE_URL: z.string().url(),
       MERITED_REDIS_URL: z.string().url(),
       MERITED_CORE_PORT: z.coerce.number().int().positive().default(3100),
+      /** PH1-4: config-selected decisioner (rules | passthrough | random:<seed>). */
+      MERITED_DECISIONER: z.string().default('rules'),
     },
     source,
   );

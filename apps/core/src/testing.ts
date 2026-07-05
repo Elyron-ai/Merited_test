@@ -8,7 +8,7 @@ import { GradeBOrderProcessor } from './modules/adapters/grade-b/processor.js';
 import { registerClaimsRoutes } from './modules/adapters/grade-b/claims-routes.js';
 import { registerGradeBWebhook } from './modules/adapters/grade-b/routes.js';
 import { AgentsService } from './modules/agents/service.js';
-import { PassthroughDecisioner } from './modules/decisioning/index.js';
+import { decisionerFor } from './modules/decisioning/index.js';
 import { NoopGuardrails } from './modules/guardrails/index.js';
 import { IdentityStore } from './modules/identity/store.js';
 import { MerchantsService } from './modules/merchants/service.js';
@@ -31,6 +31,8 @@ export interface SimulatedCoreOptions {
   signerSecret: string;
   quoteTtlS?: number;
   listPriceFor?(offer: Offer): Money;
+  /** PH1-4: registry name (rules | passthrough | random:<seed>); default rules. */
+  decisioner?: string;
 }
 
 export interface SimulatedCore {
@@ -83,7 +85,7 @@ export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCor
   const readOffers = new ReadOffers({
     repository,
     identity: new IdentityStore(pool),
-    decisioner: new PassthroughDecisioner(),
+    decisioner: decisionerFor(options.decisioner ?? 'rules'),
     guardrails: new NoopGuardrails(),
     quotes,
     clock: { now: () => new Date() },

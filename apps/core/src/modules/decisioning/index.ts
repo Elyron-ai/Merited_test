@@ -36,3 +36,6 @@ export class RandomDecisioner implements Decisioner {
       .map(({ entry, key }) => ({ ...entry, score: key }));
   }
 }
+
+export { RulesDecisioner, type RulesDecisionerOptions } from './rules-decisioner.js';
+export { decisionerFor } from './registry.js';
