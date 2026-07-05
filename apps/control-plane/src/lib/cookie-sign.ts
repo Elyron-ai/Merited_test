@@ -40,9 +40,14 @@ export const verifySessionCookie = async (value: string, secret: string): Promis
 export const sessionSecret = (): string =>
   process.env['CONTROL_PLANE_SESSION_SECRET'] ?? 'control-plane-dev-secret';
 
-/** Paths reachable without a session (everything else is guarded). */
+/** Paths reachable without a session (everything else is guarded).
+ * `/signup` is PH3-6's public self-serve onboarding — permitted from
+ * Phase 3 (§11 excluded it only before then); the operator dashboard
+ * stays fully session-gated. */
 export const isPublicPath = (pathname: string): boolean =>
   pathname === '/login' ||
   pathname === '/api/login' ||
+  pathname === '/signup' ||
+  pathname === '/api/signup' ||
   pathname === '/favicon.ico' ||
   pathname.startsWith('/_next/');
