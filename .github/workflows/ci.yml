@@ -187,14 +187,17 @@ jobs:
       - if: matrix.target == 'simulator'
         run: pnpm trio:contract-test
       - if: matrix.target == 'real-http'
+        # PH1-24: the real-http leg runs REAL crypto — Ed25519 custody over
+        # fake-kms; the suite signs claims through the trio's own
+        # custodied-key signing call. This is the §7 acceptance posture.
         run: |
-          MERITED_TRIO_SERVICE_TOKEN=ci-real-http-token node apps/trio/scripts/serve.mjs &
+          TRIO_CRYPTO=ed25519 MERITED_TRIO_SERVICE_TOKEN=ci-real-http-token node apps/trio/scripts/serve.mjs &
           for i in $(seq 1 60); do
             curl -sf http://127.0.0.1:4590/healthz > /dev/null && break; sleep 1;
           done
           TRIO_TARGET_URL=http://127.0.0.1:4590 \
           MERITED_TRIO_SERVICE_TOKEN=ci-real-http-token \
-          MERITED_TEST_SIGNER_SECRET=trio-test-secret \
+          MERITED_TEST_CRYPTO=ed25519 \
           pnpm trio:contract-test
       - if: always()
         run: docker compose down -v

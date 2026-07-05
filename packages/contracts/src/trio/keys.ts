@@ -20,6 +20,23 @@ export const MerchantKeyResponse = z.object({
 });
 export type MerchantKeyResponse = z.infer<typeof MerchantKeyResponse>;
 
+/** Custodied-key SIGNING call (PH1-24, XC.7's "custodied-key signing
+ * calls"): the adapter/harness sends the canonical payload, the signature
+ * comes back — the private key never crosses the wire. Sits behind the
+ * service token; per-caller authorisation is SYN-24's Phase-1 hardening
+ * item (mTLS/scoped service tokens), flagged for LEAD-5. */
+export const MerchantKeySignRequest = z.object({
+  payload: z.string().min(1),
+});
+export type MerchantKeySignRequest = z.infer<typeof MerchantKeySignRequest>;
+
+export const MerchantKeySignResponse = z.object({
+  signing_key_ref: z.string().min(1),
+  signature: z.string().min(1),
+});
+export type MerchantKeySignResponse = z.infer<typeof MerchantKeySignResponse>;
+
 export interface MerchantKeyService {
   issueMerchantKey(request: MerchantKeyRequest): Promise<MerchantKeyResponse>;
+  signForMerchant(merchantId: string, request: MerchantKeySignRequest): Promise<MerchantKeySignResponse>;
 }

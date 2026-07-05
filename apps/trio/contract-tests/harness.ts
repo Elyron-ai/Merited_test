@@ -10,8 +10,9 @@ import {
   type CommitmentDraft,
   type Mandate,
 } from '@merited/contracts';
+import { verify as edVerify, createPublicKey } from 'node:crypto';
 import { canonicalJson } from '@merited/events';
-import { FakeSigner, type Signer } from '@merited/signing';
+import { Ed25519Signer, FakeSigner, LocalAwsKms, ensureMasterKey, type Signer } from '@merited/signing';
 import type pg from 'pg';
 
 /**
@@ -33,8 +34,13 @@ import type pg from 'pg';
  *    proves that path full-dress. All directory-FREE negatives (including
  *    the SYN-8 APPROVAL_MISSING guard) still run remotely.
  *  - The signer comes from `MERITED_TEST_SIGNER_SECRET` (FakeSigner in
- *    Phase 0). PH1-30 adds a real-Ed25519 branch HERE — a harness change,
- *    never a test-file change (XC-7 zero-edit rule).
+ *    Phase 0). `MERITED_TEST_CRYPTO=ed25519` selects the PH1-24/30 REAL
+ *    branch: in-process, the harness constructs the Ed25519 signer and
+ *    shares the instance with the trio (one custody); remotely, claim
+ *    signing goes through the trio's own custodied-key signing call
+ *    (`POST /trio/keys/merchant/:id/sign`) and verification against the
+ *    issued public key — a harness change, never a test-file change
+ *    (XC-7 zero-edit rule).
  */
 
 /** Wire conventions the suite locks from the OUTSIDE (never imported). */
@@ -71,8 +77,64 @@ export interface HttpResult {
 
 const ADMIN = 'postgres://merited_admin:merited_dev@localhost:5432/merited';
 
+/** Remote real-crypto signing: the custodied-key signing call — the suite
+ * signs claims through the trio's own custody, exactly as MER-4's adapter
+ * does; verification checks against the issued public key. */
+class RemoteCustodySigner implements Signer {
+  constructor(
+    private readonly baseUrl: string,
+    private readonly serviceToken: string,
+  ) {}
+
+  private async call(path: string, body: unknown): Promise<unknown> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-merited-service-token': this.serviceToken },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`custody call ${path} failed: ${response.status}`);
+    return response.json();
+  }
+
+  private merchantId(keyRef: string): string {
+    const match = /^merchant\/(.+)$/.exec(keyRef);
+    if (!match) throw new Error(`RemoteCustodySigner signs merchant refs only, got ${keyRef}`);
+    return match[1]!;
+  }
+
+  async sign(keyRef: string, payload: string): Promise<string> {
+    const result = (await this.call(`/trio/keys/merchant/${this.merchantId(keyRef)}/sign`, {
+      payload,
+    })) as { signature: string };
+    return result.signature;
+  }
+
+  async getPublicKey(keyRef: string): Promise<string> {
+    const result = (await this.call('/trio/keys/merchant', {
+      merchant_id: this.merchantId(keyRef),
+    })) as { public_key: string };
+    return result.public_key;
+  }
+
+  async verify(keyRef: string, payload: string, signature: string): Promise<boolean> {
+    if (!signature.startsWith('ed25519:')) return false;
+    const publicKey = (await this.getPublicKey(keyRef)).replace(/^ed25519-pub:/, '');
+    try {
+      return edVerify(
+        null,
+        Buffer.from(payload, 'utf8'),
+        createPublicKey({ key: Buffer.from(publicKey, 'base64url'), format: 'der', type: 'spki' }),
+        Buffer.from(signature.slice('ed25519:'.length), 'base64url'),
+      );
+    } catch {
+      return false;
+    }
+  }
+}
+
 export const createTarget = async (): Promise<TrioTarget> => {
-  const signer = new FakeSigner(process.env['MERITED_TEST_SIGNER_SECRET'] ?? 'trio-test-secret');
+  const realCrypto = process.env['MERITED_TEST_CRYPTO'] === 'ed25519';
+  const fakeSigner = new FakeSigner(process.env['MERITED_TEST_SIGNER_SECRET'] ?? 'trio-test-secret');
   const remote = process.env['TRIO_TARGET_URL'];
 
   if (remote) {
@@ -80,10 +142,11 @@ export const createTarget = async (): Promise<TrioTarget> => {
     if (!serviceToken) {
       throw new Error('TRIO_TARGET_URL is set but MERITED_TRIO_SERVICE_TOKEN is not');
     }
+    const base = remote.replace(/\/$/, '');
     return {
-      baseUrl: remote.replace(/\/$/, ''),
+      baseUrl: base,
       serviceToken,
-      signer,
+      signer: realCrypto ? new RemoteCustodySigner(base, serviceToken) : fakeSigner,
       db: null,
       directory: null,
       directoryReads: null,
@@ -129,6 +192,15 @@ export const createTarget = async (): Promise<TrioTarget> => {
   pool.on('error', () => {});
 
   const serviceToken = 'contract-test-service-token';
+  let signer: Signer = fakeSigner;
+  if (realCrypto) {
+    const { PgKeyStore } = await import('../src/shared/pg-key-store.js');
+    const kmsUrl = process.env['MERITED_KMS_URL'] ?? 'http://localhost:4599';
+    const keyId = process.env['MERITED_KMS_KEY_ID'] ?? (await ensureMasterKey(kmsUrl));
+    // ONE custody: the harness signs claims/attestations with the same
+    // instance the trio verifies with — real Ed25519 end to end.
+    signer = new Ed25519Signer(new LocalAwsKms({ baseUrl: kmsUrl, keyId }), new PgKeyStore(pool));
+  }
   const deps = { pool, signer, clock: systemClock };
   const commitments = new CommitmentSimulator(deps);
   const fixtures = new FixtureDirectory();

@@ -2,6 +2,7 @@ import {
   Commitment,
   CommitmentDraft,
   MerchantKeyRequest,
+  MerchantKeySignRequest,
   newId,
   pence,
   type CommitmentCreateResponse,
@@ -11,6 +12,7 @@ import {
   type CommitmentStatus,
   type MerchantKeyResponse,
   type MerchantKeyService,
+  type MerchantKeySignResponse,
 } from '@merited/contracts';
 import { appendEvent, canonicalJson } from '@merited/events';
 import {
@@ -159,5 +161,18 @@ export class MerchantKeySimulator implements MerchantKeyService {
     const request = MerchantKeyRequest.parse(requestInput);
     const signing_key_ref = merchantKeyRef(request.merchant_id);
     return { signing_key_ref, public_key: await this.deps.signer.getPublicKey(signing_key_ref) };
+  }
+
+  /** Custodied-key signing call (PH1-24): payload in, signature out — the
+   * private key never crosses the wire. MER-4's adapter and the contract
+   * harness's real-crypto branch are the callers. */
+  async signForMerchant(
+    merchantId: string,
+    requestInput: MerchantKeySignRequest,
+  ): Promise<MerchantKeySignResponse> {
+    const request = MerchantKeySignRequest.parse(requestInput);
+    const parsed = MerchantKeyRequest.parse({ merchant_id: merchantId });
+    const signing_key_ref = merchantKeyRef(parsed.merchant_id);
+    return { signing_key_ref, signature: await this.deps.signer.sign(signing_key_ref, request.payload) };
   }
 }

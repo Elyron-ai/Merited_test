@@ -47,10 +47,31 @@ const chromiumPath =
 const { createSimulatedTrio } = await import(
   path.join(repoRoot, 'apps', 'trio', 'dist', 'testing.js')
 );
+
+// PH1-24: TRIO_CRYPTO=ed25519 boots the REAL signer — Ed25519 keys
+// envelope-encrypted under the KMS (compose fake-kms locally; a real KMS
+// endpoint in staging), custody rows in trio.signing_keys.
+let signer;
+if (process.env.TRIO_CRYPTO === 'ed25519') {
+  const { Ed25519Signer, LocalAwsKms, ensureMasterKey } = await import(
+    path.join(repoRoot, 'packages', 'signing', 'dist', 'index.js')
+  );
+  const { PgKeyStore } = await import(
+    path.join(repoRoot, 'apps', 'trio', 'dist', 'shared', 'pg-key-store.js')
+  );
+  const kmsUrl = process.env.MERITED_KMS_URL ?? 'http://localhost:4599';
+  const kmsKeyId = process.env.MERITED_KMS_KEY_ID ?? (await ensureMasterKey(kmsUrl));
+  const keyPool = new pg.Pool({ connectionString: databaseUrl, max: 3 });
+  keyPool.on('error', () => {});
+  signer = new Ed25519Signer(new LocalAwsKms({ baseUrl: kmsUrl, keyId: kmsKeyId }), new PgKeyStore(keyPool));
+  console.log('serve: crypto = REAL Ed25519 (KMS-enveloped custody)');
+}
+
 const trio = createSimulatedTrio({
   databaseUrl,
   serviceToken,
   signerSecret,
+  ...(signer ? { signer } : {}),
   ...(chromiumPath ? { chromiumPath } : {}),
 });
 await trio.app.listen({ port, host: '127.0.0.1' });

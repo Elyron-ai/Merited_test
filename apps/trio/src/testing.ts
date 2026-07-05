@@ -16,6 +16,9 @@ export interface SimulatedTrioOptions {
   databaseUrl: string;
   serviceToken: string;
   signerSecret: string;
+  /** PH1-24: inject the real Ed25519 signer (PH1-30) — when set,
+   * `signerSecret` is unused and every service signs/verifies for real. */
+  signer?: import('@merited/signing').Signer;
   chromiumPath?: string;
 }
 
@@ -34,7 +37,7 @@ export interface SimulatedTrio {
 export const createSimulatedTrio = (options: SimulatedTrioOptions): SimulatedTrio => {
   const pool = new pg.Pool({ connectionString: options.databaseUrl, max: 10 });
   pool.on('error', () => {});
-  const signer = new FakeSigner(options.signerSecret);
+  const signer = options.signer ?? new FakeSigner(options.signerSecret);
   const deps = { pool, signer, clock: systemClock };
   const commitments = new CommitmentSimulator(deps);
   const directory = new FixtureDirectory();

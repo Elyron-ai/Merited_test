@@ -55,4 +55,14 @@ export const registerMerchantKeyRoutes = (
       return sendTrioError(error, reply);
     }
   });
+
+  // PH1-24: custodied-key signing — signature crosses the wire, never the key.
+  app.post('/trio/keys/merchant/:id/sign', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      return await service.signForMerchant(id, req.body as never);
+    } catch (error) {
+      return sendTrioError(error, reply);
+    }
+  });
 };
