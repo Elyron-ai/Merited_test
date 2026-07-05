@@ -79,6 +79,20 @@ export interface LoyaltyLookup {
  * — statements only, PH1-29; Stripe Connect test-mode wire-up is PH2-6 behind
  * this same interface). Amounts integer pence, always.
  */
+/**
+ * Agent-commerce protocol adapters (PH3-2/§8 Q2; UCP = PH3-3, ACP = PH3-4).
+ * offerOut renders a Merited quote into the protocol's offer object with
+ * the token in THAT protocol's designated field (the mapping table in
+ * docs/spec/protocol-token-transport.md is normative); orderIn maps a
+ * checkout callback into the CommerceAdapter-normalised OrderConfirmed —
+ * token from the designated field ONLY, `undefined` when absent (no token,
+ * no bounty — the claim path simply never starts, P2).
+ */
+export interface ProtocolAdapter<TOffer, TCallback> {
+  offerOut(input: { quote: import('../quote.js').OfferQuote; offer: import('../offer/offer.js').Offer }): TOffer;
+  orderIn(callback: TCallback): OrderConfirmed;
+}
+
 export interface PayoutRail {
   createAccount(party: string): Promise<{ account_ref: string }>;
   transfer(input: { account_ref: string; amount: Money; idempotency_key: string }): Promise<{ transfer_ref: string }>;

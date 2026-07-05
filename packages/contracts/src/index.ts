@@ -20,6 +20,8 @@ export { AgentCtx, ConsumerCtx } from './ctx.js';
 export { Segment, SEGMENTS } from './segment.js';
 export * from './pipeline.js';
 export { JsonLdOffer, JsonLdOfferFeed } from './feed.js';
+export { UCP_EXTENSION_KEY, UcpAttributionExtension, UcpOffer, UcpCheckoutCompleted, ucpMoney } from './protocols/ucp.js';
+export { ACP_TOKEN_KEY, ACP_QUOTE_KEY, ACP_EXPIRES_KEY, AcpItem, AcpOrderWebhook } from './protocols/acp.js';
 export * from './api.js';
 export { applyMechanics, type AppliedPricing } from './pricing.js';
 export { OrderConfirmed } from './order.js';

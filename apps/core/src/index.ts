@@ -13,6 +13,8 @@ export { MerchantsService, type CreateMerchantInput, type IssuedWebhookSecret } 
 export { TrioKeysClient } from './modules/merchants/trio-keys-client.js';
 export { OffersRepository } from './modules/offers/repository.js';
 export { OfferFeed, type OfferFeedDeps } from './modules/offers/feed/index.js';
+export { UcpStubAdapter, AcpStubAdapter } from './modules/adapters/protocol/stubs.js';
+export { protocolConformanceSuite, fixtureQuote, type ConformanceCase } from './modules/adapters/protocol/harness.js';
 export { OffersService, type OfferDraftInput } from './modules/offers/service.js';
 export { OfferPublisher, type BountyInput } from './modules/offers/publisher.js';
 export { TrioCommitmentsClient } from './modules/offers/trio-commitments-client.js';
