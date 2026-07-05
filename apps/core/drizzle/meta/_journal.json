@@ -78,6 +78,13 @@
       "when": 1783450001000,
       "tag": "0010_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783450002000,
+      "tag": "0011_merchant_health",
+      "breakpoints": true
     }
   ]
 }

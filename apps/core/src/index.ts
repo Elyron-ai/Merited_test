@@ -24,3 +24,4 @@ export { StaticTableLoyalty } from './modules/adapters/loyalty/static-table.js';
 export { FakeAuroraIdpAdapter } from './modules/adapters/idp/fake-aurora.js';
 export { IdpRegistry } from './modules/adapters/idp/registry.js';
 export { analyticsProjection, bountyFor } from './modules/analytics/projections/index.js';
+export { MintVsClaimMonitor, type MerchantHealth, type MonitorOptions } from './modules/analytics/mint-vs-claim-monitor.js';

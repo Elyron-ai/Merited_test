@@ -192,4 +192,23 @@ describe('merchant onboarding through the UI alone (MER-8 accept)', () => {
     expect(merchantId).toMatch(/^mer_/);
     expect(secretOnce).toMatch(/^whsec_/);
   });
+
+  it('PH1-20: the mint-vs-claim health badge renders on the merchant record', async () => {
+    // the monitor's verdict is the badge's read model — seed one directly
+    await pool.query(
+      `INSERT INTO core.merchant_health
+         (merchant_id, status, claim_rate_bps, mints, claims, window_days, floor_bps)
+       VALUES ($1, 'under_reporting', 500, 20, 1, 7, 2500)`,
+      [merchantId],
+    );
+    const page = await request(`/merchants/${merchantId}/health`);
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('UNDER-REPORTING');
+    expect(html).toContain('data-status="under_reporting"');
+    expect(html).toContain('5.00%'); // the claim rate, human-formatted
+    // …and the merchant record links to it
+    const record = await request(`/merchants/${merchantId}`);
+    expect(await record.text()).toContain(`/merchants/${merchantId}/health`);
+  });
 });
