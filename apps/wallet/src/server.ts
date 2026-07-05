@@ -198,6 +198,42 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
 
   app.get('/v1/pd', async (req) => ({ items: await pdStore.list(req.consumerRef) }));
 
+  // ── session-scoped read models (PH2-3: what the wallet UI renders) ────────
+  app.get('/v1/links', async (req) => {
+    const { rows } = await options.pool.query(
+      `SELECT link_id, merchant_id, programme, member_ref, scopes, status, linked_at
+         FROM wallet.identity_links WHERE consumer_ref = $1 ORDER BY linked_at`,
+      [req.consumerRef],
+    );
+    return { links: rows };
+  });
+
+  app.get('/v1/mandates', async (req) => {
+    const { rows } = await options.pool.query(
+      `SELECT mandate_id, agent_id, scopes, limits, merchants, data_sharing,
+              pre_authorised_up_to, status, exp
+         FROM wallet.mandates WHERE consumer_ref = $1 ORDER BY mandate_id`,
+      [req.consumerRef],
+    );
+    return { mandates: rows };
+  });
+
+  app.get('/v1/points', async (req) => {
+    const { rows } = await options.pool.query(
+      `SELECT programme, member_ref, points::int, quote_id, credited_at
+         FROM wallet.points_credits WHERE consumer_ref = $1 ORDER BY credited_at DESC`,
+      [req.consumerRef],
+    );
+    const balances = new Map();
+    for (const row of rows) {
+      balances.set(row.programme, (balances.get(row.programme) ?? 0) + row.points);
+    }
+    return {
+      credits: rows,
+      balances: [...balances.entries()].map(([programme, points]) => ({ programme, points })),
+    };
+  });
+
   app.put('/v1/pd/:key', async (req, reply) => {
     const key = (req.params as { key: string }).key;
     const body = (req.body ?? {}) as { value?: unknown; consented?: boolean };

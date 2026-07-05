@@ -12,7 +12,7 @@ const merited = {
 };
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/.next/**', 'apps/control-plane/next-env.d.ts', '**/*.tsbuildinfo', 'BUILD-*.md'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/.next/**', 'apps/control-plane/next-env.d.ts', 'apps/wallet-ui/next-env.d.ts', '**/*.tsbuildinfo', 'BUILD-*.md'] },
   ...tseslint.configs.recommended,
   {
     rules: {
