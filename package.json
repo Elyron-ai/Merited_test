@@ -22,7 +22,8 @@
     "gate:1": "pnpm --filter @merited/demo gate:1",
     "ml:train": "pnpm --filter @merited/ml-decisioner train",
     "demo:act2": "pnpm --filter @merited/demo act2",
-    "gate:2": "pnpm --filter @merited/demo gate:2"
+    "gate:2": "pnpm --filter @merited/demo gate:2",
+    "gate:3": "pnpm --filter @merited/demo gate:3"
   },
   "devDependencies": {
     "@types/node": "catalog:",

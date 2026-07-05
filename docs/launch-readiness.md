@@ -90,7 +90,7 @@ real key is an env change, never a code change — the standing rule).
 | PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M | ✅ done 2026-07-05 |
 | PH3-8 | Reference verifier (`packages/verifier/`, offline, clean-container proof) | L | ✅ done 2026-07-05 |
 | PH3-9 | SKU-level offer granularity end-to-end (eligibility, quoting, JSON-LD, Shopify mapping, bundle sku_refs) | M | ✅ done 2026-07-05 |
-| PH3-10 | Phase-3 gate run; evidence in `docs/gates/phase-3.md` | S |
+| PH3-10 | Phase-3 gate run; evidence in `docs/gates/phase-3.md` | S | ✅ done 2026-07-05 — GREEN 9/0; ALL BUILD PHASES COMPLETE, remaining items are founder/external (A/B/C3/GAP rows) |
 | GAP-9 | Proof-pack EXPORT tooling: production endpoint/CLI that assembles a `merited-proof-pack/1` for a given claim (today the pack builder lives in the verifier test harness — fine for the gate, not merchant-facing). Discovered during PH3-8; no plan row covers it. | — |
 
 ### C3 · Founder/external items (LEAD + open questions)

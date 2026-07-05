@@ -18,7 +18,8 @@
     "e2e:phase1": "tsx src/e2e-phase1.ts",
     "gate:1": "tsx src/gate1.ts",
     "act2": "tsx src/act2.ts",
-    "gate:2": "tsx src/gate2.ts"
+    "gate:2": "tsx src/gate2.ts",
+    "gate:3": "tsx src/gate3.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
