@@ -249,6 +249,42 @@ export class MandateService {
     return approval;
   }
 
+  /**
+   * TRIO-17: the record served to the trio's directory lookup, re-attested
+   * over its CURRENT state. A revoked mandate's stored attestation covers
+   * the 'active' state it was granted with — re-signing on read lets the
+   * trio VERIFY the record and then see `status: 'revoked'` for itself
+   * (live check, no cache window), instead of treating an unverifiable
+   * blob as merely absent.
+   */
+  async attestedCurrent(mandateId: string): Promise<Mandate | null> {
+    const stored = await this.get(mandateId);
+    if (!stored) return null;
+    const { attestation: _stale, ...current } = stored;
+    const attestation = await this.deps.signer.sign(ATTEST_KEY, attestationPayload(current));
+    return Mandate.parse({ ...current, attestation });
+  }
+
+  /** TRIO-17: directory lookup by approval id (the token's `apr` claim). */
+  async approvalById(approvalId: string): Promise<Approval | null> {
+    const { rows } = await this.deps.pool.query<ApprovalRow>(
+      `SELECT approval_id, mandate_id, quote_id, mode, approved_at, exp, attestation
+         FROM wallet.approvals WHERE approval_id = $1`,
+      [approvalId],
+    );
+    const r = rows[0];
+    if (!r) return null;
+    return Approval.parse({
+      approval_id: r.approval_id,
+      mandate_id: r.mandate_id,
+      quote_id: r.quote_id,
+      mode: r.mode,
+      approved_at: new Date(r.approved_at).toISOString(),
+      exp: new Date(r.exp).toISOString(),
+      attestation: r.attestation,
+    });
+  }
+
   async approvalFor(quoteId: string): Promise<Approval | null> {
     const { rows } = await this.deps.pool.query<ApprovalRow>(
       `SELECT approval_id, mandate_id, quote_id, mode, approved_at, exp, attestation

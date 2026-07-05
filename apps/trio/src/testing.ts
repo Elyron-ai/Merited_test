@@ -19,6 +19,10 @@ export interface SimulatedTrioOptions {
   /** PH1-24: inject the real Ed25519 signer (PH1-30) — when set,
    * `signerSecret` is unused and every service signs/verifies for real. */
   signer?: import('@merited/signing').Signer;
+  /** TRIO-17: the LIVE directory (HttpDirectory against the wallet backend).
+   * Absent → the FixtureDirectory, as before. Either way the pipeline sees
+   * only the attestation-verifying wrapper. */
+  directory?: import('./shared/ports/directory.js').TrioDirectory;
   chromiumPath?: string;
 }
 
@@ -46,7 +50,7 @@ export const createSimulatedTrio = (options: SimulatedTrioOptions): SimulatedTri
   registerCommitmentRoutes(app, commitments);
   registerMerchantKeyRoutes(app, new MerchantKeySimulator(deps));
   registerMintRoutes(app, new MintSimulator(deps, commitments));
-  registerVerifyRoutes(app, new VerifySimulator(deps, new VerifiedDirectory(directory, signer)));
+  registerVerifyRoutes(app, new VerifySimulator(deps, new VerifiedDirectory(options.directory ?? directory, signer)));
   registerSettlementRoutes(
     app,
     new SettlementSimulator(deps),

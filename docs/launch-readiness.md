@@ -55,7 +55,7 @@ real key is an env change, never a code change — the standing rule).
 
 | Item | What | Size | Status |
 |---|---|---|---|
-| **TRIO-17** | Live directory wiring: replace the fixture `TrioDirectory` with the HTTP client hitting wallet approval/mandate lookup endpoints (attestations still verified before trust). Wallet needs the lookup endpoints; trio needs the client. Needed by the Phase-2 gate mapping (Act-2 negatives). | S | ⬜ next up |
+| **TRIO-17** | Live directory wiring: replace the fixture `TrioDirectory` with the HTTP client hitting wallet approval/mandate lookup endpoints (attestations still verified before trust). Wallet needs the lookup endpoints; trio needs the client. Needed by the Phase-2 gate mapping (Act-2 negatives). | S | ✅ done 2026-07-05 |
 | **XC-13** | Phase-1 hardening review pack `docs/reviews/ph1-hardening.md` (feeds LEAD-5): token-storage checklist, lint-rule evidence, rotation-runbook item, head-publication check, and the EXECUTED hosting decision (Q5 — founder). | S (doc) + Q5 (F) | ⬜ |
 | **XC-11** | Weekly plan-state sweep 2 (Accept completes) | — | ⬜ due 2026-07-11 |
 | Production wiring seams left deliberately open in Phase 1: send-on-quote push trigger (production caller of `PushService.sendQuoteNotification` — lands with PH2-4/PH2-11); points-credit production consumer (= PH2-10); native-Ed25519 KMS upgrade (LEAD-5 ratifies). | — | — | tracked below |

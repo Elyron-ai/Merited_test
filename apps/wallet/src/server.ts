@@ -64,6 +64,9 @@ export interface WalletServerOptions {
    * reMint wired, approve fails closed with REMINT_FAILED. */
   quoteGateway?: QuoteGateway;
   reMint?: ReMint;
+  /** TRIO-17: service token guarding the /internal/directory/* lookup routes
+   * the trio's HttpDirectory calls. Routes exist ONLY when this is set. */
+  directoryServiceToken?: string;
 }
 
 const readCookie = (header: string | undefined, name: string): string | undefined =>
@@ -128,6 +131,8 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   const PUBLIC = new Set(['/healthz', '/v1/auth/request', '/v1/auth/verify']);
 
   app.addHook('preHandler', async (req, reply) => {
+    // TRIO-17: internal directory routes carry their own service-token guard
+    if (req.url.startsWith('/internal/directory/')) return;
     if (PUBLIC.has(req.url.split('?')[0]!)) return;
     const cookie = readCookie(req.headers.cookie, WALLET_SESSION_COOKIE);
     const consumerRef = cookie ? await sessions.validate(cookie) : null;
@@ -330,6 +335,36 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     });
     return reply.send(result);
   });
+
+  // ── trio directory lookups (TRIO-17) ───────────────────────────────────────
+  // Service-to-service: the trio's HttpDirectory resolves approvals/mandates
+  // here at claim time and VERIFIES the attestation before trusting anything
+  // (P3). Mandates are re-attested over CURRENT state so a revocation is a
+  // verified fact at the trio, live, no cache window.
+  if (options.directoryServiceToken) {
+    const directoryToken = options.directoryServiceToken;
+    const guarded = async (req: { headers: Record<string, unknown> }, reply: { code(n: number): { send(b: unknown): unknown } }): Promise<boolean> => {
+      if (req.headers['x-merited-service-token'] !== directoryToken) {
+        await reply.code(401).send({ error: { code: 'SERVICE_TOKEN_INVALID' } });
+        return false;
+      }
+      return true;
+    };
+
+    app.get('/internal/directory/approvals/:id', async (req, reply) => {
+      if (!(await guarded(req as never, reply as never))) return reply;
+      const approval = await mandates.approvalById((req.params as { id: string }).id);
+      if (!approval) return reply.code(404).send({ error: { code: 'APPROVAL_NOT_FOUND' } });
+      return reply.send({ approval });
+    });
+
+    app.get('/internal/directory/mandates/:id', async (req, reply) => {
+      if (!(await guarded(req as never, reply as never))) return reply;
+      const mandate = await mandates.attestedCurrent((req.params as { id: string }).id);
+      if (!mandate) return reply.code(404).send({ error: { code: 'MANDATE_NOT_FOUND' } });
+      return reply.send({ mandate });
+    });
+  }
 
   // ── web push (PH1-17, B25) ─────────────────────────────────────────────────
   app.post('/v1/push/subscriptions', async (req, reply) => {

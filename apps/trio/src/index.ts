@@ -4,3 +4,5 @@
 export { createTrioServer } from './shared/server.js';
 export { systemClock, type Clock } from './shared/clock.js';
 export { PgKeyStore } from './shared/pg-key-store.js';
+export { HttpDirectory, type HttpDirectoryOptions } from './shared/ports/http-directory.js';
+export { VerifiedDirectory, FixtureDirectory, attest, PLATFORM_ATTESTATION_KEY, type TrioDirectory } from './shared/ports/directory.js';
