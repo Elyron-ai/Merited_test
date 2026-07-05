@@ -13,6 +13,7 @@ import { decisionerFor } from './modules/decisioning/index.js';
 import { RuleGuardrails } from './modules/guardrails/index.js';
 import { IdentityStore } from './modules/identity/store.js';
 import { PgIdentityLinkReader } from './modules/identity/link-reader.js';
+import { PgPdReader } from './modules/identity/pd-reader.js';
 import { MerchantsService } from './modules/merchants/service.js';
 import { TrioKeysClient } from './modules/merchants/trio-keys-client.js';
 import { OfferPublisher } from './modules/offers/publisher.js';
@@ -92,6 +93,8 @@ export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCor
     // PH1-15: link-aware identity. The reader probes for wallet.identity_links
     // and no-ops on a core-only database, so Phase-0 assemblies are unchanged.
     identity: new IdentityStore(pool, new PgIdentityLinkReader(pool)),
+    // PH2-9: consented 1pd rides DecisionCtx when a mandate allows it
+    pdReader: new PgPdReader(pool),
     decisioner: decisionerFor(options.decisioner ?? 'rules'),
     // PH2-1: the real rules — inert for merchants with no guardrail config
     guardrails: new RuleGuardrails(listPriceFor),

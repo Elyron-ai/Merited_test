@@ -1,4 +1,5 @@
 import tseslint from 'typescript-eslint';
+import no1pdLeak from './tools/lint-rules/no-1pd-leak.js';
 import noFloatCurrency from './tools/lint-rules/no-float-currency.js';
 import noRefreshToken from './tools/lint-rules/no-refresh-token.js';
 import noSchemaOutsideContracts from './tools/lint-rules/no-schema-outside-contracts.js';
@@ -8,6 +9,7 @@ const merited = {
     'no-refresh-token': noRefreshToken,
     'no-schema-outside-contracts': noSchemaOutsideContracts,
     'no-float-currency': noFloatCurrency,
+    'no-1pd-leak': no1pdLeak,
   },
 };
 
@@ -32,6 +34,8 @@ export default tseslint.config(
       // in the rule headers.
       'merited/no-schema-outside-contracts': 'error',
       'merited/no-float-currency': 'error',
+      // PH2-9: 1pd never in response shapes — pipeline DecisionCtx is the home
+      'merited/no-1pd-leak': 'error',
     },
   },
   {

@@ -46,6 +46,10 @@ export interface ReadOffersDeps {
   /** PH2-1: per-merchant guardrail settings (commercial config). Absent →
    * guardrails inert for that merchant. */
   guardrailSettingsFor?(merchantId: string): Promise<import('@merited/contracts').GuardrailSettings | null>;
+  /** PH2-9: mandate-gated 1pd enrichment — consented key-values into
+   * DecisionCtx iff the ACTIVE mandate's data_sharing flags allow, read
+   * live per request. Absent → no enrichment (Phase-0/1 unchanged). */
+  pdReader?: { pdFor(mandateRef: string): Promise<Record<string, string> | null> };
   /** PH2-1 (SYN-41): ledger sink for read-path suppressions — one
    * `OfferSuppressed` per suppressed offer, so analytics stay ledger-driven. */
   suppressionSink?(
@@ -159,7 +163,18 @@ export class ReadOffers {
         return result;
       });
 
-      const ctx = { agent: input.agent, tier: identity.tier, segment: identity.segment };
+      // PH2-9: LIVE mandate-gated enrichment — revocation strips on the
+      // very next read because nothing here is cached
+      const pd =
+        input.consumer?.mandate_ref && this.deps.pdReader
+          ? await this.deps.pdReader.pdFor(input.consumer.mandate_ref)
+          : null;
+      const ctx = {
+        agent: input.agent,
+        tier: identity.tier,
+        segment: identity.segment,
+        ...(pd ? { pd } : {}),
+      };
 
       const ranked = await withSpan('read_offers.decisioning', (span) =>
         this.deps.decisioner.rank(eligibility.eligible, ctx).then((result) => {

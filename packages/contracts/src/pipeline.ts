@@ -55,6 +55,11 @@ export const DecisionCtx = z.object({
   agent: AgentCtx,
   tier: IdentityTier,
   segment: Segment,
+  /** PH2-9 (arch §4.1): consented 1pd, mandate-gated — present iff the
+   * read carried a mandate whose data_sharing flags allow each field. The
+   * decisioner's edge, INTERNAL ONLY: response schemas never carry `pd`
+   * (enforced by the no-1pd-leak lint rule + tests). */
+  pd: z.record(z.string()).optional(),
 });
 export type DecisionCtx = z.infer<typeof DecisionCtx>;
 
