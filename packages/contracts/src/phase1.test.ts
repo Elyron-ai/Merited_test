@@ -86,18 +86,29 @@ describe('PH1-1 — contracts delta (accept: every new schema round-trips)', () 
     AgentSignatureHeaders.parse({
       'x-merited-agent-id': 'agt_00000000000000000000000001',
       'x-merited-timestamp': '1783300000',
+      'x-merited-nonce': 'n0nce-16-chars-min',
       'x-merited-signature': 'sig-bytes',
     });
     expect(AGENT_SIGNATURE_MAX_SKEW_S).toBe(300); // SYN-24
     const canonical = agentCanonicalString({
       method: 'get',
       pathWithQuery: '/v1/offers?sku=sku_spa_day',
-      timestamp: '1783300000',
       bodySha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      timestamp: '1783300000',
+      nonce: 'n0nce-16-chars-min',
     });
     expect(canonical).toBe(
-      'GET\n/v1/offers?sku=sku_spa_day\n1783300000\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      'GET\n/v1/offers?sku=sku_spa_day\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n1783300000\nn0nce-16-chars-min',
     );
+    // a short nonce refuses
+    expect(() =>
+      AgentSignatureHeaders.parse({
+        'x-merited-agent-id': 'agt_00000000000000000000000001',
+        'x-merited-timestamp': '1783300000',
+        'x-merited-nonce': 'short',
+        'x-merited-signature': 'sig',
+      }),
+    ).toThrow();
   });
 
   it('linking DTOs round-trip and never carry token fields', () => {

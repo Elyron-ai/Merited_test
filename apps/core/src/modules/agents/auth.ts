@@ -1,6 +1,7 @@
 import type { AgentCtx, RateLimiter } from '@merited/contracts';
 import type { FastifyInstance } from 'fastify';
 import { CoreHttpError } from '../../http-error.js';
+import type { AgentRequestVerifier } from './request-signing.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -11,6 +12,9 @@ declare module 'fastify' {
 export interface AgentAuthOptions {
   authenticate(presentedKey: string): Promise<AgentCtx['agent_id']>;
   limiter: RateLimiter;
+  /** PH1-5: Ed25519 signed-request tier — checked BEFORE the API-key
+   * fallback when the signature headers are present. */
+  requestVerifier?: AgentRequestVerifier;
 }
 
 /**
@@ -27,8 +31,22 @@ export const registerAgentAuth = (app: FastifyInstance, options: AgentAuthOption
   app.addHook('preHandler', async (req, reply) => {
     if (req.url === '/healthz') return;
     const presented = req.headers['x-merited-agent-key'];
+    const signaturePresent = typeof req.headers['x-merited-signature'] === 'string';
     let ctx: AgentCtx;
-    if (typeof presented !== 'string' || presented.length === 0) {
+    if (signaturePresent && options.requestVerifier) {
+      // PH1-5 signed tier: presenting a signature commits you to it — a bad
+      // signature is a 401, never a silent fall-through to weaker auth.
+      const verdict = await options.requestVerifier.verify({
+        method: req.method,
+        pathWithQuery: req.url,
+        rawBody: typeof req.body === 'string' ? req.body : req.body ? JSON.stringify(req.body) : '',
+        headers: req.headers,
+      });
+      if (!verdict.ok) {
+        throw new CoreHttpError(401, 'AGENT_AUTH_FAILED', `signature rejected: ${verdict.reason}`);
+      }
+      ctx = { agent_id: verdict.agentId };
+    } else if (typeof presented !== 'string' || presented.length === 0) {
       ctx = { agent_id: null };
     } else {
       const agentId = await options.authenticate(presented);

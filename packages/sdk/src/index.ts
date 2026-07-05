@@ -167,3 +167,4 @@ export class MeritedClient {
     );
   }
 }
+export { AgentRequestSigner, generateAgentKeypair, type SignRequestInput } from './signed-client.js';
