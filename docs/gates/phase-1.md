@@ -72,3 +72,17 @@ and minutes the crossing here.** Phase 1's build scope is complete: all 30
 PH1 tasks ✅ (PH1-1…30), the trio real implementations landed behind the
 unchanged suite (SYN-32), and the full-dress FakeAurora organisation stands
 as the design-partner rehearsal (SYN-33).
+
+## Phase-2 crossing — 2026-07-05
+
+**Founder decision (recorded from the build-session instruction): proceed
+into Phase 2.** The founder reviewed the GREEN automated verdict above and
+instructed the build to start Phase 2 under the /build-next loop. The Q12
+manual items remain OPEN founder actions — per LEAD-5's own row they gate
+"real-money Phase 2 work, not the build", and PH2-6 carries an env-loader
+guard refusing live-mode keys until LEAD-2 and LEAD-5 are resolved. All
+gaps, credentials and untested items are retained in
+`docs/launch-readiness.md` (created at this crossing, referenced from
+CLAUDE.md). One Phase-1 leftover was surfaced by the crossing sweep —
+**TRIO-17 (live directory wiring)**, an unmarked S-task in the trio
+workstream — and is queued FIRST, before any Phase-2 module (§0.1).

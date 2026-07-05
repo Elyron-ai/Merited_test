@@ -13,6 +13,7 @@ You are building the Merited platform. Three documents are canon, in this order 
 - Update the task's state in `BUILD-PLAN.md` (append `— ✅ done <date>`, `— 🚧 doing`, or `— ⛔ blocked: <reason>` to the task's row) in the same commit as the work.
 - Commit per task: `feat(TASK-ID): summary` (XC.9). Never commit secrets. Push after each green task.
 - Append one entry per task to `docs/build-log.md`: what was built, test results, any deviation from the plan, any decision taken.
+- `docs/launch-readiness.md` is the living register of untested items, third-party services/credentials, and unbuilt gaps across all phases. When a task closes one of its items, tick it there in the same commit; newly discovered gaps are appended, never silently dropped.
 
 ## Hard guardrails
 
