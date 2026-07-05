@@ -17,6 +17,7 @@ import { PgPdReader } from './modules/identity/pd-reader.js';
 import { MerchantsService } from './modules/merchants/service.js';
 import { TrioKeysClient } from './modules/merchants/trio-keys-client.js';
 import { OfferPublisher } from './modules/offers/publisher.js';
+import { OfferFeed } from './modules/offers/feed/index.js';
 import { ReadOffers } from './modules/offers/read-offers.js';
 import { OffersRepository } from './modules/offers/repository.js';
 import { OffersService } from './modules/offers/service.js';
@@ -125,6 +126,7 @@ export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCor
     readOffers,
     quotes,
     agents,
+    feed: new OfferFeed({ readOffers, repository }),
     readLimiter: new InMemoryRateLimiter({ limit: 1000, windowS: 3600 }),
     registerLimiter: new InMemoryRateLimiter({ limit: 1000, windowS: 3600 }),
   });

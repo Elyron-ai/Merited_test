@@ -77,11 +77,11 @@ real key is an env change, never a code change — the standing rule).
 | PH2-11 | Demo Act 2 — all 9 §10 steps incl. both negative cases on camera; one trace brief→ledger | L |✅ done 2026-07-05 — CI-green; the RECORDING is A11 |
 | PH2-12 | Phase-2 gate run + recording; evidence in `docs/gates/phase-2.md` | S |✅ done 2026-07-05 — automated GREEN; recording = A11, real transfer = A7 |
 
-### C2 · Phase 3 — Interop & exit-ready (Q2 27) — all ⬜
+### C2 · Phase 3 — Interop & exit-ready (Q2 27) — IN PROGRESS (crossing authorised 2026-07-05)
 
 | Task | What | Size |
 |---|---|---|
-| PH3-1 | JSON-LD offer feed (anonymous = untokenised + register_to_earn; registered = tokenised via canonical path) | M |
+| PH3-1 | JSON-LD offer feed (anonymous = untokenised + register_to_earn; registered = tokenised via canonical path) | M | ✅ done 2026-07-05 |
 | PH3-2 | Protocol conformance harness + UCP/ACP token-transport mapping (resolve arch §8 Q2 first; Zod schemas contracts-first) | M |
 | PH3-3 | UCP ProtocolAdapter (offer-out + callback-in → signed claim; Valet UCP rail) | L |
 | PH3-4 | ACP ProtocolAdapter (same shape; Valet ACP rail) | L |

@@ -20,6 +20,8 @@ export interface V1Deps {
   readOffers: ReadOffers;
   quotes: QuoteService;
   agents: AgentsService;
+  /** PH3-1: the JSON-LD feed renderer over the canonical read path. */
+  feed?: import('../../modules/offers/feed/index.js').OfferFeed;
   /** Per-agent (or per-IP) read-path limiter (§8). */
   readLimiter: RateLimiter;
   /** IP limiter for the open register route (CORE-3). */
@@ -34,6 +36,7 @@ export const ROUTE_CLASSIFICATIONS: Record<string, 'open-health' | 'open-rate-li
   'GET /healthz': 'open-health',
   'POST /v1/agents/register': 'open-rate-limited',
   'GET /v1/offers': 'agent-degraded',
+  'GET /v1/feed/offers': 'agent-degraded', // PH3-1: same degraded scope — anonymous = untokenised
   'GET /v1/offers/:id': 'agent-degraded',
   'POST /v1/eligibility': 'agent-degraded', // PH1-6: verdicts for anon or registered agents
   'GET /v1/quotes/:id': 'agent-degraded',
@@ -79,6 +82,25 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
         ...(query.text ? { text: query.text } : {}),
       },
     });
+  });
+
+  // PH3-1 (B11): the JSON-LD feed — same pipeline, schema.org rendering.
+  // Anonymous fetchers get UNTOKENISED entries (nothing was minted);
+  // registered agents get the same feed with quote-bound tokens.
+  app.get('/v1/feed/offers', { schema: { querystring: OffersQuery } }, async (req, reply) => {
+    if (!deps.feed) return reply.code(404).send({ error: { code: 'FEED_NOT_ENABLED' } });
+    const query = req.query as OffersQuery;
+    const consumer = consumerFrom(query);
+    const feed = await deps.feed.render({
+      agent: req.agentCtx,
+      ...(consumer ? { consumer } : {}),
+      query: {
+        ...(query.merchant_id ? { merchant_id: query.merchant_id } : {}),
+        ...(query.sku ? { sku: query.sku } : {}),
+        ...(query.text ? { text: query.text } : {}),
+      },
+    });
+    return reply.header('content-type', 'application/ld+json; charset=utf-8').send(feed);
   });
 
   app.get('/v1/offers/:id', { schema: { querystring: OffersQuery } }, async (req) => {

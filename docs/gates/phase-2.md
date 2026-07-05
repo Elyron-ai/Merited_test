@@ -46,3 +46,7 @@ Automated verdict: **GREEN** (exit 0). Manual items are decided at the gate sitt
 4. **Phase-order attestation:** the builder attests no Phase-3 module has been started (§0.1). Phase-3 work begins only after this gate is accepted at the sitting.
 
 **Builder attestation:** all 12 PH2 task rows ✅ (PH2-1…PH2-12) plus TRIO-17, XC-13 (pack assembled, ⛔ on founder items) and LEAD-4 closed en route. `docs/launch-readiness.md` carries the full open register: A-items (tests needing real services), B-items (credentials — B1 Stripe remains the founder's clock), C2 (all of Phase 3), C3 (founder questions).
+
+## Phase-3 crossing — founder authorisation · 2026-07-05
+
+The founder accepted the Gate-2 automated verdict ("Is phase 3 the end build phase? If so ok, let's get going with it") and instructed Phase 3 to begin. The four manual gate items remain OPEN and tracked (real test-mode transfer A7/B1; recording A11; Q12/Q5; they gate real-money exposure and the fundraising asset, not the build). Phase 3 is the FINAL build phase (PH3-1…10); Shopify's LEAD-3 external clock (dev store, app review) stays a founder item — the build proceeds against contract stubs and FakeShop per §2.2, with the dev-store smoke retained as launch-readiness A12.

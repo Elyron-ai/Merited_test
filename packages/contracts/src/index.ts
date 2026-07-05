@@ -19,6 +19,7 @@ export { Mandate, MandateGrantRequest, MandateAttenuateRequest } from './mandate
 export { AgentCtx, ConsumerCtx } from './ctx.js';
 export { Segment, SEGMENTS } from './segment.js';
 export * from './pipeline.js';
+export { JsonLdOffer, JsonLdOfferFeed } from './feed.js';
 export * from './api.js';
 export { applyMechanics, type AppliedPricing } from './pricing.js';
 export { OrderConfirmed } from './order.js';
