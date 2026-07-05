@@ -62,3 +62,14 @@ founder — record the demo, then ratify the gate.
 | ◻ manual | Later-phase modules not started (§0.1) — LEAD-* long-leads excepted | reviewed against BUILD-PLAN task states at the gate sitting; PH1-24…26/30 only if Phase 0 finished early (SYN-25) |
 
 Automated verdict: **GREEN** (exit 0). Manual items are decided at the gate sitting, not by this script.
+
+## Gate decision — 2026-07-05
+
+**Founder decision (recorded from the build-session instruction): proceed
+into Phase 1.** The founder reviewed the GREEN run above and instructed the
+build to continue through all of Phase 1, with the standing rule that
+third-party credentials (e.g. Resend, Stripe) are STUBBED via the typed env
+loader until real accounts exist — every vendor sits behind its adapter
+interface, so keys slot in later without code changes. Demo recording
+remains an open founder action and does not block the build lanes. Builder
+attestation re-confirmed at crossing: no later-phase task had been started.

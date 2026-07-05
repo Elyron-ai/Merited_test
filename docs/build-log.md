@@ -905,3 +905,9 @@ Also: `TRIO-2` marked subsumed by FND-8 in the plan (SYN-1 — the §2 key alrea
 ## Gate 0 checklist run · 2026-07-04 (phase boundary — STOPPED, gate not crossed)
 
 `pnpm gate:0 --record` at Phase 0 close-out: **6 automated criteria pass, 0 fail — verdict GREEN** (result table appended to `docs/gates/phase-0.md`; the six automated boxes ticked against the run). The full aggregate replayed end-to-end inside the run: workspace 539 tests, lint, the frozen 42-test contract suite, verify-chain, the demo-E2E trio of suites, and the clean-machine bootstrap (act 1's nine steps: splits −£12.00/+£7.20/+£2.40/£2.40 · TOKEN_REPLAYED · QUOTE_EXPIRED · one trace · chain verified over 20 events). Remaining before the gate can be RATIFIED — all founder actions, per §0.1 the build does not cross until then: (1) record `pnpm demo:act1` (human mode) as the asset; (2) ratify the gate at a sitting (minute the decision under the run record); (3) XC-11 sweep 2 due 2026-07-11 flips the last row ✅. PH1-24…26/30 may begin early ONLY under SYN-25's exception — that is the founder's call to make explicitly, not the loop's. Build loop stopped at the boundary.
+
+---
+
+## Gate 0 crossed · 2026-07-05
+
+Founder decision recorded in `docs/gates/phase-0.md`: proceed into Phase 1 on the GREEN automated verdict, third-party creds stubbed per the standing rule (adapters + typed env loader; real keys are an env change, never a code change). Demo recording stays an open founder action. Phase 1 begins on the §6 critical path: PH1-1 (contracts delta) → PH1-2 → PH1-23 → PH1-30 → PH1-24/25/26 → PH1-27 → PH1-28, with the identity/wallet, analytics/audit and FakeAurora lanes interleaved.
