@@ -87,7 +87,7 @@ real key is an env change, never a code change — the standing rule).
 | PH3-4 | ACP ProtocolAdapter (same shape; Valet ACP rail) | L | ✅ done 2026-07-05 |
 | PH3-5 | Shopify app Grade A (cart-attribute token, orders/paid, CommerceAdapter parity with FakeShop) | L | ✅ done 2026-07-05 — CI legs green vs simulated store; dev-store run stays open as A12 |
 | PH3-6 | Self-serve merchant onboarding, zero manual steps end-to-end | L | ✅ done 2026-07-05 |
-| PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M |
+| PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M | ✅ done 2026-07-05 |
 | PH3-8 | Reference verifier (`packages/verifier/`, offline, clean-container proof) | L |
 | PH3-9 | SKU-level offer granularity end-to-end (eligibility, quoting, JSON-LD, Shopify mapping, bundle sku_refs) | M |
 | PH3-10 | Phase-3 gate run; evidence in `docs/gates/phase-3.md` | S |
