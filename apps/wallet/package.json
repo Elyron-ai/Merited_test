@@ -11,16 +11,23 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "db:migrate": "node scripts/migrate.mjs",
+    "verify-chain": "true"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "@types/nodemailer": "^6.4.16"
+    "@types/nodemailer": "^6.4.16",
+    "@merited/events": "workspace:*",
+    "@types/pg": "catalog:",
+    "fast-check": "^4.8.0"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "@merited/signing": "workspace:*",
+    "pg": "catalog:"
   }
 }

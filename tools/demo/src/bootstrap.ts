@@ -14,6 +14,9 @@ import { migrateTrio } from '../../../apps/trio/scripts/migrate.mjs';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — plain-JS script module
 import { migrateValet } from '../../../apps/valet/scripts/migrate.mjs';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — plain-JS script module
+import { migrateWallet } from '../../../apps/wallet/scripts/migrate.mjs';
 
 /**
  * Clean-machine bootstrap (VAL-15, §9 gate): zero manual steps between
@@ -119,6 +122,7 @@ export const bootstrap = async (): Promise<void> => {
   await migrateCore();
   await migrateTrio();
   await migrateValet();
+  await migrateWallet();
 
   const mode = process.env['MERITED_DEMO_MODE'] === 'ci' ? ('ci' as const) : ('human' as const);
   print(mode === 'human' ? 'Running Act 1 — the walletless conversion loop.\n' : 'Running Act 1 (CI mode).');

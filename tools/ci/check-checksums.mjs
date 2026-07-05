@@ -6,7 +6,7 @@ import path from 'node:path';
 import { checkChecksums } from '../../packages/events/scripts/check-migrations.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const packages = ['packages/events', 'apps/core', 'apps/trio', 'apps/valet'];
+const packages = ['packages/events', 'apps/core', 'apps/trio', 'apps/valet', 'apps/wallet'];
 
 let failed = false;
 for (const pkg of packages) {

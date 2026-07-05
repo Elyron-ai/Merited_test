@@ -2,3 +2,4 @@
 // with their workstream tasks; the mailer adapter (PH1-7) is the first.
 export { mailerFor, ResendMailer, SmtpMailer } from './lib/mailer/index.js';
 export type { ResendMailerOptions, SmtpMailerOptions } from './lib/mailer/index.js';
+export { LinkTokenStore } from './modules/linking/link-token-store.js';
