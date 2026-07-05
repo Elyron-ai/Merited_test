@@ -69,7 +69,7 @@ real key is an env change, never a code change — the standing rule).
 | PH2-6 | Stripe Connect payouts behind `PayoutRail` + payout worker on `SettlementNetted`; same adapter contract test as SimulatedPayouts; env-loader guard refuses live keys until LEAD-2+LEAD-5 resolved | L |✅ done 2026-07-05 — code complete on stubbed keys; A7 (real test-mode transfer) waits on B1 |
 | PH2-4 | Valet full: wallet-driven errands, mandate in ctx, AWAITING_APPROVAL live, notification/approval loop, re-minted `apr` token to checkout; kill/restart resumes | L | ✅ done 2026-07-05 |
 | PH2-3 | Wallet UI — six screens (home/balances, linked accounts, mandate, offers-for-you, errand, activity&settlement); expect 2–3 slices | L | ✅ done 2026-07-05 — all six screens; Act-2 steps performable on-screen (A10 a11y sweep stays open) |
-| PH2-5 | Valet LLM brief-interpreter + `VALET_DETERMINISTIC=1` scripted fallback | M | ⬜ |
+| PH2-5 | Valet LLM brief-interpreter + `VALET_DETERMINISTIC=1` scripted fallback | M |✅ done 2026-07-05 — LLM path on stubbed key (B5); flag-off live smoke = A8 |
 | PH2-9 | 1pd enrichment: consented pd → `DecisionCtx` iff `mandate.data_sharing` permits; revocation strips on next read; never in agent-facing responses (lint+test) | M | ⬜ |
 | PH2-10 | Loyalty points-credit flow on wallet-path `ConversionVerified` (idempotent per claim; walletless credits nothing) | M |✅ done 2026-07-05 (screen rendering = PH2-3) |
 | PH2-8 | Feature assembly + training pipeline (`apps/ml-decisioner/training/`, Python; ledger exhaust only; LEAD-4 synthetic traffic if thin) | M | ⬜ |

@@ -6,6 +6,7 @@ import {
   type ErrandState,
 } from '@merited/contracts';
 import pg from 'pg';
+import { interpreterFromEnv } from './interpreter/index.js';
 import { ErrandDriver } from './errand/driver.js';
 import { EventsPackageMirror } from './errand/ledger-mirror.js';
 import { ErrandStore } from './errand/store.js';
@@ -185,10 +186,15 @@ export const runCli = async (
       return index >= 0 ? rest[index + 1] : undefined;
     };
     const maxPence = flag('max-pence');
-    const brief = Brief.parse({
-      text,
-      max_price: maxPence ? pence(Number(maxPence)) : null,
+    // PH2-5: NL interpretation behind the env-selected interpreter
+    // (VALET_DETERMINISTIC=1 pins the scripted path); an explicit
+    // --max-pence flag overrides whatever was interpreted.
+    const interpreted = await interpreterFromEnv().interpret(text, {
       sub_hash: flag('sub-hash') ?? null,
+    });
+    const brief = Brief.parse({
+      ...interpreted,
+      ...(maxPence ? { max_price: pence(Number(maxPence)) } : {}),
     });
     const started = await deps.driver.startErrand({ brief });
     deps.print(`Errand ${started.errand.errand_id} briefed: "${brief.text}"`);

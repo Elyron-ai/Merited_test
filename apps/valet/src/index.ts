@@ -31,4 +31,12 @@ export { VerdictPoller, VerdictTimeoutError, type VerdictEvent } from './ports/v
 export { AutoSkipGate, type ApprovalGate, type ApprovalOutcome } from './ports/approval-gate.js';
 export { ErrandDriver, InvalidDispatchError, searchTermsFrom, type DriverDeps } from './errand/driver.js';
 export { shopCatalogueSkuResolver } from './ports/checkout-rail.js';
+export {
+  AnthropicInterpreter,
+  interpreterFromEnv,
+  priceCeilingFrom,
+  ScriptedInterpreter,
+  type BriefInterpreter,
+  type InterpretContext,
+} from './interpreter/index.js';
 export { type ApprovalContext } from './ports/approval-gate.js';
