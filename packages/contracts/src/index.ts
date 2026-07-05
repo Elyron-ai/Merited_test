@@ -14,7 +14,7 @@ export { IdentityLink } from './identity-link.js';
 export { OfferQuote, quoteExpiryWithinToken } from './quote.js';
 export { Approval, approvalIsQuoteBound } from './approval.js';
 export { ConversionClaim } from './claim.js';
-export { Mandate } from './mandate.js';
+export { Mandate, MandateGrantRequest, MandateAttenuateRequest } from './mandate.js';
 export { AgentCtx, ConsumerCtx } from './ctx.js';
 export { Segment, SEGMENTS } from './segment.js';
 export * from './pipeline.js';

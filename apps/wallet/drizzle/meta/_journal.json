@@ -29,6 +29,13 @@
       "when": 1783460001000,
       "tag": "0003_hosted_link_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783460002000,
+      "tag": "0004_mandates",
+      "breakpoints": true
     }
   ]
 }

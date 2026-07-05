@@ -1,6 +1,8 @@
 import {
   HostedLinkStartRequest,
   HostedLinkVerifyRequest,
+  MandateAttenuateRequest,
+  MandateGrantRequest,
   type IdentityProviderAdapter,
   type LoyaltyLookup,
   type Mailer,
@@ -13,8 +15,10 @@ import { SessionStore, WALLET_SESSION_COOKIE } from './auth/session.js';
 import { LinkService } from './modules/linking/link-service.js';
 import { HostedLinkService } from './modules/linking/hosted/hosted-link-service.js';
 import { LinkTokenStore } from './modules/linking/link-token-store.js';
+import { MandateService } from './modules/mandates/mandate-service.js';
+import { MandateWideningError } from './modules/mandates/attenuation.js';
 import { PdStore } from './modules/pd-store/pd-store.js';
-import { FakeCrypter, type Crypter } from '@merited/signing';
+import { FakeCrypter, FakeSigner, type Crypter, type Signer } from '@merited/signing';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -39,6 +43,9 @@ export interface WalletServerOptions {
    * member-number check). The core adapter is injected — the wallet depends
    * on the contract interface only. */
   resolveLoyalty?(programme: string): LoyaltyLookup | null;
+  /** PH1-16: signs mandate/approval attestations (platform attests in Ph 1).
+   * FakeSigner in dev/test; the real Ed25519 signer via factory in prod. */
+  signer?: Signer;
 }
 
 const readCookie = (header: string | undefined, name: string): string | undefined =>
@@ -76,6 +83,11 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     pool: options.pool,
     mailer: options.mailer,
     resolveLoyalty: options.resolveLoyalty ?? (() => null),
+    clock,
+  });
+  const mandates = new MandateService({
+    pool: options.pool,
+    signer: options.signer ?? new FakeSigner('wallet-mandate-dev'),
     clock,
   });
 
@@ -217,6 +229,47 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     // unverified / wrong / replayed → no link (uniform failure)
     if (!link) return reply.code(401).send({ error: { code: 'HOSTED_LINK_UNVERIFIED' } });
     return reply.send({ link });
+  });
+
+  // ── consent & mandates (PH1-16, B14) ───────────────────────────────────────
+  app.post('/v1/mandates', async (req, reply) => {
+    const parsed = MandateGrantRequest.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { code: 'MANDATE_GRANT_INVALID', detail: parsed.error.issues } });
+    }
+    try {
+      const mandate = await mandates.grant({ consumerRef: req.consumerRef, request: parsed.data });
+      return reply.code(201).send({ mandate });
+    } catch (error) {
+      return reply.code(400).send({ error: { code: 'MANDATE_GRANT_FAILED', message: (error as Error).message } });
+    }
+  });
+
+  app.post('/v1/mandates/:id/attenuate', async (req, reply) => {
+    const parsed = MandateAttenuateRequest.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { code: 'MANDATE_ATTENUATE_INVALID', detail: parsed.error.issues } });
+    }
+    try {
+      const child = await mandates.attenuate({
+        consumerRef: req.consumerRef,
+        parentId: (req.params as { id: string }).id,
+        patch: parsed.data,
+      });
+      return reply.code(201).send({ mandate: child });
+    } catch (error) {
+      // widening (or any invalid narrowing) is a 422 — the request is well-formed
+      // but would escalate authority, which is forbidden by construction
+      if (error instanceof MandateWideningError) {
+        return reply.code(422).send({ error: { code: 'MANDATE_WOULD_WIDEN', violations: error.violations } });
+      }
+      return reply.code(400).send({ error: { code: 'MANDATE_ATTENUATE_FAILED', message: (error as Error).message } });
+    }
+  });
+
+  app.post('/v1/mandates/:id/revoke', async (req, reply) => {
+    const revoked = await mandates.revoke({ mandateId: (req.params as { id: string }).id });
+    return reply.send({ revoked });
   });
 
   return app;

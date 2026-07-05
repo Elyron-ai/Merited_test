@@ -48,3 +48,49 @@ export const Mandate = z
   });
 
 export type Mandate = z.infer<typeof Mandate>;
+
+/** The consumer-supplied fields at grant (§6.1); the server fills mandate_id,
+ * consumer_ref (from the session), status and attestation. */
+export const MandateGrantRequest = z.object({
+  agent_id: Id('agt'),
+  scopes: z.array(z.enum(['offers:read', 'loyalty:read', 'checkout:execute'])),
+  limits: z.object({
+    per_txn: Money,
+    per_month: Money,
+    categories: z.array(z.string()),
+  }),
+  merchants: z.array(z.string()),
+  data_sharing: z.object({
+    email: z.boolean(),
+    purchase_history: z.boolean(),
+    loyalty_ids: z.boolean(),
+  }),
+  pre_authorised_up_to: Money,
+  exp: z.string().datetime(),
+});
+export type MandateGrantRequest = z.infer<typeof MandateGrantRequest>;
+
+/** An attenuation patch — every field optional; an omitted field INHERITS the
+ * parent's value. Any supplied field must NARROW (widening is rejected by the
+ * service, by construction — §6.1). */
+export const MandateAttenuateRequest = z.object({
+  scopes: z.array(z.enum(['offers:read', 'loyalty:read', 'checkout:execute'])).optional(),
+  limits: z
+    .object({
+      per_txn: Money.optional(),
+      per_month: Money.optional(),
+      categories: z.array(z.string()).optional(),
+    })
+    .optional(),
+  merchants: z.array(z.string()).optional(),
+  data_sharing: z
+    .object({
+      email: z.boolean().optional(),
+      purchase_history: z.boolean().optional(),
+      loyalty_ids: z.boolean().optional(),
+    })
+    .optional(),
+  pre_authorised_up_to: Money.optional(),
+  exp: z.string().datetime().optional(),
+});
+export type MandateAttenuateRequest = z.infer<typeof MandateAttenuateRequest>;
