@@ -28,11 +28,13 @@ describe('implementation & audit pack (TRIO-16)', () => {
     }
   });
 
-  it('fences the one out-of-file block: the pseudo-token decode in the verify pipeline', () => {
-    expect(handoff).toContain('verify-pipeline.ts');
+  it('names the token-format seam: the codec is the only format-aware code (post-PH1-25)', () => {
+    expect(handoff).toContain('token-codec.ts');
     expect(handoff).toContain('v4.public.fake.');
+    const codec = readFileSync(path.join(appRoot, 'src/verification/token-codec.ts'), 'utf8');
+    expect(codec).toContain('v4.public.fake.'); // the fake format lives ONLY here now
     const pipeline = readFileSync(path.join(appRoot, 'src/verification/verify-pipeline.ts'), 'utf8');
-    expect(pipeline).toContain('v4.public.fake.'); // the block the pack points at is really there
+    expect(pipeline).not.toContain('v4.public.fake.'); // the fenced block really moved
   });
 
   it('states the acceptance gate: the frozen contract suite command and the zero-edit rule', () => {

@@ -28,11 +28,13 @@
     "@merited/otel": "workspace:*",
     "@merited/signing": "workspace:*",
     "fastify": "catalog:",
+    "paseto": "^3.1.4",
     "pg": "catalog:",
     "playwright-core": "^1.61.1",
     "ulidx": "catalog:",
     "yaml": "^2.9.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",

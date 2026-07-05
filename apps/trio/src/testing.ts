@@ -42,7 +42,7 @@ export const createSimulatedTrio = (options: SimulatedTrioOptions): SimulatedTri
   const commitments = new CommitmentSimulator(deps);
   const directory = new FixtureDirectory();
 
-  const app = createTrioServer({ serviceToken: options.serviceToken });
+  const app = createTrioServer({ serviceToken: options.serviceToken, signer });
   registerCommitmentRoutes(app, commitments);
   registerMerchantKeyRoutes(app, new MerchantKeySimulator(deps));
   registerMintRoutes(app, new MintSimulator(deps, commitments));

@@ -1,10 +1,18 @@
 import { timingSafeEqual } from 'node:crypto';
 import { registerTracing } from '@merited/otel';
+import type { Signer } from '@merited/signing';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { systemClock, type Clock } from './clock.js';
+import { verifyServiceToken } from './service-token.js';
 
 export interface TrioServerOptions {
-  /** Core→trio shared-secret service token (SYN-24; mTLS/signed tokens: PH1-25). */
+  /** Core→trio shared-secret service token (SYN-24; static path). */
   serviceToken: string;
+  /** PH1-25: when set, `svt.v1.…` SIGNED service tokens are also accepted
+   * (arch §6 hardening). Static stays accepted alongside — deployments
+   * flip to signed-only by dropping the static secret at config time. */
+  signer?: Signer;
+  clock?: Clock;
 }
 
 /**
@@ -22,9 +30,12 @@ export const createTrioServer = (options: TrioServerOptions): FastifyInstance =>
   app.addHook('onRequest', async (req, reply) => {
     if (req.url === '/healthz') return;
     const presented = req.headers['x-merited-service-token'];
-    const expected = Buffer.from(options.serviceToken);
     const actual = Buffer.from(typeof presented === 'string' ? presented : '');
-    const ok = actual.length === expected.length && timingSafeEqual(actual, expected);
+    const expected = Buffer.from(options.serviceToken);
+    let ok = actual.length === expected.length && timingSafeEqual(actual, expected);
+    if (!ok && options.signer && typeof presented === 'string' && presented.startsWith('svt.v1.')) {
+      ok = await verifyServiceToken(options.signer, options.clock ?? systemClock, presented);
+    }
     if (!ok) {
       await reply.code(401).send({ error: { code: 'SERVICE_AUTH_FAILED' } });
     }

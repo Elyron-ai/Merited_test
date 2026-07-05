@@ -16,6 +16,9 @@ import type { OrderConfirmed } from '../order.js';
 export interface ReplayCache {
   /** true if the key was already present; records it with the given TTL otherwise. */
   seenBefore(key: string, ttlS: number): Promise<boolean>;
+  /** Read-only check — never records (PH1-25: the verify pipeline's stage-2
+   * fast path peeks; only CONSUMPTION records via seenBefore). */
+  peek(key: string): Promise<boolean>;
 }
 
 /**

@@ -22,12 +22,13 @@ single test edit.**
 | Token mint + verify crypto | `src/verification/simulator.ts` | PH1-25 | Real PASETO v4.public tokens replacing the `v4.public.fake.…` pseudo-format; claims and TTL semantics unchanged |
 | Settlement signature verification | `src/settlement/simulator.ts` | PH1-26 | Real Ed25519 verification of `merchant_sig` on reversal claims; every line of arithmetic unchanged |
 
-Plus **one fenced block outside those files**: the stage-1 token decode in
-`src/verification/verify-pipeline.ts` (the block guarded by the
-`v4.public.fake.` prefix check, which splits the pseudo-token, base64url-decodes
-the claims and verifies the FakeSigner signature) is part of PH1-25's swap
-unit — it is the only place outside `simulator.ts` that knows the fake token
-format. Everything else in `verify-pipeline.ts` is retained verbatim.
+Plus the token wire format, which PH1-25 consolidated into
+`src/verification/token-codec.ts` — the ONLY format-aware code. (Before the
+swap this lived as a fenced `v4.public.fake.` decode block inside
+`verify-pipeline.ts`; the swap moved it behind the `TokenCodec` seam:
+`FakeTokenCodec` for dev/demo, `PasetoTokenCodec` — real v4.public via the
+`paseto` library — selected by signer capability.) Everything else in
+`verify-pipeline.ts` is retained verbatim.
 
 Beneath all three sits PH1-30: a real `Signer` implementation in
 `packages/signing` (the simulators receive it constructor-injected via

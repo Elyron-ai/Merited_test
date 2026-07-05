@@ -1,5 +1,4 @@
 import {
-  AttributionTokenClaims,
   Commitment,
   VerifyRequest,
   type Approval,
@@ -12,13 +11,14 @@ import {
   merchantSignedPayload,
   unsignedCommitmentPayload,
 } from '../commitment/simulator.js';
+import type { ReplayCache } from '@merited/contracts';
 import {
   inTx,
   merchantKeyRef,
-  PLATFORM_MINT_KEY,
   TrioHttpError,
   type TrioDeps,
 } from '../shared/deps.js';
+import { codecFor, type TokenCodec } from './token-codec.js';
 import type { TrioDirectory } from '../shared/ports/directory.js';
 import {
   applyConversionCounters,
@@ -68,10 +68,18 @@ type Rejection = { verdict: 'rejected'; reason: RejectionReasonCode; jti?: strin
  * attestation-verified (TRIO-7).
  */
 export class VerifySimulator {
+  private readonly codec: TokenCodec;
+
   constructor(
     private readonly deps: TrioDeps,
     private readonly directory: TrioDirectory,
-  ) {}
+    /** PH1-25: Redis fast-path for stage 2 — NEVER authoritative for a
+     * verified verdict (Postgres consumption inside the verdict tx is);
+     * a cache hit only short-circuits to the SAFE outcome (reject). */
+    private readonly replayCache?: ReplayCache,
+  ) {
+    this.codec = codecFor(deps.signer);
+  }
 
   async verify(
     claimInput: VerifyRequest,
@@ -150,6 +158,14 @@ export class VerifySimulator {
         [options.idempotencyKey, requestHash, canonicalJson(response)],
       );
       return response;
+    }).then(async (response) => {
+      // cache mark AFTER commit; failures ignored — Redis is never a
+      // source of truth and never blocks a verdict
+      if (response.verdict === 'verified' && outcome.verdict === 'verified' && this.replayCache) {
+        const ttl = 2 * 24 * 3600; // covers the attribution window comfortably
+        await this.replayCache.seenBefore(`jti:${outcome.minted.jti}`, ttl).catch(() => {});
+      }
+      return response;
     });
   }
 
@@ -177,21 +193,10 @@ export class VerifySimulator {
     );
     if (!merchantSigOk) return reject('SIG_INVALID');
 
-    const tokenParts = claim.attribution_token.split('.');
-    if (tokenParts.length !== 5 || claim.attribution_token.startsWith('v4.public.fake.') === false) {
-      return reject('SIG_INVALID');
-    }
-    const canonicalClaims = Buffer.from(tokenParts[3]!, 'base64url').toString('utf8');
-    const tokenSig = tokenParts[4]!;
-    if (!(await this.deps.signer.verify(PLATFORM_MINT_KEY, canonicalClaims, tokenSig))) {
-      return reject('SIG_INVALID');
-    }
-    let claims: AttributionTokenClaims;
-    try {
-      claims = AttributionTokenClaims.parse(JSON.parse(canonicalClaims));
-    } catch {
-      return reject('SIG_INVALID');
-    }
+    // PH1-25: the codec owns the wire format — fake pseudo-tokens or real
+    // PASETO v4.public by signer capability; null = fail closed.
+    const claims = await this.codec.decode(claim.attribution_token);
+    if (!claims) return reject('SIG_INVALID');
 
     // The trio's own mint record is authoritative (SYN-8) — absent = forged.
     const mintedRows = await this.deps.pool.query<MintedRow>(
@@ -225,6 +230,12 @@ export class VerifySimulator {
     const orderTs = Math.floor(Date.parse(claim.order.ts) / 1000);
 
     // ── stage 2: replay (read check; consumption happens with the verdict) ──
+    // Fast path (PH1-25): a cache hit rejects without touching Postgres —
+    // the safe direction only; verified verdicts always go through the
+    // authoritative consumption transaction.
+    if (this.replayCache && (await this.replayCache.peek(`jti:${minted.jti}`))) {
+      return reject('TOKEN_REPLAYED', minted.jti);
+    }
     const client = await this.deps.pool.connect();
     try {
       if (await isConsumed(client, minted.jti)) return reject('TOKEN_REPLAYED', minted.jti);

@@ -5,21 +5,20 @@ import {
   type MintResponse,
   type TokenMintService,
 } from '@merited/contracts';
-import { appendEvent, canonicalJson, sha256hex } from '@merited/events';
+import { appendEvent, sha256hex } from '@merited/events';
 import { CommitmentSimulator } from '../commitment/simulator.js';
-import { inTx, PLATFORM_MINT_KEY, TrioHttpError, type TrioDeps } from '../shared/deps.js';
+import { inTx, TrioHttpError, type TrioDeps } from '../shared/deps.js';
+import { codecFor } from './token-codec.js';
 
 const DEFAULT_TOKEN_TTL_S = 600; // ~10 min (§2.3), capped by the attribution window
-
-const base64url = (input: string): string => Buffer.from(input, 'utf8').toString('base64url');
 
 /**
  * Token Mint SIMULATOR (TRIO-5, §7.2 mint half; the verify pipeline is
  * TRIO-8) — replaced file-for-file by PH1-25 (real PASETO v4.public).
- * The pseudo-token is deliberately opaque downstream:
- *   v4.public.fake.<base64url(canonical_json(claims))>.<FakeSigner sig>
- * Claims are ONLY read from the mint response (keeps every consumer honest
- * against the real PASETO swap).
+ * The token format lives in the codec (PH1-25): fake pseudo-tokens under
+ * FakeSigner, real PASETO v4.public under the Ed25519 signer — claims are
+ * ONLY read from the mint response either way (every consumer stayed honest
+ * through the swap, exactly as designed).
  *
  * Re-mint (B26/SYN-8): same qid, fresh jti, apr set. Walletless: apr null.
  * Mint enforces quote.expires_at ≤ token exp — Core clamps before calling
@@ -57,9 +56,7 @@ export class MintSimulator implements TokenMintService {
       exp,
     });
 
-    const canonicalClaims = canonicalJson(claims);
-    const signature = await this.deps.signer.sign(PLATFORM_MINT_KEY, canonicalClaims);
-    const token = `v4.public.fake.${base64url(canonicalClaims)}.${signature}`;
+    const token = await codecFor(this.deps.signer).mint(claims);
 
     await inTx(this.deps.pool, async (tx) => {
       await tx.query(

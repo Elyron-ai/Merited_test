@@ -127,4 +127,24 @@ export class Ed25519Signer implements Signer {
     const spki = this.publicKeys.get(keyRef)!.export({ format: 'der', type: 'spki' }) as Buffer;
     return `${PUB_PREFIX}${spki.toString('base64url')}`;
   }
+
+  /**
+   * TRIO-INTERNAL (PH1-25): run `fn` with the live private KeyObject — the
+   * PASETO library signs whole tokens itself, so the mint needs the key,
+   * not a detached signature. The key never leaves the callback's scope and
+   * this method must only be called inside the trio process (SYN-32 custody
+   * boundary); it exists so PASETO stays library-built, never hand-rolled.
+   */
+  async usePrivateKey<T>(keyRef: string, fn: (privateKey: KeyObject) => Promise<T>): Promise<T> {
+    assertKeyRef(keyRef);
+    await this.ensureKey(keyRef);
+    return fn(this.privateKeys.get(keyRef)!);
+  }
+
+  /** The public half as a KeyObject (verification-side counterpart). */
+  async usePublicKey<T>(keyRef: string, fn: (publicKey: KeyObject) => Promise<T>): Promise<T> {
+    assertKeyRef(keyRef);
+    await this.ensureKey(keyRef);
+    return fn(this.publicKeys.get(keyRef)!);
+  }
 }
