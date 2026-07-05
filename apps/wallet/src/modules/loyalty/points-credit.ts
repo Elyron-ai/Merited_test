@@ -61,14 +61,22 @@ export const pointsCreditProjection = (deps: PointsCreditDeps): Projection => ({
 
     // the consumer's earliest ACTIVE link takes the credit (one programme
     // per conversion) — a revoked link is revoked consent (B23): no credit
-    const { rows: links } = await deps.pool.query<{ programme: string; member_ref: string }>(
-      `SELECT programme, member_ref FROM wallet.identity_links
+    const { rows: links } = await deps.pool.query<{
+      programme: string;
+      member_ref: string;
+      sub_hash: string;
+    }>(
+      `SELECT programme, member_ref, sub_hash FROM wallet.identity_links
         WHERE consumer_ref = $1 AND status = 'active'
         ORDER BY linked_at LIMIT 1`,
       [consumer.consumer_ref],
     );
     const link = links[0];
     if (!link) return;
+    // OIDC links carry a TOKENISED member handle (mbr_…, B23 — the raw
+    // reference never persists); the brand resolves its own members by the
+    // privacy handle instead. Hosted links carry the brand's raw ref.
+    const creditRef = link.member_ref.startsWith('mbr_') ? link.sub_hash : link.member_ref;
 
     const adapter = deps.resolveLoyalty(link.programme);
     if (!adapter) return;
@@ -81,7 +89,7 @@ export const pointsCreditProjection = (deps: PointsCreditDeps): Projection => ({
       // credit FIRST, record second: a crash in between replays into the
       // adapter's own order_ref_hash idempotency, never a double credit
       await adapter.creditPoints({
-        member_ref: link.member_ref,
+        member_ref: creditRef,
         points,
         order_ref_hash: orderRefHash,
       });
@@ -95,7 +103,7 @@ export const pointsCreditProjection = (deps: PointsCreditDeps): Projection => ({
         data.claim_id,
         consumer.consumer_ref,
         link.programme,
-        link.member_ref,
+        creditRef,
         points,
         orderRefHash,
         data.qid,

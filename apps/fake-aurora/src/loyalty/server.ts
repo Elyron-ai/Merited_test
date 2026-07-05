@@ -1,4 +1,5 @@
 import formbody from '@fastify/formbody';
+import { createHash } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { AURORA_IDP_MEMBERS } from '../idp/members.js';
 
@@ -26,7 +27,13 @@ export const createFakeAuroraLoyalty = async (
 ): Promise<FakeAuroraLoyalty> => {
   const balances = new Map<string, { tier: string; balance: number }>();
   for (const member of AURORA_IDP_MEMBERS) {
-    balances.set(member.sub, { tier: member.loyalty_tier, balance: member.points_balance });
+    const record = { tier: member.loyalty_tier, balance: member.points_balance };
+    balances.set(member.sub, record);
+    // B23-friendly reference: the brand can derive its own members' privacy
+    // handles, so credits keyed by sub_hash resolve to the SAME record —
+    // OIDC-linked wallets never need the raw member reference (PH2-10/11).
+    balances.set(createHash('sha256').update(`aurora-club:${member.sub}`).digest('hex'), record);
+    balances.set(createHash('sha256').update(member.sub).digest('hex'), record);
   }
   const seenOrders = new Set<string>(); // idempotency per order_ref_hash
 

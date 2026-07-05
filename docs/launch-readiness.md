@@ -74,7 +74,7 @@ real key is an env change, never a code change — the standing rule).
 | PH2-10 | Loyalty points-credit flow on wallet-path `ConversionVerified` (idempotent per claim; walletless credits nothing) | M |✅ done 2026-07-05 (screen rendering = PH2-3) |
 | PH2-8 | Feature assembly + training pipeline (`apps/ml-decisioner/training/`, Python; ledger exhaust only; LEAD-4 synthetic traffic if thin) | M |✅ done 2026-07-05 |
 | PH2-7 | ML sidecar via `Decisioner` HTTP impl + timeout fallback; CI decisioner-swap job diffs schemas (must be empty) | L |✅ done 2026-07-05 |
-| PH2-11 | Demo Act 2 — all 9 §10 steps incl. both negative cases on camera; one trace brief→ledger | L | ⬜ |
+| PH2-11 | Demo Act 2 — all 9 §10 steps incl. both negative cases on camera; one trace brief→ledger | L |✅ done 2026-07-05 — CI-green; the RECORDING is A11 |
 | PH2-12 | Phase-2 gate run + recording; evidence in `docs/gates/phase-2.md` | S | ⬜ |
 
 ### C2 · Phase 3 — Interop & exit-ready (Q2 27) — all ⬜

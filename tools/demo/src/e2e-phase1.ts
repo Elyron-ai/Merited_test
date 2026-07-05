@@ -85,7 +85,7 @@ export interface Phase1World {
   webhookSecret: string;
   merchantSlug: string;
   /** A FakeShop bound to the core adapter; dropPct per instance (drills). */
-  openShop(dropPct?: number): Promise<{ rail: FakeShopRail; close(): Promise<void> }>;
+  openShop(dropPct?: number): Promise<{ rail: FakeShopRail; shopUrl: string; close(): Promise<void> }>;
   walletSession(email: string): Promise<string>;
   close(): Promise<void>;
 }
@@ -227,7 +227,7 @@ export const createPhase1World = async (): Promise<Phase1World> => {
       });
       const shopUrl = await shop.listen({ port: 0, host: '127.0.0.1' });
       shops.push(shop);
-      return { rail: new FakeShopRail(shopUrl), close: () => shop.close() };
+      return { rail: new FakeShopRail(shopUrl), shopUrl, close: () => shop.close() };
     },
     walletSession: async (email: string) => {
       await fetch(`${walletUrl}/v1/auth/request`, {
