@@ -10,3 +10,8 @@ export {
   type SoftIdentityRecord,
 } from './resolve.js';
 export { IdentityStore } from './store.js';
+export {
+  PgIdentityLinkReader,
+  type IdentityLinkReader,
+  type LinkedMember,
+} from './link-reader.js';

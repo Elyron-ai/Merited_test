@@ -11,6 +11,7 @@ import { AgentsService } from './modules/agents/service.js';
 import { decisionerFor } from './modules/decisioning/index.js';
 import { NoopGuardrails } from './modules/guardrails/index.js';
 import { IdentityStore } from './modules/identity/store.js';
+import { PgIdentityLinkReader } from './modules/identity/link-reader.js';
 import { MerchantsService } from './modules/merchants/service.js';
 import { TrioKeysClient } from './modules/merchants/trio-keys-client.js';
 import { OfferPublisher } from './modules/offers/publisher.js';
@@ -84,7 +85,9 @@ export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCor
   const listPriceFor = options.listPriceFor ?? (() => pence(8450));
   const readOffers = new ReadOffers({
     repository,
-    identity: new IdentityStore(pool),
+    // PH1-15: link-aware identity. The reader probes for wallet.identity_links
+    // and no-ops on a core-only database, so Phase-0 assemblies are unchanged.
+    identity: new IdentityStore(pool, new PgIdentityLinkReader(pool)),
     decisioner: decisionerFor(options.decisioner ?? 'rules'),
     guardrails: new NoopGuardrails(),
     quotes,
