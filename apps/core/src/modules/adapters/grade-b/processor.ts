@@ -3,6 +3,7 @@ import {
   type ConversionClaim,
   type FakeShopOrderWebhook,
   type Merchant,
+  type OrderConfirmed,
 } from '@merited/contracts';
 import { appendEvent } from '@merited/events';
 import type { Signer } from '@merited/signing';
@@ -40,7 +41,16 @@ export class GradeBOrderProcessor implements OrderProcessor {
     payload: FakeShopOrderWebhook,
     merchant: Merchant,
   ): Promise<{ status: number; body: Record<string, unknown> }> {
-    const order = normaliseOrder(payload);
+    return this.processConfirmedOrder(normaliseOrder(payload), merchant);
+  }
+
+  /** PH3-3: protocol adapters (UCP/ACP) arrive ALREADY normalised — same
+   * token gate, same signing, same write funnel; no protocol ever gets its
+   * own claim path (P2 on the write side). */
+  async processConfirmedOrder(
+    order: OrderConfirmed,
+    merchant: Merchant,
+  ): Promise<{ status: number; body: Record<string, unknown> }> {
     if (!order.token) {
       this.deps.logger?.info(
         { merchant_slug: merchant.slug, order_ref_hash: order.order_ref_hash, reason: 'TOKEN_ABSENT' },

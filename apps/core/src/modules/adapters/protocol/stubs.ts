@@ -5,17 +5,15 @@ import {
   ACP_TOKEN_KEY,
   AcpItem,
   AcpOrderWebhook,
-  UCP_EXTENSION_KEY,
-  UcpAttributionExtension,
-  UcpCheckoutCompleted,
-  UcpOffer,
   pence,
-  ucpMoney,
   type Offer,
   type OfferQuote,
   type OrderConfirmed,
   type ProtocolAdapter,
 } from '@merited/contracts';
+/** The UCP mapping IS the real adapter (PH3-3) — one source of truth; the
+ * conformance suite runs against it directly. */
+export { UcpAdapter as UcpStubAdapter } from '../ucp/adapter.js';
 
 /**
  * Contract-stub protocol adapters (PH3-2, §2.2 "fakes are contract stubs
@@ -26,45 +24,6 @@ import {
  */
 
 const hashRef = (ref: string): string => createHash('sha256').update(ref).digest('hex');
-
-export class UcpStubAdapter implements ProtocolAdapter<UcpOffer, UcpCheckoutCompleted> {
-  offerOut(input: { quote: OfferQuote; offer: Offer }): UcpOffer {
-    return UcpOffer.parse({
-      type: 'ucp.offer',
-      id: input.offer.offer_id,
-      title: input.offer.title,
-      description: input.offer.description,
-      price: ucpMoney(input.quote.price.final),
-      seller_id: input.offer.merchant_id,
-      valid_until: input.quote.expires_at,
-      extensions:
-        input.quote.token === null
-          ? {}
-          : {
-              [UCP_EXTENSION_KEY]: UcpAttributionExtension.parse({
-                token: input.quote.token,
-                quote_id: input.quote.quote_id,
-                expires_at: input.quote.expires_at,
-              }),
-            },
-    });
-  }
-
-  orderIn(callback: UcpCheckoutCompleted): OrderConfirmed {
-    const parsed = UcpCheckoutCompleted.parse(callback);
-    // the DESIGNATED field only (rule 1); anything else in extensions is
-    // someone else's namespace and none of our business
-    const extension = UcpAttributionExtension.safeParse(
-      parsed.order.extensions[UCP_EXTENSION_KEY],
-    );
-    return {
-      order_ref_hash: hashRef(parsed.order.order_ref),
-      gross_value: pence(parsed.order.total.amount_minor),
-      ...(extension.success ? { token: extension.data.token } : {}),
-      ts: parsed.order.completed_at,
-    };
-  }
-}
 
 export class AcpStubAdapter implements ProtocolAdapter<AcpItem, AcpOrderWebhook> {
   offerOut(input: { quote: OfferQuote; offer: Offer }): AcpItem {
