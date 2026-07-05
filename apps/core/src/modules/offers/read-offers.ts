@@ -39,6 +39,8 @@ export interface ReadOffersDeps {
   clock: Clock;
   commitmentStatusFor(commitmentId: string): Promise<CommitmentStatus | null>;
   listPriceFor(offer: Offer): Money;
+  /** PH1-3: merchant exclusion rules — absent means no rules (Phase-0). */
+  rulesStore?: { list(): Promise<import('@merited/contracts').EligibilityRule[]> };
   /** Structured analytics sink (B19 consumes in Ph1) — pino-compatible. */
   logger?: { info(payload: Record<string, unknown>, message: string): void };
 }
@@ -82,10 +84,14 @@ export class ReadOffers {
         const statuses = await fetchCommitmentStatuses(candidates, (cid) =>
           this.deps.commitmentStatusFor(cid),
         );
+        const rules = (await this.deps.rulesStore?.list()) ?? [];
         const result = filterEligibility(candidates, {
           tier: identity.tier,
           now: this.deps.clock.now(),
           commitmentStatuses: statuses,
+          agentId: input.agent.agent_id,
+          segment: identity.segment,
+          rules,
         });
         span.setAttribute('eligible.count', result.eligible.length);
         span.setAttribute(

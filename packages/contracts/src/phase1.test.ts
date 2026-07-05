@@ -31,15 +31,34 @@ const roundTrip = <T>(schema: { parse(d: unknown): T }, value: T) => {
 };
 
 describe('PH1-1 — contracts delta (accept: every new schema round-trips)', () => {
-  it('eligibility rules + merchant exclusions round-trip', () => {
+  it('eligibility rules round-trip — all three variants (PH1-3 extension)', () => {
     const exclusion: MerchantExclusion = {
+      rule_id: 'elr_1',
+      type: 'merchant_agent_exclusion',
       merchant_id: 'mer_00000000000000000000000001',
       agent_id: 'agt_00000000000000000000000001',
       note: 'abusive traffic',
       created_at: '2026-07-05T00:00:00Z',
     };
     roundTrip(MerchantExclusion, exclusion);
-    roundTrip(EligibilityRule, { type: 'merchant_agent_exclusion', ...exclusion });
+    roundTrip(EligibilityRule, exclusion);
+    roundTrip(EligibilityRule, {
+      rule_id: 'elr_2',
+      type: 'merchant_tier_exclusion',
+      merchant_id: 'mer_00000000000000000000000001',
+      tier: 'T3',
+      segment: null,
+      note: null,
+      created_at: '2026-07-05T00:00:00Z',
+    });
+    roundTrip(EligibilityRule, {
+      rule_id: 'elr_3',
+      type: 'merchant_sku_exclusion',
+      merchant_id: 'mer_00000000000000000000000001',
+      sku_ref: 'sku_spa_day',
+      note: null,
+      created_at: '2026-07-05T00:00:00Z',
+    });
   });
 
   it('MCP tool I/O round-trips; check_eligibility output carries no quote or token field', () => {

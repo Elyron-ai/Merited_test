@@ -44,6 +44,7 @@ const formatPence = (amount: number): string => `£${(amount / 100).toFixed(2)}`
  * must leave the recorded history fully intact and verifiable.
  */
 const RESET_TARGETS = [
+  'core.eligibility_rules',
   'core.claims_intake',
   'core.idempotency_keys',
   'core.quotes',
