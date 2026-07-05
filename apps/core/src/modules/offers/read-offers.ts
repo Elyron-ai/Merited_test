@@ -57,6 +57,46 @@ export interface ReadOffersDeps {
 export class ReadOffers {
   constructor(private readonly deps: ReadOffersDeps) {}
 
+  /**
+   * `check_eligibility` (PH1-6, SYN-26): per-offer verdicts + exclusion
+   * reasons, NO quotes and NO minting — the same candidate → identity →
+   * filter path `read()` uses, stopped before decisioning. Offers not
+   * among the candidates come back `eligible:false` (unknown / not live).
+   */
+  async checkEligibility(input: {
+    agent: AgentCtx;
+    consumer?: ConsumerCtx;
+    offerIds: readonly string[];
+  }): Promise<{ results: Array<{ offer_id: string; eligible: boolean; reason?: string }> }> {
+    const candidates = await this.deps.repository.listCandidates({});
+    const wanted = new Set(input.offerIds);
+    const scoped = candidates.filter((c) => wanted.has(c.offer.offer_id));
+    const lookups = await this.deps.identity.lookupsFor(input.consumer);
+    const identity = resolve(input.consumer, lookups, this.deps.clock);
+    const statuses = await fetchCommitmentStatuses(scoped, (cid) =>
+      this.deps.commitmentStatusFor(cid),
+    );
+    const rules = (await this.deps.rulesStore?.list()) ?? [];
+    const result = filterEligibility(scoped, {
+      tier: identity.tier,
+      now: this.deps.clock.now(),
+      commitmentStatuses: statuses,
+      agentId: input.agent.agent_id,
+      segment: identity.segment,
+      rules,
+    });
+    const eligibleIds = new Set<string>(result.eligible.map((e) => e.offer.offer_id));
+    const reasonById = new Map<string, string>(result.excluded.map((e) => [e.offer_id, e.reason]));
+    return {
+      results: input.offerIds.map((offer_id) => {
+        if (eligibleIds.has(offer_id)) return { offer_id, eligible: true };
+        const reason = reasonById.get(offer_id);
+        // an offer id we never saw as a candidate is unknown → not live
+        return { offer_id, eligible: false, reason: reason ?? 'OFFER_NOT_LIVE' };
+      }),
+    };
+  }
+
   async read(input: ReadOffersInput): Promise<OfferReadResponse> {
     return withSpan('read_offers', async (root) => {
       root.setAttribute('agent.anonymous', input.agent.agent_id === null);

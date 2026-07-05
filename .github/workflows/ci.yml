@@ -76,7 +76,9 @@ jobs:
 
   integration:
     # Real Postgres via the repo's own compose file (init.sql provisions the
-    # D8 roles); runs the FULL workspace suite — FND-10..13's events/
+    # D8 roles); runs the FULL workspace suite — including PH1-6's MCP
+    # inspector gate (apps/mcp-server drives all three tools over the MCP
+    # protocol against a real Core+trio) — FND-10..13's events/
     # projections/verify-chain suites and every module's integration tests.
     # A tampered chain turns this job red (the verify-chain suite proves
     # tamper detection on every run).

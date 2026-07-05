@@ -1,4 +1,6 @@
 import {
+  CheckEligibilityInput,
+  CheckEligibilityOutput,
   ClaimStatusResponse,
   OffersQuery,
   QuoteStatusResponse,
@@ -33,6 +35,7 @@ export const ROUTE_CLASSIFICATIONS: Record<string, 'open-health' | 'open-rate-li
   'POST /v1/agents/register': 'open-rate-limited',
   'GET /v1/offers': 'agent-degraded',
   'GET /v1/offers/:id': 'agent-degraded',
+  'POST /v1/eligibility': 'agent-degraded', // PH1-6: verdicts for anon or registered agents
   'GET /v1/quotes/:id': 'agent-degraded',
   'GET /v1/quotes/:id/claim': 'agent-required',
 };
@@ -91,6 +94,20 @@ export const registerV1Routes = (app: FastifyInstance, deps: V1Deps): void => {
       throw new CoreHttpError(404, 'OFFER_NOT_AVAILABLE', 'offer unknown, not live, or not eligible');
     }
     return { quote: response.quotes[0], ...(response.hint ? { hint: response.hint } : {}) };
+  });
+
+  // PH1-6: check_eligibility — per-offer verdicts + exclusion reasons, no
+  // quotes and no minting (SYN-26). The MCP server's check_eligibility tool
+  // wraps this through the SDK as an ordinary agent.
+  app.post('/v1/eligibility', { schema: { body: CheckEligibilityInput } }, async (req) => {
+    const body = req.body as CheckEligibilityInput;
+    const consumer = consumerFrom(body);
+    const result = await deps.readOffers.checkEligibility({
+      agent: req.agentCtx,
+      ...(consumer ? { consumer } : {}),
+      offerIds: body.offer_ids,
+    });
+    return CheckEligibilityOutput.parse(result);
   });
 
   app.get('/v1/quotes/:id', async (req) => {

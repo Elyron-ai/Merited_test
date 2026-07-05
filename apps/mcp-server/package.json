@@ -16,9 +16,19 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@merited/core": "workspace:*",
+    "@merited/trio": "workspace:*",
+    "@merited/events": "workspace:*",
+    "@merited/seed": "workspace:*",
+    "pg": "catalog:",
+    "@types/pg": "catalog:"
   },
   "dependencies": {
-    "@merited/contracts": "workspace:*"
+    "@merited/contracts": "workspace:*",
+    "@merited/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod-to-json-schema": "^3.25.2",
+    "zod": "catalog:"
   }
 }

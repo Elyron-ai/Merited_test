@@ -1,5 +1,6 @@
 import {
   AgentRegistrationResponse,
+  CheckEligibilityOutput,
   ClaimStatusResponse,
   ClaimSubmitResponse,
   ConversionClaim,
@@ -120,6 +121,19 @@ export class MeritedClient {
   async getOffer(offerId: string): Promise<SingleOfferResponse> {
     return SingleOfferResponse.parse(
       await this.request('GET', `/v1/offers/${offerId}`, { headers: this.agentHeaders() }),
+    );
+  }
+
+  async checkEligibility(
+    offerIds: string[],
+    consumer: Record<string, string | undefined> = {},
+  ): Promise<CheckEligibilityOutput> {
+    const body: Record<string, unknown> = { offer_ids: offerIds };
+    for (const [key, value] of Object.entries(consumer)) {
+      if (value !== undefined) body[key] = value;
+    }
+    return CheckEligibilityOutput.parse(
+      await this.request('POST', '/v1/eligibility', { body, headers: this.agentHeaders() }),
     );
   }
 
