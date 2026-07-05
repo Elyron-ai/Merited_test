@@ -65,7 +65,9 @@ export class PasetoTokenCodec implements TokenCodec {
     // and never the fake format
     if (!token.startsWith('v4.public.') || token.startsWith('v4.public.fake.')) return null;
     try {
-      const payload = await this.signer.usePublicKey(PLATFORM_MINT_KEY, (publicKey) =>
+      // rotation-tolerant (PH1-22): try every non-revoked key version,
+      // newest first — tokens minted under key N verify after rotation to N+1
+      const payload = await this.signer.usePublicKeyVersions(PLATFORM_MINT_KEY, (publicKey) =>
         V4.verify(token, publicKey),
       );
       return AttributionTokenClaims.parse((payload as { mc: unknown }).mc);

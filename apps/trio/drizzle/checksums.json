@@ -2,5 +2,6 @@
   "0000_trio_tables.sql": "1f29ef594e547928095dd598e7f9f742cc277cebd537c397fed1b1af60a87673",
   "0001_settlement.sql": "9be6f481e0c92385509c8f0ea0d2b96813b96e0fa8570b9a7f740cb7c3a9e9ed",
   "0002_netting.sql": "8cee4636123ed69f5a39d8d2d3070517cbebf268a6a40cbe5f707c1e8a74d11c",
-  "0003_signing_keys.sql": "819f282aa6fe0bbb405511eeb1d06971fafa46bd130045e6ef2962718e3ab214"
+  "0003_signing_keys.sql": "819f282aa6fe0bbb405511eeb1d06971fafa46bd130045e6ef2962718e3ab214",
+  "0004_signing_key_rotation.sql": "0a7c7748f352a2b2ffd3a14240fb0ea0f039ab8f4f6803d9245ea625b58ed36b"
 }
