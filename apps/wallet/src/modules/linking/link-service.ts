@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { IdentityLink, newId, type IdentityProviderAdapter } from '@merited/contracts';
+import { type IdentityLink, type IdentityProviderAdapter } from '@merited/contracts';
 import { appendEventInNewTx } from '@merited/events';
 import type pg from 'pg';
 import { LinkTokenStore } from './link-token-store.js';
+import { buildIdentityLink, persistLink } from './link-writer.js';
 
 /**
  * Account linking core (PH1-13, B23 — HIGH-SCRUTINY). The OAuth
@@ -20,7 +21,6 @@ import { LinkTokenStore } from './link-token-store.js';
  * line, or a return value here (§6.3).
  */
 const S256 = (verifier: string): string => createHash('sha256').update(verifier).digest('base64url');
-const sha256hex = (input: string): string => createHash('sha256').update(input).digest('hex');
 const b64url = (n = 32): string => randomBytes(n).toString('base64url');
 
 export interface LinkServiceDeps {
@@ -92,29 +92,18 @@ export class LinkService {
     if (!adapter) throw new Error(`no IdP configured for programme '${attempt.programme}'`);
 
     const exchanged = await adapter.exchange({ code: input.code, code_verifier: attempt.code_verifier });
-    // tokenise the member reference — the raw idp sub never becomes the
-    // member_ref on the wire; a stable tokenised handle does
-    const memberRef = `mbr_${sha256hex(`${attempt.programme}:${exchanged.sub}`).slice(0, 24)}`;
-    const subHash = sha256hex(exchanged.sub);
     const info = await adapter.userinfo(exchanged.access_token).catch(() => null);
 
-    const link = IdentityLink.parse({
-      link_id: newId('lnk'),
-      consumer_ref: attempt.consumer_ref,
-      merchant_id: attempt.merchant_id,
+    // the IdentityLink derivation is shared with the hosted flow (PH1-14) so
+    // the two paths are byte-for-byte indistinguishable downstream (§6.3)
+    const link = buildIdentityLink({
+      consumerRef: attempt.consumer_ref,
+      merchantId: attempt.merchant_id,
       programme: attempt.programme,
-      member_ref: memberRef,
-      sub_hash: subHash,
-      scopes: LINK_SCOPES.filter((s): s is 'profile' | 'balance' | 'tier' => s !== 'openid'),
-      status: 'active',
-      linked_at: this.deps.clock.now().toISOString(),
+      sub: exchanged.sub,
+      linkedAt: this.deps.clock.now().toISOString(),
     });
 
-    await this.deps.pool.query(
-      `INSERT INTO wallet.identity_links (link_id, consumer_ref, merchant_id, programme, member_ref, sub_hash, scopes, status, linked_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)`,
-      [link.link_id, link.consumer_ref, link.merchant_id, link.programme, link.member_ref, link.sub_hash, JSON.stringify(link.scopes), link.status, link.linked_at],
-    );
     // seal the refresh token (PH1-8) — it never travels further than here
     if (exchanged.refresh_token) {
       await this.deps.tokens.put(link.link_id, {
@@ -124,7 +113,7 @@ export class LinkService {
       });
     }
     void info; // userinfo fetched to validate the token; claims persist in Phase 2
-    await appendEventInNewTx(this.deps.pool, 'AccountLinked', { link });
+    await persistLink(this.deps.pool, link);
     return link;
   }
 

@@ -1,10 +1,17 @@
-import { type IdentityProviderAdapter, type Mailer } from '@merited/contracts';
+import {
+  HostedLinkStartRequest,
+  HostedLinkVerifyRequest,
+  type IdentityProviderAdapter,
+  type LoyaltyLookup,
+  type Mailer,
+} from '@merited/contracts';
 import formbody from '@fastify/formbody';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { MagicLinkAuth } from './auth/magic-link.js';
 import { SessionStore, WALLET_SESSION_COOKIE } from './auth/session.js';
 import { LinkService } from './modules/linking/link-service.js';
+import { HostedLinkService } from './modules/linking/hosted/hosted-link-service.js';
 import { LinkTokenStore } from './modules/linking/link-token-store.js';
 import { PdStore } from './modules/pd-store/pd-store.js';
 import { FakeCrypter, type Crypter } from '@merited/signing';
@@ -28,6 +35,10 @@ export interface WalletServerOptions {
   linkCallbackUrl?: string;
   /** Crypter for the sealed link-token store (FakeCrypter dev; KMS prod). */
   crypter?: Crypter;
+  /** PH1-14: resolve the brand loyalty API for a programme (hosted-linking
+   * member-number check). The core adapter is injected — the wallet depends
+   * on the contract interface only. */
+  resolveLoyalty?(programme: string): LoyaltyLookup | null;
 }
 
 const readCookie = (header: string | undefined, name: string): string | undefined =>
@@ -60,6 +71,12 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     resolveAdapter: options.resolveIdpAdapter ?? (() => null),
     clock,
     callbackUrl: options.linkCallbackUrl ?? `${options.verifyBaseUrl.replace(/\/verify$/, '')}/v1/links/callback`,
+  });
+  const hostedLinkService = new HostedLinkService({
+    pool: options.pool,
+    mailer: options.mailer,
+    resolveLoyalty: options.resolveLoyalty ?? (() => null),
+    clock,
   });
 
   const app = Fastify();
@@ -167,6 +184,39 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     const linkId = (req.params as { id: string }).id;
     const revoked = await linkService.revoke({ linkId, revokedBy: 'wallet' });
     return reply.send({ revoked });
+  });
+
+  // ── hosted-linking fallback (PH1-14, B23) — IdP-less programmes ─────────────
+  // The request schema has NO credential field by construction — the email is
+  // the only factor (§6.3 "never credential capture"; architecture §8/Q7).
+  app.post('/v1/links/hosted/start', async (req, reply) => {
+    const parsed = HostedLinkStartRequest.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { code: 'HOSTED_LINK_START_INVALID' } });
+    }
+    const result = await hostedLinkService.start({
+      consumerRef: req.consumerRef,
+      merchantId: parsed.data.merchant_id,
+      programme: parsed.data.programme,
+      memberRef: parsed.data.member_ref,
+      email: parsed.data.email,
+    });
+    return reply.send(result);
+  });
+
+  app.post('/v1/links/hosted/verify', async (req, reply) => {
+    const parsed = HostedLinkVerifyRequest.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: { code: 'HOSTED_LINK_VERIFY_INVALID' } });
+    }
+    const link = await hostedLinkService.verify({
+      attemptId: parsed.data.attempt_id,
+      token: parsed.data.token,
+      sessionConsumerRef: req.consumerRef,
+    });
+    // unverified / wrong / replayed → no link (uniform failure)
+    if (!link) return reply.code(401).send({ error: { code: 'HOSTED_LINK_UNVERIFIED' } });
+    return reply.send({ link });
   });
 
   return app;
