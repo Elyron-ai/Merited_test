@@ -51,8 +51,10 @@ afterAll(async () => {
   await admin.end();
 });
 
-beforeEach(async () => {
-  await fetch(`${MAILPIT_API}/api/v1/messages`, { method: 'DELETE' });
+beforeEach(() => {
+  // No global Mailpit wipe: this instance is shared with the linking suite,
+  // which runs concurrently — a global DELETE races its in-flight email (and
+  // vice versa). Each lookup is scoped to its own recipient instead.
   nowMs = Date.parse('2026-07-05T12:00:00Z');
 });
 
@@ -64,7 +66,11 @@ const requestAndExtractToken = async (email: string): Promise<string> => {
     body: JSON.stringify({ email }),
   });
   expect(res.status).toBe(202);
-  const list = (await (await fetch(`${MAILPIT_API}/api/v1/messages`)).json()) as {
+  // Scope the lookup to THIS recipient (newest-first) so a concurrent suite
+  // sharing the same Mailpit can't hand us its email — or wipe ours.
+  const list = (await (
+    await fetch(`${MAILPIT_API}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`)
+  ).json()) as {
     messages: Array<{ ID: string }>;
   };
   const message = list.messages[0]!;

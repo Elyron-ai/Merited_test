@@ -14,6 +14,9 @@
     },
     {
       "path": "../../packages/signing"
+    },
+    {
+      "path": "../../packages/events"
     }
   ]
 }

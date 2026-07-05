@@ -392,9 +392,15 @@ importers:
 
   apps/wallet:
     dependencies:
+      '@fastify/formbody':
+        specifier: ^8.0.1
+        version: 8.0.2
       '@merited/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@merited/signing':
         specifier: workspace:*
         version: link:../../packages/signing
@@ -408,9 +414,12 @@ importers:
         specifier: 'catalog:'
         version: 8.22.0
     devDependencies:
-      '@merited/events':
+      '@merited/core':
         specifier: workspace:*
-        version: link:../../packages/events
+        version: link:../core
+      '@merited/fake-aurora':
+        specifier: workspace:*
+        version: link:../fake-aurora
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0

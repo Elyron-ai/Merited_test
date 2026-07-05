@@ -20,15 +20,18 @@
     "typescript": "catalog:",
     "vitest": "catalog:",
     "@types/nodemailer": "^6.4.16",
-    "@merited/events": "workspace:*",
     "@types/pg": "catalog:",
-    "fast-check": "^4.8.0"
+    "fast-check": "^4.8.0",
+    "@merited/fake-aurora": "workspace:*",
+    "@merited/core": "workspace:*"
   },
   "dependencies": {
     "@merited/contracts": "workspace:*",
     "nodemailer": "^6.9.16",
     "@merited/signing": "workspace:*",
     "pg": "catalog:",
-    "fastify": "catalog:"
+    "fastify": "catalog:",
+    "@merited/events": "workspace:*",
+    "@fastify/formbody": "^8.0.1"
   }
 }
