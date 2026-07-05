@@ -118,5 +118,5 @@ mandatory security self-review; the corresponding `docs/build-log.md`
 entries carry the same section for the solo build. XC-3 auto-labels zone PRs
 so the label query enumerates the complete review surface for LEAD-5. This
 document plus `apps/trio/HANDOFF.md` is their starting map; the frozen
-contract suite (42 tests, XC-7 zero-edit) is the behavioural baseline they
+contract suite (43 tests, XC-7 zero-edit) is the behavioural baseline they
 can re-run against any build.

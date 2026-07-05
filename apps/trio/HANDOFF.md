@@ -8,7 +8,8 @@ Threat analysis lives in [`docs/trio-threat-notes.md`](../../docs/trio-threat-no
 
 The one-sentence version: **replace three simulator files (plus one fenced
 token-decode block), change nothing else, and the frozen contract suite —
-`pnpm trio:contract-test`, 42 tests — must pass against the result without a
+`pnpm trio:contract-test`, 43 tests (42 at the M1 freeze + one PH1-2
+change-controlled wallet-path case) — must pass against the result without a
 single test edit.**
 
 ---
@@ -128,7 +129,7 @@ The contract suite is target-driven and lives in `contract-tests/`:
 
 ```sh
 # In-process: boots the simulators against the compose Postgres.
-pnpm trio:contract-test              # expect: 42 passed (42)
+pnpm trio:contract-test              # expect: 43 passed (43)
 
 # Against a deployed target (XC-12 flips this to the real implementation):
 TRIO_TARGET_URL=https://<target> \

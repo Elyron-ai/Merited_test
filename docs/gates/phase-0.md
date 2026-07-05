@@ -32,7 +32,7 @@ crossing the gate before every box is ticked violates §0.1 phase order.
       *Proxy:* `pnpm -r build && pnpm -r test && pnpm lint` (unit,
       integration, property P-1..P-8 Phase 0 subset, e2e suites).
 - [x] Trio contract suite green against all three simulators.
-      *Proxy:* `pnpm trio:contract-test` (42 tests, XC-7 frozen).
+      *Proxy:* `pnpm trio:contract-test` (43 tests — 42 at the M1 freeze + one PH1-2 change-controlled case, XC-7).
 - [ ] Demo recorded as the asset. **Manual** — founder records
       `pnpm demo:act1` (human mode) once the gate is otherwise green.
 - [ ] Later-phase modules **not started** (§0.1), save the declared

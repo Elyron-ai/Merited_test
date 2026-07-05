@@ -493,6 +493,20 @@ describe('wallet path (stage 6) — directory-backed fixtures', () => {
   });
 
   walletIt(
+    'walletless claims never touch approval checks: a full verify makes ZERO directory reads (PH1-2)',
+    async () => {
+      const cor = await createCommitment(target, draftFor(merchantId));
+      const minted = asMint(await mintFor(target, cor.commitment_id, { agentId }));
+      const before = target.directoryReads!();
+      const verdict = asVerify(
+        await verifyClaim(target, await claimFor(target, merchantId, minted.token)),
+      );
+      expect(verdict.verdict).toBe('verified');
+      expect(target.directoryReads!()).toBe(before); // stage 6 skipped BY DESIGN, not passed vacuously
+    },
+  );
+
+  walletIt(
     'coverage: the suite has induced every one of the 12 reason codes from public inputs',
     () => {
       // WINDOW_EXPIRED doubles for the clawback window (SYN-10) in the

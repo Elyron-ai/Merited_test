@@ -54,6 +54,9 @@ export interface TrioTarget {
   db: pg.Pool | null;
   /** Non-null only when the harness booted the target itself. */
   directory: TrioDirectoryHandle | null;
+  /** Reads the pipeline has made against the directory (PH1-2's
+   * walletless-never-touches-approvals proof). Null on remote targets. */
+  directoryReads: (() => number) | null;
   attest<T extends Record<string, unknown>>(record: Omit<T, 'attestation'>): Promise<T>;
   close(): Promise<void>;
 }
@@ -83,6 +86,7 @@ export const createTarget = async (): Promise<TrioTarget> => {
       signer,
       db: null,
       directory: null,
+      directoryReads: null,
       attest: () => {
         throw new Error('directory fixtures are unavailable against a remote target (TRIO-17)');
       },
@@ -131,7 +135,21 @@ export const createTarget = async (): Promise<TrioTarget> => {
   const app = createTrioServer({ serviceToken });
   registerCommitmentRoutes(app, commitments);
   registerMintRoutes(app, new MintSimulator(deps, commitments));
-  registerVerifyRoutes(app, new VerifySimulator(deps, new VerifiedDirectory(fixtures, signer)));
+  // Count every directory consultation at the pipeline's own boundary —
+  // the walletless path must show a delta of ZERO (PH1-2).
+  const verified = new VerifiedDirectory(fixtures, signer);
+  let directoryReadCount = 0;
+  const countingDirectory = {
+    getApproval: (id: string) => {
+      directoryReadCount += 1;
+      return verified.getApproval(id);
+    },
+    getMandate: (id: string) => {
+      directoryReadCount += 1;
+      return verified.getMandate(id);
+    },
+  };
+  registerVerifyRoutes(app, new VerifySimulator(deps, countingDirectory));
   // Host-level Chromium resolution for the PDF route (the trio itself takes
   // this via constructor options — no ambient env inside the services).
   const { existsSync } = await import('node:fs');
@@ -151,6 +169,7 @@ export const createTarget = async (): Promise<TrioTarget> => {
     signer,
     db: pool,
     directory: fixtures,
+    directoryReads: () => directoryReadCount,
     attest: (record) => attest(signer, record),
     close: async () => {
       await app.close();

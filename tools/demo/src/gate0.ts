@@ -43,7 +43,7 @@ export const GATE0_CRITERIA: Gate0Criterion[] = [
     criterion: 'Trio contract suite green against all three simulators',
     kind: 'automated',
     command: 'pnpm trio:contract-test',
-    note: '42 tests, frozen under XC-7 zero-edit change control',
+    note: '43 tests, frozen under XC-7 zero-edit change control (42 at M1 + one PH1-2 case)',
   },
   {
     criterion: 'Hash chain verifies via verify-chain',
