@@ -146,6 +146,18 @@ export const EVENT_FIXTURES: Record<MeritedEventName, unknown> = {
     v: 1,
     data: { offer_id: ids.offer, merchant_id: ids.merchant, commitment_id: ids.commitment, published_at: at },
   },
+  OfferSuppressed: {
+    type: 'OfferSuppressed',
+    v: 1,
+    data: {
+      offer_id: ids.offer,
+      merchant_id: ids.merchant,
+      commitment_id: ids.commitment,
+      reason_code: 'BUDGET_EXHAUSTED',
+      agent_id: ids.agent,
+      suppressed_at: at,
+    },
+  },
   AgentRegistered: {
     type: 'AgentRegistered',
     v: 1,

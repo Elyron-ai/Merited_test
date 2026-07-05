@@ -60,22 +60,22 @@ real key is an env change, never a code change — the standing rule).
 | **XC-11** | Weekly plan-state sweep 2 (Accept completes) | — | ⬜ due 2026-07-11 |
 | Production wiring seams left deliberately open in Phase 1: send-on-quote push trigger (production caller of `PushService.sendQuoteNotification` — lands with PH2-4/PH2-11); points-credit production consumer (= PH2-10); native-Ed25519 KMS upgrade (LEAD-5 ratifies). | — | — | tracked below |
 
-### C1 · Phase 2 — Optimiser & scale (Q1 27) — all ⬜
+### C1 · Phase 2 — Optimiser & scale (Q1 27)
 
-| Task | What | Size |
-|---|---|---|
-| PH2-1 | B8 guardrails full: margin floor, budget pacing λ, brand rules, points-preference under low λ; `BUDGET_EXHAUSTED` flips reads to `no_offer` visible in analytics within one cycle | L |
-| PH2-2 | Merchant dashboard over B19 projections (under-reporting, rejections-with-why, budget burn, conversions) — no new data collection | M |
-| PH2-6 | Stripe Connect payouts behind `PayoutRail` + payout worker on `SettlementNetted`; same adapter contract test as SimulatedPayouts; env-loader guard refuses live keys until LEAD-2+LEAD-5 resolved | L |
-| PH2-4 | Valet full: wallet-driven errands, mandate in ctx, AWAITING_APPROVAL live, notification/approval loop, re-minted `apr` token to checkout; kill/restart resumes | L |
-| PH2-3 | Wallet UI — six screens (home/balances, linked accounts, mandate, offers-for-you, errand, activity&settlement); expect 2–3 slices | L |
-| PH2-5 | Valet LLM brief-interpreter + `VALET_DETERMINISTIC=1` scripted fallback | M |
-| PH2-9 | 1pd enrichment: consented pd → `DecisionCtx` iff `mandate.data_sharing` permits; revocation strips on next read; never in agent-facing responses (lint+test) | M |
-| PH2-10 | Loyalty points-credit flow on wallet-path `ConversionVerified` (idempotent per claim; walletless credits nothing) | M |
-| PH2-8 | Feature assembly + training pipeline (`apps/ml-decisioner/training/`, Python; ledger exhaust only; LEAD-4 synthetic traffic if thin) | M |
-| PH2-7 | ML sidecar via `Decisioner` HTTP impl + timeout fallback; CI decisioner-swap job diffs schemas (must be empty) | L |
-| PH2-11 | Demo Act 2 — all 9 §10 steps incl. both negative cases on camera; one trace brief→ledger | L |
-| PH2-12 | Phase-2 gate run + recording; evidence in `docs/gates/phase-2.md` | S |
+| Task | What | Size | Status |
+|---|---|---|---|
+| PH2-1 | B8 guardrails full: margin floor, budget pacing λ, brand rules, points-preference under low λ; `BUDGET_EXHAUSTED` flips reads to `no_offer` visible in analytics within one cycle | L | ✅ done 2026-07-05 |
+| PH2-2 | Merchant dashboard over B19 projections (under-reporting, rejections-with-why, budget burn, conversions) — no new data collection | M | ⬜ |
+| PH2-6 | Stripe Connect payouts behind `PayoutRail` + payout worker on `SettlementNetted`; same adapter contract test as SimulatedPayouts; env-loader guard refuses live keys until LEAD-2+LEAD-5 resolved | L | ⬜ |
+| PH2-4 | Valet full: wallet-driven errands, mandate in ctx, AWAITING_APPROVAL live, notification/approval loop, re-minted `apr` token to checkout; kill/restart resumes | L | ⬜ |
+| PH2-3 | Wallet UI — six screens (home/balances, linked accounts, mandate, offers-for-you, errand, activity&settlement); expect 2–3 slices | L | ⬜ |
+| PH2-5 | Valet LLM brief-interpreter + `VALET_DETERMINISTIC=1` scripted fallback | M | ⬜ |
+| PH2-9 | 1pd enrichment: consented pd → `DecisionCtx` iff `mandate.data_sharing` permits; revocation strips on next read; never in agent-facing responses (lint+test) | M | ⬜ |
+| PH2-10 | Loyalty points-credit flow on wallet-path `ConversionVerified` (idempotent per claim; walletless credits nothing) | M | ⬜ |
+| PH2-8 | Feature assembly + training pipeline (`apps/ml-decisioner/training/`, Python; ledger exhaust only; LEAD-4 synthetic traffic if thin) | M | ⬜ |
+| PH2-7 | ML sidecar via `Decisioner` HTTP impl + timeout fallback; CI decisioner-swap job diffs schemas (must be empty) | L | ⬜ |
+| PH2-11 | Demo Act 2 — all 9 §10 steps incl. both negative cases on camera; one trace brief→ledger | L | ⬜ |
+| PH2-12 | Phase-2 gate run + recording; evidence in `docs/gates/phase-2.md` | S | ⬜ |
 
 ### C2 · Phase 3 — Interop & exit-ready (Q2 27) — all ⬜
 

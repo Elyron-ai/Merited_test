@@ -3,7 +3,7 @@ import { EVENT_CATALOGUE, isCatalogueEvent, MERITED_EVENT_NAMES } from './catalo
 
 describe('event catalogue registry (FND-7 accept)', () => {
   it('covers exactly the 20 names (meta-test)', () => {
-    expect(Object.keys(EVENT_CATALOGUE)).toHaveLength(20);
+    expect(Object.keys(EVENT_CATALOGUE)).toHaveLength(21);
     expect(Object.keys(EVENT_CATALOGUE).sort()).toEqual([...MERITED_EVENT_NAMES].sort());
   });
 

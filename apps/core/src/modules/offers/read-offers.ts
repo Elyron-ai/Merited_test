@@ -43,6 +43,20 @@ export interface ReadOffersDeps {
   rulesStore?: { list(): Promise<import('@merited/contracts').EligibilityRule[]> };
   /** Structured analytics sink (B19 consumes in Ph1) — pino-compatible. */
   logger?: { info(payload: Record<string, unknown>, message: string): void };
+  /** PH2-1: per-merchant guardrail settings (commercial config). Absent →
+   * guardrails inert for that merchant. */
+  guardrailSettingsFor?(merchantId: string): Promise<import('@merited/contracts').GuardrailSettings | null>;
+  /** PH2-1 (SYN-41): ledger sink for read-path suppressions — one
+   * `OfferSuppressed` per suppressed offer, so analytics stay ledger-driven. */
+  suppressionSink?(
+    suppressions: Array<{
+      offer_id: string;
+      merchant_id: string;
+      commitment_id: string | null;
+      reason_code: string;
+      agent_id: string | null;
+    }>,
+  ): Promise<void>;
 }
 
 /**
@@ -120,10 +134,11 @@ export class ReadOffers {
         return resolved;
       });
 
+      const statuses = await fetchCommitmentStatuses(candidates, (cid) =>
+        this.deps.commitmentStatusFor(cid),
+      );
+
       const eligibility = await withSpan('read_offers.filter_eligibility', async (span) => {
-        const statuses = await fetchCommitmentStatuses(candidates, (cid) =>
-          this.deps.commitmentStatusFor(cid),
-        );
         const rules = (await this.deps.rulesStore?.list()) ?? [];
         const result = filterEligibility(candidates, {
           tier: identity.tier,
@@ -154,10 +169,33 @@ export class ReadOffers {
       );
 
       const passed = await withSpan('read_offers.guardrails', async (span) => {
-        const result = this.deps.guardrails.apply(ranked, ctx);
+        // PH2-1: the rules need live counters + per-merchant settings + a clock
+        const merchantIds = [...new Set(ranked.map((r) => r.offer.merchant_id))];
+        const settingsEntries = await Promise.all(
+          merchantIds.map(async (merchantId) => [
+            merchantId,
+            (await this.deps.guardrailSettingsFor?.(merchantId)) ?? null,
+          ] as const),
+        );
+        const result = this.deps.guardrails.apply(ranked, ctx, {
+          now: this.deps.clock.now(),
+          statuses: Object.fromEntries(statuses),
+          settings: Object.fromEntries(settingsEntries),
+        });
         span.setAttribute('suppressed.count', result.suppressed.length);
         if (result.suppressed.length > 0) {
           this.deps.logger?.info({ suppressed: result.suppressed }, 'offers suppressed by guardrails');
+          // SYN-41: suppressions reach analytics as ledger events
+          const byId = new Map(ranked.map((r) => [r.offer.offer_id, r]));
+          await this.deps.suppressionSink?.(
+            result.suppressed.map((sup) => ({
+              offer_id: sup.offer_id,
+              merchant_id: byId.get(sup.offer_id as `off_${string}`)?.offer.merchant_id ?? '(unknown)',
+              commitment_id: byId.get(sup.offer_id as `off_${string}`)?.commitment_id ?? null,
+              reason_code: sup.reason,
+              agent_id: input.agent.agent_id,
+            })),
+          );
         }
         return result.passed;
       });

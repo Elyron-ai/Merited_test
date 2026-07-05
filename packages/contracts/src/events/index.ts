@@ -5,7 +5,7 @@ export { eventBody } from './envelope.js';
 export type { EventBody } from './envelope.js';
 
 /**
- * The complete event catalogue — exactly 20 (§3 + SYN-3). Body schemas live
+ * The complete event catalogue — exactly 21 (§3 + SYN-3 + SYN-41). Body schemas live
  * here in contracts (single source of types, §1); packages/events binds the
  * frozen name → schema registry over this map (FND D9).
  */
@@ -28,6 +28,7 @@ export const MERITED_EVENT_BODIES = {
   AccountUnlinked: defs.AccountUnlinked,
   NotificationSent: defs.NotificationSent,
   OfferPublished: defs.OfferPublished,
+  OfferSuppressed: defs.OfferSuppressed,
   AgentRegistered: defs.AgentRegistered,
   ErrandStateChanged: defs.ErrandStateChanged,
 } as const;

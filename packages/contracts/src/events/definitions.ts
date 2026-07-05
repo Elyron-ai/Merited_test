@@ -46,6 +46,23 @@ export const OfferPublished = eventBody(
   }),
 );
 
+/** PH2-1 (SYN-41): a guardrail suppressed an offer on the READ path — the
+ * ledger-driven analytics surface for §5.6's "BUDGET_EXHAUSTED visible in
+ * analytics within one event-projection cycle" (and §3's "both sides must
+ * see why"). reason_code is the read-path guardrail reason, a superset of
+ * §3's enum (the VERIFY enum stays closed — SYN-10/37). */
+export const OfferSuppressed = eventBody(
+  'OfferSuppressed',
+  z.object({
+    offer_id: Id('off'),
+    merchant_id: Id('mer'),
+    commitment_id: Id('com').nullable(),
+    reason_code: z.string().min(1),
+    agent_id: Id('agt').nullable(),
+    suppressed_at: datetime,
+  }),
+);
+
 export const AgentRegistered = eventBody(
   'AgentRegistered',
   z.object({ agent_id: Id('agt'), name: z.string(), registered_at: datetime }),

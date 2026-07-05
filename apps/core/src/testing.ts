@@ -1,4 +1,5 @@
 import { pence, type Money, type Offer } from '@merited/contracts';
+import { appendEventInNewTx } from '@merited/events';
 import { FakeCrypter, FakeSigner } from '@merited/signing';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { FastifyInstance } from 'fastify';
@@ -9,7 +10,7 @@ import { registerClaimsRoutes } from './modules/adapters/grade-b/claims-routes.j
 import { registerGradeBWebhook } from './modules/adapters/grade-b/routes.js';
 import { AgentsService } from './modules/agents/service.js';
 import { decisionerFor } from './modules/decisioning/index.js';
-import { NoopGuardrails } from './modules/guardrails/index.js';
+import { RuleGuardrails } from './modules/guardrails/index.js';
 import { IdentityStore } from './modules/identity/store.js';
 import { PgIdentityLinkReader } from './modules/identity/link-reader.js';
 import { MerchantsService } from './modules/merchants/service.js';
@@ -92,11 +93,22 @@ export const createSimulatedCore = (options: SimulatedCoreOptions): SimulatedCor
     // and no-ops on a core-only database, so Phase-0 assemblies are unchanged.
     identity: new IdentityStore(pool, new PgIdentityLinkReader(pool)),
     decisioner: decisionerFor(options.decisioner ?? 'rules'),
-    guardrails: new NoopGuardrails(),
+    // PH2-1: the real rules — inert for merchants with no guardrail config
+    guardrails: new RuleGuardrails(listPriceFor),
     quotes,
     clock: { now: () => new Date() },
     commitmentStatusFor: (cid) => commitmentsClient.status(cid),
     listPriceFor,
+    guardrailSettingsFor: async (merchantId) =>
+      (await merchants.get(merchantId).catch(() => null))?.commercial.guardrails ?? null,
+    suppressionSink: async (suppressions) => {
+      for (const suppression of suppressions) {
+        await appendEventInNewTx(pool, 'OfferSuppressed', {
+          ...suppression,
+          suppressed_at: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        });
+      }
+    },
   });
   const processor = new GradeBOrderProcessor({
     pool,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GuardrailSettings } from './pipeline.js';
 import { Id } from './ids.js';
 import { Money } from './money.js';
 
@@ -17,6 +18,8 @@ export const MerchantCommercial = z.object({
   budgets: z.object({
     per_offer_default: Money.nullable(),
   }),
+  /** PH2-1 (§5.6): per-merchant guardrail config; absent = all rules inert. */
+  guardrails: GuardrailSettings.nullable().optional(),
 });
 export type MerchantCommercial = z.infer<typeof MerchantCommercial>;
 

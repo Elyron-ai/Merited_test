@@ -3,8 +3,8 @@ import { EVENT_FIXTURES } from './fixtures.js';
 import { MERITED_EVENT_BODIES, MERITED_EVENT_NAMES } from './index.js';
 
 describe('event catalogue bodies (FND-7 accept)', () => {
-  it('defines exactly the 20 names (§3 nineteen + CommitmentEnded, SYN-3)', () => {
-    expect(MERITED_EVENT_NAMES).toHaveLength(20);
+  it('defines exactly the 21 names (§3 nineteen + CommitmentEnded SYN-3 + OfferSuppressed SYN-41)', () => {
+    expect(MERITED_EVENT_NAMES).toHaveLength(21);
     expect([...MERITED_EVENT_NAMES].sort()).toEqual(
       [
         'CommitmentCreated',
@@ -25,6 +25,7 @@ describe('event catalogue bodies (FND-7 accept)', () => {
         'AccountUnlinked',
         'NotificationSent',
         'OfferPublished',
+        'OfferSuppressed',
         'AgentRegistered',
         'ErrandStateChanged',
       ].sort(),
