@@ -749,6 +749,43 @@ importers:
         specifier: 'catalog:'
         version: 3.2.6(@types/node@22.20.0)(tsx@4.23.0)(yaml@2.9.0)
 
+  packages/verifier:
+    dependencies:
+      '@merited/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      json-canonicalize:
+        specifier: 'catalog:'
+        version: 2.0.0
+      paseto:
+        specifier: ^3.1.4
+        version: 3.1.4
+    devDependencies:
+      '@merited/events':
+        specifier: workspace:*
+        version: link:../events
+      '@merited/signing':
+        specifier: workspace:*
+        version: link:../signing
+      '@merited/trio':
+        specifier: workspace:*
+        version: link:../../apps/trio
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.0
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.20.0
+      pg:
+        specifier: 'catalog:'
+        version: 8.22.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.6(@types/node@22.20.0)(tsx@4.23.0)(yaml@2.9.0)
+
   tools/demo:
     dependencies:
       '@merited/contracts':

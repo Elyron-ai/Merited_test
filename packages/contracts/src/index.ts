@@ -28,6 +28,7 @@ export { OrderConfirmed } from './order.js';
 export { Merchant, MerchantCommercial } from './merchant.js';
 export * from './webhooks.js';
 export * from './shopify.js';
+export * from './proof-pack.js';
 export { ControlPlaneUser, ControlPlaneSession } from './control-plane.js';
 export * from './fixtures.js';
 export * from './events/index.js';

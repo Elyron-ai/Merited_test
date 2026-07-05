@@ -26,7 +26,7 @@ Code), **F+B** = both.
 | A10 | Wallet UI cross-browser + accessibility pass (six screens; push permission prompts differ per browser) | B | PH2-3 | ⬜ open |
 | A11 | `pnpm demo:act2` recorded with `VALET_DETERMINISTIC=1` (the Phase-2 gate asset) | F+B | PH2-12 | ⬜ open |
 | A12 | Shopify dev-store end-to-end: install → cart-attribute token → `orders/paid` → verified claim | F+B | Code side ready (PH3-5 ✅): point the store's `orders/paid` webhook at `/v1/merchants/:slug/shopify/orders-paid`, register the app secret as the merchant webhook secret, theme/checkout extension writes the `merited_token` cart attribute. Needs B7 creds | ⬜ open |
-| A13 | Reference-verifier clean-container run: network egress disabled, proof pack only, tamper byte → fail | B | PH3-8/PH3-10 | ⬜ open |
+| A13 | Reference-verifier clean-container run: network egress disabled, proof pack only, tamper byte → fail | B | PH3-8/PH3-10 | ✅ done 2026-07-05 — evidence in docs/gates/ph3-8-container-run.md |
 | A14 | Control-plane e2e flake under full parallel load (Next boot + TOTP window — seen at the Gate-1 run, 12:25 table): confirm CI runner sizing or serialise those suites | B | before CI is authoritative for others | ⬜ open |
 
 ## B · Third-party services & credentials
@@ -88,9 +88,10 @@ real key is an env change, never a code change — the standing rule).
 | PH3-5 | Shopify app Grade A (cart-attribute token, orders/paid, CommerceAdapter parity with FakeShop) | L | ✅ done 2026-07-05 — CI legs green vs simulated store; dev-store run stays open as A12 |
 | PH3-6 | Self-serve merchant onboarding, zero manual steps end-to-end | L | ✅ done 2026-07-05 |
 | PH3-7 | Open third-party verification spec (`docs/spec/verification.md`) — can be drafted during Phase-2 downtime | M | ✅ done 2026-07-05 |
-| PH3-8 | Reference verifier (`packages/verifier/`, offline, clean-container proof) | L |
+| PH3-8 | Reference verifier (`packages/verifier/`, offline, clean-container proof) | L | ✅ done 2026-07-05 |
 | PH3-9 | SKU-level offer granularity end-to-end (eligibility, quoting, JSON-LD, Shopify mapping, bundle sku_refs) | M |
 | PH3-10 | Phase-3 gate run; evidence in `docs/gates/phase-3.md` | S |
+| GAP-9 | Proof-pack EXPORT tooling: production endpoint/CLI that assembles a `merited-proof-pack/1` for a given claim (today the pack builder lives in the verifier test harness — fine for the gate, not merchant-facing). Discovered during PH3-8; no plan row covers it. | — |
 
 ### C3 · Founder/external items (LEAD + open questions)
 

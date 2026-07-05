@@ -1,0 +1,35 @@
+{
+  "name": "@merited/verifier",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference verifier for Merited conversion proof packs — offline, per docs/spec/verification.md",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "merited-verify": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@merited/events": "workspace:*",
+    "@merited/signing": "workspace:*",
+    "@merited/trio": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@merited/contracts": "workspace:*",
+    "json-canonicalize": "catalog:",
+    "paseto": "^3.1.4"
+  }
+}
