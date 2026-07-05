@@ -39,3 +39,4 @@ export * from './head-publication.js';
 export * from './linking.js';
 export * from './mcp.js';
 export * from './push.js';
+export * from './mailer.js';

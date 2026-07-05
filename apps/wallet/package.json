@@ -16,9 +16,11 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@types/nodemailer": "^6.4.16"
   },
   "dependencies": {
-    "@merited/contracts": "workspace:*"
+    "@merited/contracts": "workspace:*",
+    "nodemailer": "^6.9.16"
   }
 }
