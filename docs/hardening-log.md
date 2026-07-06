@@ -793,3 +793,34 @@ labels, and the skip link + `#main-content` are present. `ui.e2e.test.ts` (+1) �
 carry DISTINCT `<title>`s ("Linked accounts · Merited Wallet" vs "Offers for you · Merited Wallet"), and the
 skip link + `#main-content` ship on the page; plus the W14 border assertion. Full workspace build + lint
 clean. **P3 (W13–W15) complete; only P4 (W16 CI supply-chain) remains.**
+
+---
+
+## W16 — CI supply-chain hardening · ✅ 2026-07-06 (critic gap) · **P4 COMPLETE — ALL WORKSTREAMS DONE**
+
+**Issue:** the CI (`.github/workflows/ci.yml`, `label-high-scrutiny.yml`) had no dependency-CVE scan, no
+SAST, no secret-scanning, and pinned every GitHub Action by a MUTABLE tag (`actions/checkout@v4` etc.) — a
+compromised or re-pointed tag would run attacker code in CI with repo credentials.
+
+**Fix — four controls added without restructuring the existing jobs (they slot into the "reserved slots"):**
+- **SHA-pinned every action** to a specific commit with a trailing version comment (looked up via
+  `git ls-remote`, not guessed): `actions/checkout@34e1148…` (v4.3.1), `setup-node@49933ea…` (v4.4.0),
+  `cache@0057852…` (v4.3.0), `labeler@8558fd7…` (v5.0.0), `codeql-action@411c4c9…` (v3.36.3),
+  `trufflehog@00155c9…` (v3.95.8). No mutable tag remains (grep-verified).
+- **Dependency-CVE scan** (`dependency-audit` job): `pnpm audit` runs twice — an advisory report (`|| true`,
+  lists every advisory each run) and a **blocking gate `--audit-level=critical`** (exit 0 today — no
+  criticals — so CI stays green while catching any future critical). The repo has 3 pre-existing FIXABLE
+  highs (drizzle-orm, nodemailer) + 8 moderate + 1 low; these are NOT silently ignored — they print in the
+  report and are tracked in launch-readiness **A17** for a dependency bump, after which the gate rises to
+  `--audit-level=high`. (Fixing them = a dep bump with test risk, out of this CI-controls workstream.)
+- **SAST** (`codeql` job): GitHub CodeQL for `javascript-typescript`, build-mode none. `continue-on-error`
+  so a private repo without GitHub Advanced Security (the SARIF upload needs code scanning enabled) can't
+  block the pipeline — the analysis still runs; enabling code scanning surfaces results (A17).
+- **Secret scanning** (`secret-scan` job): trufflehog `--only-verified` (chosen over gitleaks-action, which
+  needs a PAID licence for organisation repos). Verified-only avoids false-positive CI breakage; a verified
+  live credential fails the job.
+
+**Validation:** both workflows parse (`yaml.safe_load`); `pnpm audit --audit-level=critical` exits 0 and
+`--audit-level=high` exits 1 (confirmed locally, matching the gate design); the existing build/test/lint
+jobs are untouched and the full `pnpm -r build && pnpm -r test && pnpm lint` stays green. **P4 complete —
+this is the final workstream of the P0–P4 hardening plan.**
