@@ -8,6 +8,15 @@ the work; new gaps found mid-build are appended, never silently dropped.
 Owner column: **F** = founder (real-world action), **B** = builder (Claude
 Code), **F+B** = both.
 
+> **Interactive check-off tool.** `docs/launch-readiness.html` is a self-contained
+> browser tool that renders the outstanding launch work as tick-off items with
+> step-by-step setup guides. It is **generated** from this register's live status
+> plus `tools/launch-readiness/guides.json`; a Claude Code hook rebuilds it
+> whenever this file changes (or run `node tools/launch-readiness/generate.mjs`).
+> When an item is marked ✅ done here, it shows complete in the tool automatically.
+> Do not hand-edit the HTML. (To refresh the hosted claude.ai copy, ask Claude to
+> redeploy it — that step needs a session.)
+
 ---
 
 ## A · Things to test (beyond what CI proves)

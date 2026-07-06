@@ -1,0 +1,273 @@
+{
+  "_comment": "Curated content for the interactive launch-readiness tool. The item SET, grouping, step-by-step guides and env vars live here; each item's `match` is the register ref (in docs/launch-readiness.md) whose status drives whether it shows as complete. Run tools/launch-readiness/generate.mjs to rebuild docs/launch-readiness.html; a hook does this automatically when the register changes.",
+  "sections": [
+    {
+      "num": "01",
+      "title": "Infrastructure & accounts",
+      "meta": "stand up the platform",
+      "note": "The critical path. Hosting first — it unblocks KMS, storage, email and the deploy. Everything here replaces a dev stub with a real service; the app reads a real key as an env change, never a code change.",
+      "items": [
+        {
+          "id": "host", "match": "B6", "title": "Choose hosting, then provision Postgres, Redis, TLS & domain",
+          "owner": "you", "ref": "Q5 · B6", "flag": "Unblocks everything",
+          "when": "First — before any live-mode or partner review",
+          "why": "The one decision the rest of the list waits on.",
+          "env": ["DATABASE_URL", "REDIS_URL"],
+          "steps": [
+            "Shortlist a host that gives you <b>managed Postgres with point-in-time recovery (PITR)</b> and <b>managed Redis</b> in an <b>EU/UK region</b> (your consumers are UK) — Fly.io, Render, or AWS are the candidates in the plan.",
+            "Note the constraint: a partner security review may dictate the choice, so don't over-commit spend before that conversation.",
+            "Create the account and provision the database (turn PITR <b>on</b>), Redis, and a domain with TLS.",
+            "Put the connection strings and domain into the production environment. Redis is a cache only — never a source of truth (the app already assumes this)."
+          ]
+        },
+        {
+          "id": "kms", "match": "B3", "title": "AWS KMS master key (envelope encryption)",
+          "owner": "you", "ref": "B3", "when": "At hosting cutover",
+          "why": "Encrypts the signing keys, link tokens and webhook secrets. Replaces the fake-kms dev container.",
+          "env": ["MERITED_KMS_ENDPOINT", "MERITED_KMS_KEY_ID", "AWS credentials"],
+          "steps": [
+            "In AWS KMS, create a <b>symmetric key</b> for envelope encryption.",
+            "Create an IAM role/user scoped to <code>kms:Encrypt</code>, <code>kms:Decrypt</code>, <code>kms:GenerateDataKey</code> on <em>that key only</em>.",
+            "Set <code>MERITED_KMS_ENDPOINT</code>, <code>MERITED_KMS_KEY_ID</code> and the AWS credentials in prod.",
+            "Roadmap note for the auditor (LEAD-5): native Ed25519 KMS is the ratified upgrade path — fine to launch on the current envelope scheme."
+          ]
+        },
+        {
+          "id": "s3", "match": "B4", "title": "S3 bucket for published head-hashes",
+          "owner": "you", "ref": "B4", "when": "Go-live (paired with test A3)",
+          "why": "The external audit anchor — third parties fetch daily head-hashes to verify the ledger grew append-only.",
+          "env": ["MERITED_HEADS_BUCKET", "MERITED_HEADS_ENDPOINT (optional)"],
+          "steps": [
+            "Create an S3 bucket for <code>heads/*</code> with <b>public read</b> on the head objects (or front it with a CDN).",
+            "This is deliberately public — the whole point is that anyone can fetch a head-hash and check it. No secrets live here.",
+            "Set <code>MERITED_HEADS_BUCKET</code> (and <code>MERITED_HEADS_ENDPOINT</code> only if you use MinIO).",
+            "Then run test <b>A3</b>: <code>S3ObjectStore</code> put/get/list + <code>verify-chain --against-heads s3://…</code>."
+          ]
+        },
+        {
+          "id": "resend", "match": "B2", "title": "Resend account + verified sending domain",
+          "owner": "you", "ref": "B2", "when": "Before any real consumer",
+          "why": "Sends magic links and hosted-linking codes. Dev uses Mailpit.",
+          "env": ["MERITED_RESEND_API_KEY", "MERITED_RESEND_FROM"],
+          "steps": [
+            "Create a Resend account and add your sending domain.",
+            "Add the <b>SPF, DKIM and DMARC</b> DNS records Resend gives you, and wait for verification — this is what keeps magic links out of spam.",
+            "Create an API key; set <code>MERITED_RESEND_API_KEY</code> and <code>MERITED_RESEND_FROM</code>.",
+            "Then run test <b>A6</b>: confirm magic links and linking codes land in real inboxes."
+          ],
+          "links": [{ "label": "resend.com", "url": "https://resend.com" }]
+        },
+        {
+          "id": "vapid", "match": "B9", "title": "Generate & pin production VAPID push keys",
+          "owner": "you", "ref": "B9", "when": "Production wallet",
+          "why": "Identity for Web Push. Self-generated — no vendor.",
+          "env": ["MERITED_VAPID_PUBLIC_KEY", "MERITED_VAPID_PRIVATE_KEY", "MERITED_VAPID_SUBJECT"],
+          "steps": [
+            "Generate a keypair — the standard tool is one command:",
+            "Set the three env vars. <code>MERITED_VAPID_SUBJECT</code> is a contact (<code>mailto:</code> or an <code>https:</code> URL).",
+            "<b>Pin them</b> — regenerating invalidates every existing push subscription. Dev uses throwaway keys."
+          ],
+          "cmd": "npx web-push generate-vapid-keys"
+        },
+        {
+          "id": "otel", "match": "B8", "title": "Observability sink (traces + alerts)",
+          "owner": "you", "ref": "B8", "when": "Before partner traffic",
+          "why": "OTel traces plus the alerts that catch a merchant quietly dropping conversions, or a head-publication failure.",
+          "env": ["OTLP endpoint", "OTLP token"],
+          "steps": [
+            "Create an Axiom or Grafana Cloud account and get an OTLP endpoint + token.",
+            "Point the OTel exporter env vars at it (dev uses console/memory exporters).",
+            "Wire two alerts: <code>mint_vs_claim_under_reporting</code> and head-publication failure."
+          ]
+        }
+      ]
+    },
+    {
+      "num": "02",
+      "title": "Payments & compliance",
+      "meta": "long lead times — start now",
+      "note": "These have external review clocks measured in weeks, and two of them gate real money. Start them in parallel with the infrastructure above, not after.",
+      "items": [
+        {
+          "id": "stripe", "match": "B1", "title": "Stripe Connect platform account",
+          "owner": "you", "ref": "B1 · LEAD-1", "flag": "Start now — weeks of review",
+          "when": "Overdue vs plan — begin immediately",
+          "why": "Pays out agent commissions. Platform review takes weeks. Build already runs on SimulatedPayouts.",
+          "env": ["MERITED_STRIPE_SECRET_KEY", "MERITED_STRIPE_WEBHOOK_SECRET"],
+          "steps": [
+            "Create a Stripe account and apply to enable <b>Connect</b> as a platform.",
+            "Complete the KYB / platform questionnaire — this is the slow part, so submit it now.",
+            "Use <b>Express</b> connected accounts (recommended in the plan).",
+            "In <b>test mode</b>, grab the secret key + webhook signing secret; set <code>MERITED_STRIPE_SECRET_KEY</code> and <code>MERITED_STRIPE_WEBHOOK_SECRET</code>.",
+            "The env-loader deliberately <b>refuses live keys</b> until the lawyer (LEAD-2) and auditor (LEAD-5) sign off — expected.",
+            "Then run test <b>A7</b>: a real test-mode transfer end-to-end, with the transfer ID captured as evidence."
+          ]
+        },
+        {
+          "id": "lawyer", "match": "LEAD-2", "title": "Payments lawyer — PSR / EMI perimeter",
+          "owner": "you", "ref": "LEAD-2 · B11", "flag": "Gates live money",
+          "when": "Before any live-mode transfer",
+          "why": "Determines whether the money-flow makes you a payment institution / e-money issuer, and how to structure to avoid it.",
+          "steps": [
+            "Engage a UK payments/fintech lawyer on the PSR/EMI question.",
+            "Get a clear read on the perimeter and the required structure for commission payouts.",
+            "File the outcome in <code>docs/decisions/</code> — it unlocks live-mode in the env-loader."
+          ]
+        },
+        {
+          "id": "audit", "match": "LEAD-5", "title": "External security audit",
+          "owner": "you", "ref": "LEAD-5 · B11", "flag": "Gates production",
+          "when": "Before real money / production exposure",
+          "why": "Independent review (2–5 days). This is the SYN-32 substitute — the crypto stayed library-only pending it.",
+          "steps": [
+            "Book an external security auditor for a 2–5 day review.",
+            "Give them the recent internal hardening pass (16 workstreams, <code>docs/hardening-log.md</code>) and the Phase-1 hardening pack as context — but this is the <b>independent</b> look, not a repeat of it.",
+            "Track every finding to closure before any real-money or production exposure."
+          ]
+        },
+        {
+          "id": "trademark", "match": "B12", "title": "Trademark screen for the “Valet” name",
+          "owner": "you", "ref": "B12 · Q6",
+          "when": "Before the recorded demo circulates / investor materials",
+          "why": "A quick clearance so the name is safe to put in front of investors.",
+          "steps": [
+            "Run a UK IPO (and USPTO if relevant) screen on the Valet product name.",
+            "Clear it before the Act-2 recording or any investor deck goes out."
+          ]
+        }
+      ]
+    },
+    {
+      "num": "03",
+      "title": "Commerce integrations",
+      "meta": "when a real channel exists",
+      "note": "Needed for the Shopify and loyalty-partner rails. The code is done and green against simulators — this is the real-store / real-partner wiring.",
+      "items": [
+        {
+          "id": "shopify", "match": "B7", "title": "Shopify Partner account, dev store & app review",
+          "owner": "you", "ref": "B7 · LEAD-3",
+          "when": "App review runs concurrently — start with Phase 2",
+          "why": "The Grade-A Shopify rail. Code is ready (PH3-5 ✅) against a simulated store.",
+          "steps": [
+            "Create a Shopify <b>Partner</b> account and a <b>development store</b>.",
+            "Register the app and request <b>protected-customer-data</b> access (the review runs in the background).",
+            "Grab the app API key/secret.",
+            "For test <b>A12</b>: point the store's <code>orders/paid</code> webhook at <code>/v1/merchants/:slug/shopify/orders-paid</code>, register the app secret as that merchant's webhook secret, and have the theme/checkout extension write the <code>merited_token</code> cart attribute."
+          ]
+        },
+        {
+          "id": "idp", "match": "B10", "title": "Partner IdP registration (real loyalty programme)",
+          "owner": "you", "ref": "B10",
+          "when": "When a real programme partner exists",
+          "why": "Account linking beyond the FakeAurora stand-in.",
+          "steps": [
+            "When you sign a real loyalty programme, register its OIDC client (id/secret) per programme into the IdP registry.",
+            "FakeAurora keeps standing in until then — no rush without a partner."
+          ]
+        }
+      ]
+    },
+    {
+      "num": "04",
+      "title": "Engineering follow-ups",
+      "meta": "hand to Claude Code / an engineer",
+      "note": "Small, well-scoped code tasks left over from the build and hardening. None block each other; several just wait on hosting existing.",
+      "items": [
+        {
+          "id": "deps", "match": "A17", "title": "Bump drizzle-orm + nodemailer, then raise the CI audit gate",
+          "owner": "eng", "ref": "A17a", "flag": "2 open HIGH CVEs",
+          "when": "Whenever — it's a version bump + retest",
+          "why": "Two fixable HIGH advisories: a drizzle-orm SQL-identifier injection and a nodemailer file-read/SSRF. The CI audit gate currently blocks on critical only.",
+          "steps": [
+            "Bump <code>drizzle-orm</code> to ≥ 0.45.2 and <code>nodemailer</code> to ≥ 9.0.1 (plus the 8 moderate / 1 low), then re-run the full suite.",
+            "Raise the CI dependency-audit gate from <code>--audit-level=critical</code> to <code>--audit-level=high</code>.",
+            "Fastest path: ask Claude Code — “bump drizzle-orm and nodemailer to clear the audit HIGHs, re-run build/test/lint, and raise the CI audit gate to high.”"
+          ]
+        },
+        {
+          "id": "codeql", "match": "A17", "title": "Enable GitHub code scanning (surface CodeQL results)",
+          "owner": "you", "ref": "A17b", "when": "Before CI is a launch gate",
+          "why": "The CodeQL SAST job is wired but runs advisory — its results only appear once code scanning is on.",
+          "steps": [
+            "In the repo: <b>Settings → Code security → Code scanning</b>, and enable it (needs GitHub Advanced Security for a private repo).",
+            "Once uploads land, drop <code>continue-on-error: true</code> from the <code>codeql</code> job so it becomes a real gate."
+          ]
+        },
+        {
+          "id": "edge", "match": "A15", "title": "Edge HSTS / CSP at the load balancer",
+          "owner": "both", "ref": "A15", "when": "At hosting cutover",
+          "why": "The app already emits HSTS in prod as defence-in-depth; the edge should own it, plus any org-wide CSP.",
+          "steps": [
+            "At the TLS-terminating edge/CDN, set <code>Strict-Transport-Security</code> (the app uses <code>max-age=31536000; includeSubDomains</code>, no <code>preload</code>).",
+            "Decide on <code>preload</code> enrolment — it's <b>irreversible</b>, so treat it as a deliberate step.",
+            "Confirm the <code>Secure</code> session cookie actually rides HTTPS end-to-end (<code>NODE_ENV=production</code>, <code>MERITED_ENV</code> unset), and add any org-wide CSP."
+          ]
+        },
+        {
+          "id": "rebind", "match": "A16", "title": "Runtime DNS-rebinding guard for Web Push",
+          "owner": "eng", "ref": "A16", "when": "Before real Web Push goes live",
+          "why": "The SSRF guard is a static check — it can't see a hostname that resolves to a private IP at send time.",
+          "steps": [
+            "Add a runtime resolve-then-check-IP guard (or an egress allowlist / proxy) so a rebinding push endpoint can't reach an internal host via the VAPID POST.",
+            "Engineering task — pair it with the real-push work (test A5)."
+          ]
+        },
+        {
+          "id": "exporttool", "match": "GAP-9", "title": "Merchant-facing proof-pack export endpoint / CLI",
+          "owner": "eng", "ref": "GAP-9", "when": "Before merchants self-verify",
+          "why": "Today the proof-pack builder lives in the verifier test harness — fine for the gate, not a merchant feature.",
+          "steps": [
+            "Build a production endpoint/CLI that assembles a <code>merited-proof-pack/1</code> for a given claim, so a merchant or auditor can export and verify offline."
+          ]
+        },
+        {
+          "id": "pushtrigger", "match": "", "title": "Wire the send-on-quote push trigger in production",
+          "owner": "eng", "ref": "C0 seam", "when": "With the live wallet",
+          "why": "A production caller of <code>PushService.sendQuoteNotification</code> was left as an open seam in Phase 1.",
+          "steps": [
+            "Wire the production trigger that fires the approval push when a quote is minted for a consumer with a live subscription."
+          ]
+        },
+        {
+          "id": "flake", "match": "A14", "title": "Settle the control-plane e2e flake under parallel load",
+          "owner": "eng", "ref": "A14", "when": "Before CI is authoritative",
+          "why": "Next boot + TOTP window occasionally flakes the control-plane e2e when the whole suite runs in parallel.",
+          "steps": [
+            "Confirm CI runner sizing or serialise the control-plane e2e suites so a green run is trustworthy on the first try."
+          ]
+        }
+      ]
+    },
+    {
+      "num": "05",
+      "title": "Real-world tests",
+      "meta": "once the infra above is up",
+      "note": "CI proves the code; these prove the real vendors deliver. Each unlocks as its service (section 01/02/03) comes online.",
+      "items": [
+        { "id": "t-s3", "match": "A3", "title": "Real-S3 head-publication smoke test", "owner": "both", "ref": "A3", "when": "Needs the S3 bucket (B4)", "why": "put/get/list + verify-chain against the live heads bucket." },
+        { "id": "t-pitr", "match": "A4", "title": "Postgres PITR restore drill", "owner": "both", "ref": "A4", "when": "Once hosting exists", "why": "Restore into a scratch instance and run verify-chain on the copy — proves backups actually recover." },
+        { "id": "t-email", "match": "A6", "title": "Real email deliverability (Resend)", "owner": "both", "ref": "A6", "when": "Needs Resend (B2)", "why": "Magic links + linking codes land in real inboxes with SPF/DKIM/DMARC passing." },
+        { "id": "t-stripe", "match": "A7", "title": "Stripe test-mode transfer, end-to-end", "owner": "both", "ref": "A7", "when": "Needs Stripe (B1)", "why": "A real transfer ID in the evidence — the Phase-2 gate clause." },
+        { "id": "t-push", "match": "A5", "title": "Web Push against a real browser push service", "owner": "eng", "ref": "A5", "when": "Needs VAPID + rebind guard", "why": "CI proves the encrypted request; this proves FCM/Mozilla actually deliver it." },
+        { "id": "t-llm", "match": "A8", "title": "Valet LLM interpreter, flag OFF (real Anthropic API)", "owner": "both", "ref": "A8", "when": "Needs an Anthropic key (B5)", "why": "Natural-language briefs parse, or fail closed to the scripted path.", "env": ["ANTHROPIC_API_KEY"] },
+        { "id": "t-load", "match": "A9", "title": "Load / rate-limit under production-shaped traffic", "owner": "eng", "ref": "A9", "when": "Phase-2 hardening", "why": "Per-agent + per-merchant limits, Redis limiter, replay-cache hit rates under real load." },
+        { "id": "t-a11y", "match": "A10", "title": "Wallet UI cross-browser + accessibility sweep", "owner": "eng", "ref": "A10", "when": "The six screens", "why": "Push-permission prompts differ per browser; confirms the W13–W15 a11y work holds live." },
+        { "id": "t-shop", "match": "A12", "title": "Shopify dev-store end-to-end", "owner": "both", "ref": "A12", "when": "Needs Shopify (B7)", "why": "Install → cart-attribute token → orders/paid → verified claim." },
+        { "id": "t-rot", "match": "A2", "title": "Timed key-rotation operational drill", "owner": "both", "ref": "A2", "when": "Before real-money exposure", "why": "Routine < 15 min, compromise < 60 min, minuted for the auditor." },
+        { "id": "t-demo", "match": "A1", "title": "Record the demo (Act 1 human-mode + Act 2)", "owner": "both", "ref": "A1 · A11", "when": "Anytime / Phase-2 gate asset", "why": "The demo assets — Act 2 recorded with VALET_DETERMINISTIC=1." }
+      ]
+    },
+    {
+      "num": "06",
+      "title": "Product decisions",
+      "meta": "your judgement calls",
+      "note": "No code or account needed — just decisions you set before the relevant config goes live. Record each so the build can encode it.",
+      "items": [
+        { "id": "q-claw", "match": "Q4", "title": "Clawback-window economics default", "owner": "you", "ref": "Q4", "when": "Before real commercial config", "why": "The default clawback window merchants inherit." },
+        { "id": "q-preauth", "match": "Q7", "title": "Pre-authorisation default threshold", "owner": "you", "ref": "Q7", "when": "Phase-2 detailed planning", "why": "The demo fixes £50; pick the real default for wallet mandates." },
+        { "id": "q-dist", "match": "Q10", "title": "Shopify distribution model (public vs custom app)", "owner": "you", "ref": "Q10", "when": "End of Phase 2", "why": "Shapes the app-review path and who can install." },
+        { "id": "q-pack", "match": "Q11", "title": "Conversion proof-pack composition", "owner": "you", "ref": "Q11", "when": "Phase 3", "why": "Exactly what a merchant-facing proof pack contains (pairs with GAP-9)." }
+      ]
+    }
+  ]
+}

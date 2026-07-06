@@ -1,0 +1,556 @@
+<style>
+  :root {
+    /* cool steel grounds, brass hallmark accent (Merited = earned trust / assay mark) */
+    --bg: #e7eaee;
+    --surface: #f6f7f9;
+    --surface-2: #eceff2;
+    --inset: #e4e8ec;
+    --ink: #191c22;
+    --ink-2: #525a65;
+    --ink-3: #7f8792;
+    --line: #d3d8de;
+    --line-2: #c3cad2;
+    --accent: #8f6516;      /* brass, dark enough for text on light */
+    --accent-2: #b0842f;
+    --accent-wash: #f3ecdd;
+    --good: #2c7a52;
+    --good-wash: #e2efe7;
+    --crit: #ab382f;
+    --crit-wash: #f4e2df;
+    --shadow: 0 1px 2px rgba(20,25,33,.06), 0 6px 20px rgba(20,25,33,.05);
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121419;
+      --surface: #191c22;
+      --surface-2: #20242c;
+      --inset: #171a20;
+      --ink: #e8ebef;
+      --ink-2: #9ea6b1;
+      --ink-3: #6c7480;
+      --line: #2a2f39;
+      --line-2: #353b47;
+      --accent: #d3a24e;
+      --accent-2: #e6bd72;
+      --accent-wash: #2a2417;
+      --good: #57b083;
+      --good-wash: #17251d;
+      --crit: #e0796b;
+      --crit-wash: #2a1a18;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #e7eaee; --surface: #f6f7f9; --surface-2: #eceff2; --inset: #e4e8ec;
+    --ink: #191c22; --ink-2: #525a65; --ink-3: #7f8792; --line: #d3d8de; --line-2: #c3cad2;
+    --accent: #8f6516; --accent-2: #b0842f; --accent-wash: #f3ecdd;
+    --good: #2c7a52; --good-wash: #e2efe7; --crit: #ab382f; --crit-wash: #f4e2df;
+    --shadow: 0 1px 2px rgba(20,25,33,.06), 0 6px 20px rgba(20,25,33,.05);
+  }
+  :root[data-theme="dark"] {
+    --bg: #121419; --surface: #191c22; --surface-2: #20242c; --inset: #171a20;
+    --ink: #e8ebef; --ink-2: #9ea6b1; --ink-3: #6c7480; --line: #2a2f39; --line-2: #353b47;
+    --accent: #d3a24e; --accent-2: #e6bd72; --accent-wash: #2a2417;
+    --good: #57b083; --good-wash: #17251d; --crit: #e0796b; --crit-wash: #2a1a18;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  #lr {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 0 0 5rem;
+  }
+  #lr .wrap { max-width: 60rem; margin: 0 auto; padding: 0 1.25rem; }
+
+  /* ── header ─────────────────────────────────────────────── */
+  #lr header {
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(var(--surface), var(--bg));
+    padding: 2.4rem 0 1.6rem;
+  }
+  #lr .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 .5rem;
+  }
+  #lr h1 {
+    font-size: clamp(1.7rem, 4.4vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.05;
+    text-wrap: balance;
+    margin: 0 0 .55rem;
+  }
+  #lr .lede { color: var(--ink-2); max-width: 46ch; margin: 0; font-size: 1rem; }
+
+  #lr .console {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1.4rem 2rem;
+    margin-top: 1.6rem;
+  }
+  #lr .gauge { display: flex; align-items: center; gap: 1rem; }
+  #lr .ring { position: relative; width: 92px; height: 92px; flex: none; }
+  #lr .ring svg { transform: rotate(-90deg); display: block; }
+  #lr .ring .track { stroke: var(--line-2); }
+  #lr .ring .fill {
+    stroke: var(--accent-2);
+    stroke-linecap: round;
+    transition: stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);
+  }
+  #lr .ring .pct {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 600; font-size: 1.25rem;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  #lr .counts { display: grid; gap: .35rem; }
+  #lr .counts .row { display: flex; align-items: baseline; gap: .5rem; font-size: .9rem; }
+  #lr .counts b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; min-width: 2.4ch; text-align: right; }
+  #lr .counts .lab { color: var(--ink-2); }
+  #lr .dot { width: .55rem; height: .55rem; border-radius: 50%; flex: none; display: inline-block; }
+  #lr .dot.you { background: var(--accent-2); }
+  #lr .dot.eng { background: var(--ink-3); }
+  #lr .dot.done { background: var(--good); }
+
+  #lr .status-ribbon {
+    display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center;
+    margin-top: 1.5rem; padding: .7rem .9rem;
+    background: var(--good-wash); border: 1px solid color-mix(in srgb, var(--good) 30%, transparent);
+    border-radius: 10px; font-size: .86rem; color: var(--ink-2);
+  }
+  #lr .status-ribbon strong { color: var(--ink); font-weight: 650; }
+  #lr .status-ribbon .tick { color: var(--good); font-weight: 700; }
+
+  /* ── controls ───────────────────────────────────────────── */
+  #lr .controls {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: .7rem 0;
+  }
+  #lr .controls .wrap { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+  #lr .filters { display: flex; flex-wrap: wrap; gap: .4rem; }
+  #lr .chip {
+    font: inherit; font-size: .82rem; cursor: pointer;
+    padding: .34rem .7rem; border-radius: 999px;
+    border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2);
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  #lr .chip:hover { border-color: var(--accent-2); color: var(--ink); }
+  #lr .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  #lr .chip .c { font-family: var(--mono); font-size: .72rem; opacity: .8; }
+  #lr .spacer { flex: 1 1 auto; }
+  #lr .ghost {
+    font: inherit; font-size: .8rem; cursor: pointer; color: var(--ink-3);
+    background: none; border: none; padding: .34rem .3rem; text-decoration: underline; text-underline-offset: 3px;
+  }
+  #lr .ghost:hover { color: var(--crit); }
+
+  /* ── sections ───────────────────────────────────────────── */
+  #lr section { margin-top: 2.6rem; }
+  #lr .sec-head { display: flex; align-items: baseline; gap: .8rem; margin-bottom: 1rem; }
+  #lr .sec-num {
+    font-family: var(--mono); font-size: .78rem; color: var(--accent);
+    letter-spacing: .1em; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    padding: .15rem .45rem; border-radius: 6px; flex: none;
+  }
+  #lr .sec-title { font-size: 1.18rem; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+  #lr .sec-meta { font-family: var(--mono); font-size: .74rem; color: var(--ink-3); font-variant-numeric: tabular-nums; margin-left: auto; white-space: nowrap; }
+  #lr .sec-note { color: var(--ink-2); font-size: .9rem; margin: -.4rem 0 1rem; max-width: 60ch; }
+
+  /* ── item card ──────────────────────────────────────────── */
+  #lr .item {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: .7rem; overflow: hidden;
+    transition: opacity .25s, border-color .2s;
+  }
+  #lr .item.done { opacity: .58; }
+  #lr .item-main { display: flex; gap: .85rem; padding: .95rem 1rem; align-items: flex-start; }
+
+  #lr .cbox { flex: none; position: relative; width: 1.35rem; height: 1.35rem; margin-top: .12rem; }
+  #lr .cbox input {
+    position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  #lr .cbox .box {
+    position: absolute; inset: 0; border: 2px solid var(--line-2); border-radius: 6px;
+    background: var(--bg); transition: background .15s, border-color .15s; pointer-events: none;
+  }
+  #lr .cbox .box::after {
+    content: ""; position: absolute; left: 5px; top: 1px; width: 6px; height: 11px;
+    border: solid var(--bg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) scale(0);
+    transition: transform .18s cubic-bezier(.3,1.4,.5,1);
+  }
+  #lr .cbox input:hover + .box { border-color: var(--accent-2); }
+  #lr .cbox input:focus-visible + .box { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+  #lr .cbox input:checked + .box { background: var(--good); border-color: var(--good); }
+  #lr .cbox input:checked + .box::after { transform: rotate(45deg) scale(1); }
+
+  #lr .item-body { flex: 1 1 auto; min-width: 0; }
+  #lr .item-title { font-weight: 640; font-size: 1.02rem; letter-spacing: -.01em; margin: 0; line-height: 1.35; }
+  #lr .item.done .item-title { text-decoration: line-through; text-decoration-color: var(--ink-3); }
+  #lr .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+  #lr .tag {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+    padding: .18rem .45rem; border-radius: 5px; border: 1px solid var(--line-2); color: var(--ink-2);
+    display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
+  }
+  #lr .tag.you { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 38%, transparent); background: var(--accent-wash); }
+  #lr .tag.eng { color: var(--ink-2); }
+  #lr .tag.both { color: var(--ink-2); }
+  #lr .tag.flag { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 40%, transparent); background: var(--crit-wash); font-weight: 600; }
+  #lr .tag.ref { color: var(--ink-3); }
+  #lr .tag.done-tag { color: var(--good); border-color: color-mix(in srgb, var(--good) 42%, transparent); background: var(--good-wash); font-weight: 600; }
+  #lr .item.baked .cbox input { cursor: default; }
+  #lr .meta-line { color: var(--ink-2); font-size: .9rem; margin: .55rem 0 0; }
+  #lr .meta-line .k { font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin-right: .35rem; }
+
+  #lr .disclosure { margin-top: .7rem; }
+  #lr .disc-btn {
+    font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
+    background: none; border: none; color: var(--accent); padding: .15rem 0;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  #lr .disc-btn:hover { color: var(--accent-2); }
+  #lr .disc-btn .caret { transition: transform .2s; display: inline-block; font-size: .7rem; }
+  #lr .disc-btn[aria-expanded="true"] .caret { transform: rotate(90deg); }
+
+  #lr .steps {
+    margin-top: .7rem; padding: .95rem 1.05rem; background: var(--inset);
+    border: 1px solid var(--line); border-radius: 10px;
+  }
+  #lr .steps ol { margin: 0; padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: .6rem; }
+  #lr .steps li { position: relative; padding-left: 2rem; font-size: .92rem; color: var(--ink); counter-increment: s; }
+  #lr .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -1px;
+    width: 1.35rem; height: 1.35rem; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--line-2);
+    font-family: var(--mono); font-size: .72rem; font-weight: 600; color: var(--accent);
+    display: grid; place-items: center;
+  }
+  #lr .steps li b { font-weight: 650; }
+  #lr .steps a { color: var(--accent); text-underline-offset: 2px; }
+  #lr .env { margin-top: .85rem; display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+  #lr .env .lbl { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin-right: .2rem; }
+  #lr code, #lr .kbd {
+    font-family: var(--mono); font-size: .78rem; background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 5px; padding: .1rem .38rem; color: var(--ink);
+    white-space: nowrap;
+  }
+  #lr .steps p { margin: .3rem 0 0; font-size: .88rem; color: var(--ink-2); }
+  #lr .steps .cmd {
+    display: block; margin-top: .5rem; padding: .55rem .7rem; background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; white-space: pre;
+    font-family: var(--mono); font-size: .78rem; color: var(--ink);
+  }
+
+  #lr footer { margin-top: 3rem; padding-top: 1.4rem; border-top: 1px solid var(--line); color: var(--ink-3); font-size: .82rem; }
+  #lr footer .save-note { font-family: var(--mono); font-size: .74rem; }
+
+  #lr .empty { text-align: center; color: var(--ink-3); padding: 2rem; font-size: .9rem; display: none; }
+
+  @media (max-width: 560px) {
+    #lr .item-main { padding: .85rem .8rem; }
+    #lr .console { gap: 1rem 1.4rem; }
+    #lr .sec-meta { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #lr * { transition: none !important; }
+  }
+</style>
+
+<div id="lr">
+  <header>
+    <div class="wrap">
+      <p class="eyebrow">Merited · Launch console</p>
+      <h1>Launch readiness</h1>
+      <p class="lede">The platform is built and hardened. This is the remaining path to first real traffic — check each item off as you go.</p>
+
+      <div class="console">
+        <div class="gauge">
+          <div class="ring">
+            <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
+              <circle class="track" cx="46" cy="46" r="40" fill="none" stroke-width="7"></circle>
+              <circle class="fill" id="ring-fill" cx="46" cy="46" r="40" fill="none" stroke-width="7" stroke-dasharray="251.3" stroke-dashoffset="251.3"></circle>
+            </svg>
+            <div class="pct" id="ring-pct">0%</div>
+          </div>
+          <div class="counts">
+            <div class="row"><b id="c-done">0</b><span class="dot done"></span><span class="lab">complete <span id="c-total" style="color:var(--ink-3)"></span></span></div>
+            <div class="row"><b id="c-you">0</b><span class="dot you"></span><span class="lab">need you</span></div>
+            <div class="row"><b id="c-eng">0</b><span class="dot eng"></span><span class="lab">engineering</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-ribbon">
+        <span><span class="tick">✓</span> <strong>Build complete</strong> — Phases 0–3, CI-green</span>
+        <span><span class="tick">✓</span> <strong>Hardened</strong> — 16 security &amp; accessibility workstreams shipped</span>
+        <span>Nothing is live yet — everything below runs on stubs until you wire the real services.</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="wrap">
+      <div class="filters" id="filters">
+        <button class="chip" data-filter="all" aria-pressed="true">All</button>
+        <button class="chip" data-filter="you" aria-pressed="false">Your move <span class="c" id="f-you"></span></button>
+        <button class="chip" data-filter="eng" aria-pressed="false">Engineering <span class="c" id="f-eng"></span></button>
+      </div>
+      <button class="chip" id="hide-done" aria-pressed="false">Hide completed</button>
+      <span class="spacer"></span>
+      <button class="ghost" id="reset">Reset all</button>
+    </div>
+  </div>
+
+  <main class="wrap" id="sections"></main>
+  <div class="wrap"><div class="empty" id="empty">Nothing matches this filter.</div></div>
+
+  <div class="wrap"><footer>
+    <p class="save-note">Progress is saved in this browser (localStorage) — safe to close and return. It is not synced across devices.</p>
+    <p>Full detail and cross-references live in <code>docs/launch-readiness.md</code> in the repo (sections A/B/C). Owner tags: <strong>You</strong> = founder action · <strong>Eng</strong> = hand to Claude Code / an engineer · <strong>You + Eng</strong> = both.</p>
+  </footer></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var DATA = /*__DATA__*/ [];
+
+  var KEY = "merited-launch-readiness-v1";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { store = {}; }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+
+  var OWNER_LABEL = { you: "You", eng: "Eng", both: "You + Eng" };
+  function esc(s){ return s; } // content is authored, not user input
+
+  var mount = document.getElementById("sections");
+  var totalItems = 0;
+
+  DATA.forEach(function (sec) {
+    var el = document.createElement("section");
+    var doneInSec = 0, totalInSec = sec.items.length;
+
+    var head = document.createElement("div");
+    head.className = "sec-head";
+    head.innerHTML =
+      '<span class="sec-num">' + sec.num + '</span>' +
+      '<h2 class="sec-title">' + sec.title + '</h2>' +
+      '<span class="sec-meta" data-secmeta="' + sec.num + '"></span>';
+    el.appendChild(head);
+
+    if (sec.note) {
+      var note = document.createElement("p");
+      note.className = "sec-note";
+      note.textContent = sec.note;
+      el.appendChild(note);
+    }
+
+    sec.items.forEach(function (it) {
+      totalItems++;
+      var baked = !!it.baked;                 // closed in the register (docs/launch-readiness.md)
+      var checked = baked || !!store[it.id];
+      if (checked) doneInSec++;
+
+      var card = document.createElement("article");
+      card.className = "item" + (checked ? " done" : "") + (baked ? " baked" : "");
+      card.setAttribute("data-owner", it.owner);
+      card.setAttribute("data-id", it.id);
+      card.setAttribute("data-baked", baked ? "1" : "0");
+
+      var chips = '<span class="tag ' + it.owner + '">' + OWNER_LABEL[it.owner] + '</span>';
+      if (it.flag && !checked) chips += '<span class="tag flag">⚠ ' + it.flag + '</span>';
+      if (baked) chips += '<span class="tag done-tag">✓ Closed in register</span>';
+      if (it.ref) chips += '<span class="tag ref">' + it.ref + '</span>';
+
+      var meta = "";
+      if (it.why) meta += '<p class="meta-line">' + it.why + '</p>';
+      if (it.when) meta += '<p class="meta-line"><span class="k">When</span>' + it.when + '</p>';
+
+      var html =
+        '<div class="item-main">' +
+          '<label class="cbox">' +
+            '<input type="checkbox"' + (checked ? " checked" : "") + (baked ? " disabled" : "") + ' aria-label="' + (baked ? "Closed in the register: " : "Mark complete: ") + it.title.replace(/"/g, "&quot;") + '">' +
+            '<span class="box"></span>' +
+          '</label>' +
+          '<div class="item-body">' +
+            '<p class="item-title">' + it.title + '</p>' +
+            '<div class="chips">' + chips + '</div>' +
+            meta;
+
+      if (it.steps) {
+        var stepId = "steps-" + it.id;
+        html += '<div class="disclosure">' +
+          '<button class="disc-btn" aria-expanded="false" aria-controls="' + stepId + '"><span class="caret">▶</span> Step-by-step</button>' +
+          '<div class="steps" id="' + stepId + '" hidden><ol>';
+        it.steps.forEach(function (s) { html += "<li>" + s + "</li>"; });
+        html += "</ol>";
+        if (it.cmd) html += '<code class="cmd">' + it.cmd + "</code>";
+        if (it.env) {
+          html += '<div class="env"><span class="lbl">Env</span>';
+          it.env.forEach(function (e) { html += "<code>" + e + "</code>"; });
+          html += "</div>";
+        }
+        if (it.links) {
+          html += '<div class="env"><span class="lbl">Link</span>';
+          it.links.forEach(function (l) { html += '<a href="' + l.url + '" target="_blank" rel="noopener">' + l.label + " ↗</a>"; });
+          html += "</div>";
+        }
+        html += "</div></div>";
+      } else if (it.env) {
+        html += '<div class="env" style="margin-top:.7rem"><span class="lbl">Env</span>';
+        it.env.forEach(function (e) { html += "<code>" + e + "</code>"; });
+        html += "</div>";
+      }
+
+      html += "</div></div>";
+      card.innerHTML = html;
+      el.appendChild(card);
+    });
+
+    el.setAttribute("data-secnum", sec.num);
+    el.setAttribute("data-secdone", doneInSec);
+    el.setAttribute("data-sectotal", totalInSec);
+    mount.appendChild(el);
+  });
+
+  // ── stats + gauge ────────────────────────────────────────
+  var CIRC = 2 * Math.PI * 40;
+  var ringFill = document.getElementById("ring-fill");
+  ringFill.setAttribute("stroke-dasharray", CIRC.toFixed(1));
+
+  var BAKED = {};
+  DATA.forEach(function (sec) { sec.items.forEach(function (it) { if (it.baked) BAKED[it.id] = true; }); });
+  function isComplete(id) { return !!BAKED[id] || !!store[id]; }
+
+  function countOpen(owner) {
+    var n = 0;
+    DATA.forEach(function (sec) { sec.items.forEach(function (it) {
+      if (isComplete(it.id)) return;
+      if (owner === "you" && (it.owner === "you" || it.owner === "both")) n++;
+      if (owner === "eng" && (it.owner === "eng" || it.owner === "both")) n++;
+    }); });
+    return n;
+  }
+
+  function updateStats() {
+    var done = 0;
+    DATA.forEach(function (sec) { sec.items.forEach(function (it) { if (isComplete(it.id)) done++; }); });
+    var pct = totalItems ? Math.round((done / totalItems) * 100) : 0;
+    document.getElementById("ring-pct").textContent = pct + "%";
+    ringFill.setAttribute("stroke-dashoffset", (CIRC * (1 - done / totalItems)).toFixed(1));
+    document.getElementById("c-done").textContent = done;
+    document.getElementById("c-total").textContent = "/ " + totalItems;
+    var you = countOpen("you"), eng = countOpen("eng");
+    document.getElementById("c-you").textContent = you;
+    document.getElementById("c-eng").textContent = eng;
+    document.getElementById("f-you").textContent = you;
+    document.getElementById("f-eng").textContent = eng;
+    // per-section meta
+    document.querySelectorAll("section[data-secnum]").forEach(function (secEl) {
+      var d = 0, t = 0;
+      secEl.querySelectorAll(".item").forEach(function (c) {
+        t++; if (isComplete(c.getAttribute("data-id"))) d++;
+      });
+      var m = secEl.querySelector(".sec-meta");
+      if (m) m.textContent = d + " / " + t + " done";
+    });
+  }
+  updateStats();
+
+  // ── interactions ─────────────────────────────────────────
+  mount.addEventListener("change", function (e) {
+    var input = e.target;
+    if (input.type !== "checkbox") return;
+    var card = input.closest(".item");
+    var id = card.getAttribute("data-id");
+    if (input.checked) { store[id] = true; card.classList.add("done"); }
+    else { delete store[id]; card.classList.remove("done"); }
+    persist();
+    updateStats();
+    applyFilter();
+  });
+
+  mount.addEventListener("click", function (e) {
+    var btn = e.target.closest(".disc-btn");
+    if (!btn) return;
+    var open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", open ? "false" : "true");
+    var panel = document.getElementById(btn.getAttribute("aria-controls"));
+    if (panel) panel.hidden = open;
+  });
+
+  // ── filters ──────────────────────────────────────────────
+  var currentFilter = "all";
+  var hideDone = false;
+  var filterBar = document.getElementById("filters");
+  var hideBtn = document.getElementById("hide-done");
+  var emptyEl = document.getElementById("empty");
+
+  function applyFilter() {
+    var anyVisible = false;
+    document.querySelectorAll(".item").forEach(function (c) {
+      var owner = c.getAttribute("data-owner");
+      var isDone = isComplete(c.getAttribute("data-id"));
+      var ownerOk = currentFilter === "all" ||
+        (currentFilter === "you" && (owner === "you" || owner === "both")) ||
+        (currentFilter === "eng" && (owner === "eng" || owner === "both"));
+      var doneOk = !(hideDone && isDone);
+      var show = ownerOk && doneOk;
+      c.style.display = show ? "" : "none";
+      if (show) anyVisible = true;
+    });
+    document.querySelectorAll("section[data-secnum]").forEach(function (secEl) {
+      var visible = secEl.querySelectorAll('.item:not([style*="display: none"])').length;
+      secEl.style.display = visible ? "" : "none";
+    });
+    emptyEl.style.display = anyVisible ? "none" : "block";
+  }
+
+  filterBar.addEventListener("click", function (e) {
+    var chip = e.target.closest(".chip");
+    if (!chip) return;
+    currentFilter = chip.getAttribute("data-filter");
+    filterBar.querySelectorAll(".chip").forEach(function (c) {
+      c.setAttribute("aria-pressed", c === chip ? "true" : "false");
+    });
+    applyFilter();
+  });
+
+  hideBtn.addEventListener("click", function () {
+    hideDone = !hideDone;
+    hideBtn.setAttribute("aria-pressed", hideDone ? "true" : "false");
+    applyFilter();
+  });
+
+  document.getElementById("reset").addEventListener("click", function () {
+    if (!confirm("Clear every checkmark? This can't be undone.")) return;
+    store = {};
+    persist();
+    document.querySelectorAll(".item").forEach(function (c) {
+      if (c.getAttribute("data-baked") === "1") return; // register-closed items stay done
+      c.classList.remove("done");
+      var i = c.querySelector('input[type="checkbox"]');
+      if (i) i.checked = false;
+    });
+    updateStats();
+    applyFilter();
+  });
+
+  applyFilter();
+})();
+</script>
