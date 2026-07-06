@@ -198,3 +198,39 @@ lint clean, all suites pass.
 **Remaining W4 items (next iteration, part 2):** #23 — throttle the wallet's public magic-link request
 endpoint (email bombing); #34 — reject missing-signature webhook deliveries on the cheap header check and
 move the per-merchant rate-limit ahead of the secret decrypt (latent until the KMS crypter is wired).
+
+---
+
+## W4 (part 2) — Rate-limiting: wallet magic-link + webhook decrypt-ordering · ✅ 2026-07-06 (findings #23, #34)
+
+**#23 (low) — magic-link email bombing.** `POST /v1/auth/request` (public) called `magicLink.request`
+unthrottled — an unauthenticated caller could trigger unlimited sign-in emails to any address (row
+inserts + sender-reputation damage once Resend is wired). **Fix:** new `apps/wallet/src/lib/rate-limit.ts`
+(a compact self-bounding fixed-window limiter — the wallet is its own service, so no runtime dependency
+on `@merited/core`); throttle per source IP (Fastify `req.ip` — the socket peer, not a spoofable header)
+and per target email. Over the cap we **silently skip the send and still return the uniform 202**, so the
+flood stops *without* adding an address-existence oracle (a 429 would leak per-email state). Caps are
+generous for legitimate re-requests (20/15m per IP, 5/15m per email).
+
+**#34 (low, latent) — expensive secret decrypt before rate-limit/auth.** The webhook intake routes fetched
++ decrypted the merchant's active secrets (a KMS call per secret in prod) on every request to a valid
+slug, *before* the cheap header/skew checks — so a signature-less flood forced unbounded (paid) decrypts.
+**Fix:** extracted the secret-free portion of verification into `precheckWebhook` (signature present →
+timestamp present/format → skew) and run it BEFORE `activeWebhookSecrets` in all three routes
+(`grade-b/routes.ts`, `protocol/intake.ts`, `commerce/routes.ts` — the last is Shopify's base64 scheme, a
+signature-present check). A header-less/stale/malformed delivery is now rejected with the SAME uniform 401
+and reason, never touching the Crypter.
+
+**Tests:** `verify.test.ts` (6) — `precheckWebhook` returns each reason and short-circuits before the
+secret step; the HMAC round-trip still verifies. Wallet `rate-limit.test.ts` (4) — the limiter bounds a
+rotating-key flood; the per-email cap trips across varying IPs. All four webhook intake integration suites
+(grade-b/ucp/acp/shopify, 28) stay green — deny reasons unchanged. Full workspace: build + lint clean,
+core 257→263, wallet 87→91.
+
+**Security self-review:** *Enumeration?* The magic-link throttle preserves the uniform-202 (silent skip,
+no 429 oracle); `req.ip` is the socket peer, not a client header. *DoS?* Both limiters are bounded; the
+webhook precheck removes the cheapest amplification (no decrypt for header-less/stale requests) without
+consuming the per-merchant rate budget on bad auth (the limiter stays post-verification, so a garbage
+flood cannot throttle a merchant's legitimate deliveries). *No behaviour change on the happy path* — the
+precheck is the same checks verifyWebhookSignature already did, merely hoisted ahead of the decrypt.
+**W4 (rate-limiting overhaul) is now complete** across control-plane, wallet, and core.

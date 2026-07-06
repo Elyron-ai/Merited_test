@@ -12,7 +12,7 @@ import type pg from 'pg';
 import { CoreHttpError } from '../../../http-error.js';
 import type { MerchantsService } from '../../merchants/service.js';
 import type { GradeBOrderProcessor } from '../grade-b/processor.js';
-import { verifyWebhookSignature } from '../grade-b/verify.js';
+import { precheckWebhook, verifyWebhookSignature } from '../grade-b/verify.js';
 import { requestHashOf, withIdempotency } from '../idempotency.js';
 
 /**
@@ -74,13 +74,19 @@ export const registerProtocolIntakeRoute = (
         return deny('merchant_unknown'); // uniform 401 — no slug enumeration
       }
 
+      const nowS = Math.floor((deps.clock ?? { now: () => new Date() }).now().getTime() / 1000);
+      const signatureHeader = req.headers[WEBHOOK_SIGNATURE_HEADER] as string | undefined;
+      const timestampHeader = req.headers[WEBHOOK_TIMESTAMP_HEADER] as string | undefined;
+      // W4/#34: cheap secret-free precheck before the secret decrypt.
+      const pre = precheckWebhook({ signatureHeader, timestampHeader, nowS, maxSkewS: WEBHOOK_TIMESTAMP_MAX_SKEW_S });
+      if (!pre.ok) return deny(pre.reason);
       const secrets = await deps.merchants.activeWebhookSecrets(merchant.merchant_id);
       const verification = verifyWebhookSignature({
         rawBody,
-        signatureHeader: req.headers[WEBHOOK_SIGNATURE_HEADER] as string | undefined,
-        timestampHeader: req.headers[WEBHOOK_TIMESTAMP_HEADER] as string | undefined,
+        signatureHeader,
+        timestampHeader,
         secrets,
-        nowS: Math.floor((deps.clock ?? { now: () => new Date() }).now().getTime() / 1000),
+        nowS,
         maxSkewS: WEBHOOK_TIMESTAMP_MAX_SKEW_S,
       });
       if (!verification.ok) return deny(verification.reason);

@@ -15,6 +15,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { MagicLinkAuth } from './auth/magic-link.js';
 import { SessionStore, WALLET_SESSION_COOKIE } from './auth/session.js';
+import { allowMagicLink } from './lib/rate-limit.js';
 import { LinkService } from './modules/linking/link-service.js';
 import { HostedLinkService } from './modules/linking/hosted/hosted-link-service.js';
 import { LinkTokenStore } from './modules/linking/link-token-store.js';
@@ -168,7 +169,13 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     if (typeof email !== 'string' || !email.includes('@')) {
       return reply.code(400).send({ error: { code: 'EMAIL_REQUIRED' } });
     }
-    await magicLink.request(email);
+    // W4/#23: throttle per source IP (socket peer, not a spoofable header) and
+    // per target email. When over the cap we SILENTLY skip the send and still
+    // return the uniform 202 — this stops email bombing without adding an
+    // address-existence oracle (a 429 would signal per-email state).
+    if (allowMagicLink(req.ip, email)) {
+      await magicLink.request(email);
+    }
     // uniform response — never reveals whether the address is known
     return reply.code(202).send({ ok: true });
   });

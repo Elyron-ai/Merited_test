@@ -50,12 +50,12 @@ export const registerShopifyOrdersPaidRoute = (
         return deny('merchant_unknown'); // uniform 401 — no slug enumeration
       }
 
+      const hmacHeader = req.headers[SHOPIFY_HMAC_HEADER] as string | undefined;
+      // W4/#34: reject signature-less deliveries before fetching + decrypting
+      // the merchant secrets (Shopify's scheme carries no timestamp header).
+      if (!hmacHeader) return deny('missing_signature');
       const secrets = await deps.merchants.activeWebhookSecrets(merchant.merchant_id);
-      const verification = verifyShopifyHmac({
-        rawBody,
-        hmacHeader: req.headers[SHOPIFY_HMAC_HEADER] as string | undefined,
-        secrets,
-      });
+      const verification = verifyShopifyHmac({ rawBody, hmacHeader, secrets });
       if (!verification.ok) return deny(verification.reason);
 
       const verdict = await deps.limiter.allow(`shopify:${merchant.merchant_id}`);
