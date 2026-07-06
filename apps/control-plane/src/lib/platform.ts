@@ -9,6 +9,7 @@ import {
 import { FakeCrypter } from '@merited/signing';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { getPool } from './db';
+import { secretFromEnv } from './require-secret';
 
 /**
  * The control plane drives MER-2's merchants module DIRECTLY (§5.7: a thin
@@ -21,13 +22,13 @@ let service: MerchantsService | null = null;
 
 export const getMerchantsService = (): MerchantsService => {
   if (!service) {
-    const signerSecret = process.env['MERITED_SIGNER_SECRET'] ?? 'trio-dev-secret';
+    const signerSecret = secretFromEnv('MERITED_SIGNER_SECRET', 'trio-dev-secret');
     service = new MerchantsService(
       getPool(),
       new FakeCrypter(`${signerSecret}-crypter`),
       new TrioKeysClient({
         baseUrl: process.env['MERITED_TRIO_URL'] ?? 'http://localhost:4500',
-        serviceToken: process.env['MERITED_TRIO_SERVICE_TOKEN'] ?? 'dev-service-token',
+        serviceToken: secretFromEnv('MERITED_TRIO_SERVICE_TOKEN', 'dev-service-token'),
       }),
     );
   }
@@ -55,7 +56,7 @@ export const getOffersStack = () => {
       repository,
       commitments: new TrioCommitmentsClient({
         baseUrl: process.env['MERITED_TRIO_URL'] ?? 'http://localhost:4500',
-        serviceToken: process.env['MERITED_TRIO_SERVICE_TOKEN'] ?? 'dev-service-token',
+        serviceToken: secretFromEnv('MERITED_TRIO_SERVICE_TOKEN', 'dev-service-token'),
       }),
       merchantFor: (id) => getMerchantsService().get(id),
     });

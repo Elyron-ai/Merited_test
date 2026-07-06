@@ -85,6 +85,10 @@ beforeAll(async () => {
       ...process.env,
       MERITED_DATABASE_URL: appUrl,
       CONTROL_PLANE_SESSION_SECRET: 'cp-claims-session',
+      // prod mode (W8/W11) now requires these explicitly — the values match the
+      // former dev fallbacks, so behaviour is unchanged
+      MERITED_SIGNER_SECRET: 'trio-dev-secret',
+      MERITED_TRIO_SERVICE_TOKEN: 'dev-service-token',
       NODE_ENV: 'production',
     },
     stdio: 'pipe',

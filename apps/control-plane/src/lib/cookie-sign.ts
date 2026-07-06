@@ -5,6 +5,8 @@
  * page code runs, and the server side still validates the session row.
  */
 
+import { secretFromEnv } from './require-secret';
+
 export const SESSION_COOKIE = 'merited_cp_session';
 
 const keyFor = async (secret: string): Promise<CryptoKey> =>
@@ -38,7 +40,7 @@ export const verifySessionCookie = async (value: string, secret: string): Promis
 };
 
 export const sessionSecret = (): string =>
-  process.env['CONTROL_PLANE_SESSION_SECRET'] ?? 'control-plane-dev-secret';
+  secretFromEnv('CONTROL_PLANE_SESSION_SECRET', 'control-plane-dev-secret');
 
 /** Paths reachable without a session (everything else is guarded).
  * `/signup` is PH3-6's public self-serve onboarding — permitted from

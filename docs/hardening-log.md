@@ -568,3 +568,36 @@ not-yours now return the same status AND the same body; a residual *timing* diff
 claim runs the ownership queries) — noted as acceptable, matching the platform's other uniform-401 surfaces,
 and far weaker than the removed status split. *Secrets/keys?* None read or logged. **Remaining W11:**
 dev-secret fail-fast + web-push SSRF (contracts-first) — same tick.
+
+---
+
+## W11 (part 2) — Dev-secret fail-fast (no silent public defaults in production) · ✅ 2026-07-06 (critic gap)
+
+**Issue:** three control-plane secrets fell back to a hard-coded default baked into the source tree —
+`sessionSecret() ?? 'control-plane-dev-secret'` (cookie-sign.ts), `signerSecret ?? 'trio-dev-secret'` and
+`serviceToken ?? 'dev-service-token'` (platform.ts). If the env var were unset in production the app would
+**silently run on a publicly-known secret**: the session HMAC key becomes guessable (forgeable operator
+cookies → full dashboard access) and the inter-service token becomes known (impersonate the control-plane
+to the trio). A missing env var should be a loud failure, not a silent downgrade.
+
+**Fix:** a shared `secretFromEnv(envVar, devFallback)` (apps/control-plane/src/lib/require-secret.ts):
+returns the env value when set; outside production returns the dev fallback (dev/test unchanged); **in
+production (`NODE_ENV==='production' && MERITED_ENV!=='dev'`, the same gate as the W8 Secure cookie/HSTS)
+throws** when unset. Applied to all three call sites. It uses only `process.env`, so it is safe in the Edge
+middleware where `sessionSecret()` runs.
+
+**Tests:** `require-secret.test.ts` (4) — env value wins in any environment; dev falls back; **production +
+unset → throws** (`/must be set in production/`); `MERITED_ENV=dev` re-opens the fallback under
+`NODE_ENV=production`. The three prod-mode e2e suites that instantiate `getMerchantsService()` without these
+env vars (claims, dashboard — routes.e2e never touches it) now set `MERITED_SIGNER_SECRET` /
+`MERITED_TRIO_SERVICE_TOKEN` explicitly, to the former fallback values, so their behaviour is unchanged —
+which also proves a correctly-configured deployment is unaffected. Full workspace build + lint clean.
+
+**Security self-review (secret handling).** *Fail-closed in prod?* Yes — an unset secret now aborts at
+first use instead of adopting a source-tree default. *Dev/test friction?* None — the fallback still applies
+whenever `NODE_ENV!=='production'` (or the explicit `MERITED_ENV=dev` escape hatch). *Escape hatch abuse?*
+`MERITED_ENV=dev` is a deliberate operator choice, logged as config; it only widens the fallback, never
+narrows security. *Secrets logged?* No — the throw names only the ENV VAR, never a value; no secret is
+printed. *Coverage?* All three control-plane fallbacks are converted; the only other `?? '…-secret'`
+occurrence is a `contract-tests/harness.ts` test-only signer, correctly left as-is. **Remaining W11:**
+web-push SSRF guard (contracts-first) — next tick.
