@@ -214,6 +214,10 @@ describe('PH2-3 slice 1: screens 1–3 over the wallet API alone', () => {
     expect(anon.headers.get('location')).toContain('/login');
     const { html } = await get('/login');
     expect(html).toContain('sign-in link');
+    // W14/#18 (SC 1.4.11): the input boundary uses the AA border (≥3:1), not the
+    // near-invisible #1f2a24 (~1.23:1). The layout <style> ships on every page.
+    expect(html).toContain('#5f8873');
+    expect(html).not.toMatch(/input, select \{[^}]*#1f2a24/);
   });
 
   it('screen 4 (offers for you): T1 quotes through the ORDINARY agent read API — P5, no backdoor', async () => {

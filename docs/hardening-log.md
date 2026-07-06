@@ -743,3 +743,30 @@ safe sentence; unknown code / null / an `ONBOARDING_FAILED` internal string → 
 `signup.e2e.test.ts` (strengthened) — the page SSRs the form ("Trading name"/"Go live" in the initial HTML);
 the API's 201/400/no-store behaviour is unchanged (the gate posts to it directly). Full workspace build +
 lint clean. **W13 complete (#7, #8, #9).**
+
+---
+
+## W14 — Contrast & colour (WCAG AA) · ✅ 2026-07-06 (findings #6, #18; SC 1.4.1 audited)
+
+**Issue (SC 1.4.3 text contrast — #6):** the merchant-health badge set only a dark `background` and inherited
+the control-plane's default BLACK page text, so "✅ Healthy" etc. rendered black-on-dark at **1.70:1**
+(measured) — well under the 4.5:1 minimum. **Issue (SC 1.4.11 non-text contrast — #18):** the wallet-ui
+input/select border was `#1f2a24` on page `#0b0f0d` at **1.23:1** — the fields were nearly invisible; the
+3:1 boundary minimum was missed.
+
+**Fix (values measured with the WCAG relative-luminance formula, not guessed):**
+- #6: each badge now sets an explicit `color: #ffffff`. White on the three dark badge backgrounds measures
+  **12.35:1 / 13.15:1 / 12.63:1** (`#0a3d1f` / `#5a1a1a` / `#333333`). The palette moved to
+  `lib/health-badge.ts` so the contrast is unit-tested.
+- #18: the input/select border is now `#5f8873` — **4.59:1** against the field fill `#101613` and **4.83:1**
+  against the page `#0b0f0d`, clearing 3:1 comfortably while staying in the green theme.
+
+**SC 1.4.1 (colour-not-sole) — audited, already satisfied:** every status in the apps is rendered as a TEXT
+label — merchant `Status: {status}`, offers `{o.status}`, signing keys `revoked`/`live`, wallet links
+`{link.status}` — and the health badge carries an emoji + words. No status is conveyed by colour alone, so
+no change was required; a defensive test asserts the badge labels keep a non-colour cue.
+
+**Tests:** `health-badge.test.ts` (2) — every badge foreground clears **≥4.5:1** against its background
+(computed in-test), and every label carries an emoji + words. `ui.e2e.test.ts` (strengthened) — a rendered
+page's layout `<style>` uses the AA input border `#5f8873` and no longer the old `#1f2a24`. Full workspace
+build + lint clean. **Remaining P3: W15 (structure & wayfinding).**

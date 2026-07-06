@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getPool } from '../../../../lib/db';
 import { getMerchantsService } from '../../../../lib/platform';
+import { HEALTH_BADGE } from '../../../../lib/health-badge';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,12 +11,6 @@ export const dynamic = 'force-dynamic';
  * verdict is written by the continuously-running monitor; this page is a
  * read-only view of `core.merchant_health` plus the recent day-by-day feed.
  */
-const BADGE: Record<string, { label: string; background: string }> = {
-  healthy: { label: '✅ Healthy', background: '#0a3d1f' },
-  under_reporting: { label: '⚠️ UNDER-REPORTING', background: '#5a1a1a' },
-  insufficient_data: { label: 'ℹ️ Insufficient data', background: '#333' },
-};
-
 export default async function MerchantHealth({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const merchant = await getMerchantsService().get(id);
@@ -40,7 +35,7 @@ export default async function MerchantHealth({ params }: { params: Promise<{ id:
        WHERE merchant_id = $1 ORDER BY day DESC LIMIT 14`, [id]);
 
   const verdict = health[0];
-  const badge = verdict ? BADGE[verdict.status]! : null;
+  const badge = verdict ? HEALTH_BADGE[verdict.status]! : null;
 
   return (
     <main>
@@ -51,7 +46,12 @@ export default async function MerchantHealth({ params }: { params: Promise<{ id:
         <>
           <p>
             <strong
-              style={{ background: badge.background, padding: '0.3rem 0.7rem', borderRadius: '0.4rem' }}
+              style={{
+                background: badge.background,
+                color: badge.color,
+                padding: '0.3rem 0.7rem',
+                borderRadius: '0.4rem',
+              }}
               data-status={verdict.status}
             >
               {badge.label}
