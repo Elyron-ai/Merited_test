@@ -601,3 +601,43 @@ narrows security. *Secrets logged?* No — the throw names only the ENV VAR, nev
 printed. *Coverage?* All three control-plane fallbacks are converted; the only other `?? '…-secret'`
 occurrence is a `contract-tests/harness.ts` test-only signer, correctly left as-is. **Remaining W11:**
 web-push SSRF guard (contracts-first) — next tick.
+
+---
+
+## W11 (part 3) — Web-Push SSRF guard (contracts-first) · ✅ 2026-07-06 (critic gap) · **W11 COMPLETE**
+
+**Issue:** `PushSubscription.endpoint` was validated only as `z.string().url()`. The endpoint is a URL the
+wallet POSTs a VAPID-signed request to (`webpush.sendNotification`), so a consumer could register
+`http://169.254.169.254/latest/meta-data/…` (cloud metadata) or any internal/loopback host and turn the
+wallet into a blind SSRF proxy — reaching internal services or metadata endpoints with an authenticated
+POST it would never otherwise make.
+
+**Fix (contracts-first, §1):** a refinement on `PushSubscription.endpoint` in `packages/contracts/src/push.ts`
+via an exported `isPublicHttpsEndpoint(url)` — require `https:` and reject non-public hosts: `localhost` /
+`.localhost` / `.local` / `.internal`; IPv4 loopback/private/link-local/CGNAT/`0.` literals (incl. the
+`169.254.169.254` metadata address); and IPv6 loopback/unspecified/link-local/unique-local + every
+IPv4-mapped (`::ffff:…`) literal. IPv6 rules are gated on the host containing a colon, so a hostname such as
+`fcm.googleapis.com` is never mis-matched against `fc00::/7`.
+
+**Wallet consumes it (two gates):** the subscribe route already `safeParse`s → a bad endpoint now returns
+`400 PUSH_SUBSCRIPTION_INVALID` at ingestion. The send loop's `PushSubscription.parse` (previously outside
+the try — one bad row would crash the whole send) is now a `safeParse` that **skips and prunes** any stored
+row failing the guard, so even an endpoint injected past the API is never delivered to and never breaks
+delivery to the consumer's good subscriptions.
+
+**Tests:** `packages/contracts/src/push.test.ts` (6, new) — a normal `https://fcm.googleapis.com/…` and
+public IPv4 accepted; http/ftp/file rejected; metadata + loopback + private + CGNAT IPv4 rejected; localhost
+and internal-suffix hostnames rejected; IPv6 loopback/link-local/ULA/mapped rejected. Existing
+`phase1.test.ts` PushSubscription (public https) still green; wallet push integration (6) green. Full
+workspace build + lint clean.
+
+**Security self-review (SSRF / contracts-first).** *SSRF closed at ingestion AND at send?* Yes — the schema
+refinement runs in `safeParse` on the subscribe route (400) and again in the send loop (skip+prune), so the
+wallet never POSTs a VAPID request to a non-public literal. *Contracts-first honoured?* The validation lives
+in `packages/contracts` (the single source, §1); the wallet consumes it, adds no divergent copy. *Frozen
+suite?* `push.ts` is a wallet/push contract, not the frozen trio contract suite — untouched. *Residual —
+DNS rebinding:* a hostname that RESOLVES to a private IP is invisible to a static schema; a runtime
+resolve-then-check / egress allowlist is required before real Web Push goes live — logged as
+`docs/launch-readiness.md` A16 (gated on A5). *Legit traffic?* All real push endpoints are public https, so
+no legitimate subscription is refused; the test fixtures (`https://push.example/…`) still pass. **W11 fully
+complete (parts 1–3).**

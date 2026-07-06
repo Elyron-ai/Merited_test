@@ -92,7 +92,19 @@ export class PushService {
 
     let delivered = 0;
     for (const row of rows) {
-      const subscription = PushSubscription.parse({ endpoint: row.endpoint, keys: row.keys });
+      // W11 (web-push SSRF): re-validate at send time too. A stored endpoint
+      // that no longer passes the guard (a legacy row, or one injected past the
+      // API) is never delivered to — prune it and move on, rather than crash the
+      // whole send or POST a VAPID request to an internal host.
+      const candidate = PushSubscription.safeParse({ endpoint: row.endpoint, keys: row.keys });
+      if (!candidate.success) {
+        await this.deps.pool.query(
+          `DELETE FROM wallet.push_subscriptions WHERE consumer_ref = $1 AND endpoint = $2`,
+          [consumerRef, row.endpoint],
+        );
+        continue;
+      }
+      const subscription = candidate.data;
       try {
         await this.deps.transport.deliver({ subscription, payload: serialised }, this.deps.vapid);
         delivered += 1;

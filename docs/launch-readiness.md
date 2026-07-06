@@ -29,6 +29,7 @@ Code), **F+B** = both.
 | A13 | Reference-verifier clean-container run: network egress disabled, proof pack only, tamper byte → fail | B | PH3-8/PH3-10 | ✅ done 2026-07-05 — evidence in docs/gates/ph3-8-container-run.md |
 | A14 | Control-plane e2e flake under full parallel load (Next boot + TOTP window — seen at the Gate-1 run, 12:25 table): confirm CI runner sizing or serialise those suites | B | before CI is authoritative for others | ⬜ open |
 | A15 | Edge transport hardening (HARDEN-W8): confirm the TLS-terminating edge sets `Strict-Transport-Security` (the app tier now emits it in prod as defence-in-depth, `max-age=31536000; includeSubDomains`, no `preload`) and that the `Secure` session cookie actually rides HTTPS end-to-end (`NODE_ENV=production`, `MERITED_ENV` unset). Decide `preload` enrolment (irreversible) and any org-wide CSP at the edge | F+B | at hosting cutover (Q5/B6) | ⬜ open |
+| A16 | Web-Push DNS-rebinding residual (HARDEN-W11): the contracts SSRF guard (`isPublicHttpsEndpoint`) is a STATIC check — it blocks http + private/loopback/link-local/metadata IP LITERALS and localhost/.internal at register AND send, but a hostname that RESOLVES to a private IP is invisible to a schema. Before real Web Push (B25/A5) is exposed, add a runtime resolve-then-check-IP guard (or an egress allowlist / proxy) so a rebinding endpoint cannot reach internal hosts via the VAPID POST | B | before A5 (real push service) | ⬜ open |
 
 ## B · Third-party services & credentials
 
