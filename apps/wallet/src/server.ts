@@ -14,7 +14,13 @@ import formbody from '@fastify/formbody';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { MagicLinkAuth } from './auth/magic-link.js';
-import { SessionStore, WALLET_SESSION_COOKIE } from './auth/session.js';
+import {
+  SessionStore,
+  WALLET_SESSION_COOKIE,
+  WALLET_HSTS_VALUE,
+  serializeSessionCookie,
+  walletCookieIsSecure,
+} from './auth/session.js';
 import { allowMagicLink } from './lib/rate-limit.js';
 import { isCrossSite, UNSAFE_METHODS } from './lib/csrf.js';
 import { LinkService } from './modules/linking/link-service.js';
@@ -158,6 +164,15 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     }
   });
 
+  // W8: HSTS in production (same gate as the Secure cookie) so the 30-day
+  // session cookie can never leak over an induced plain-HTTP request.
+  if (walletCookieIsSecure()) {
+    app.addHook('onSend', async (_req, reply, payload) => {
+      void reply.header('strict-transport-security', WALLET_HSTS_VALUE);
+      return payload;
+    });
+  }
+
   app.addHook('preHandler', async (req, reply) => {
     // TRIO-17: internal directory routes carry their own service-token guard
     if (req.url.startsWith('/internal/directory/')) return;
@@ -199,17 +214,14 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     const result = await magicLink.verify(token);
     if (!result) return reply.code(401).send({ error: { code: 'LINK_INVALID' } });
     const signed = await sessions.mint(result.consumerRef);
-    void reply.header(
-      'set-cookie',
-      `${WALLET_SESSION_COOKIE}=${signed}; HttpOnly; SameSite=Lax; Path=/`,
-    );
+    void reply.header('set-cookie', serializeSessionCookie(signed));
     return reply.send({ ok: true });
   });
 
   app.post('/v1/auth/logout', async (req, reply) => {
     const cookie = readCookie(req.headers.cookie, WALLET_SESSION_COOKIE);
     if (cookie) await sessions.destroy(cookie);
-    void reply.header('set-cookie', `${WALLET_SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
+    void reply.header('set-cookie', serializeSessionCookie('', { maxAge: 0 }));
     return reply.send({ ok: true });
   });
 

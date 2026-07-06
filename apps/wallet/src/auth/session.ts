@@ -10,6 +10,39 @@ import type pg from 'pg';
  */
 export const WALLET_SESSION_COOKIE = 'merited_wallet_session';
 
+/**
+ * W8/#15/#19: gate the cookie `Secure` flag on production, mirroring the
+ * control-plane (`apps/control-plane/src/app/api/login/route.ts`). Dev/test
+ * runs over plain HTTP still work; a real deployment refuses to transmit the
+ * 30-day session cookie over an unencrypted connection, closing the induced
+ * plain-HTTP session-cookie leak.
+ */
+export const walletCookieIsSecure = (): boolean =>
+  process.env.NODE_ENV === 'production' && process.env['MERITED_ENV'] !== 'dev';
+
+/**
+ * W8: HSTS value, emitted in production alongside the Secure cookie (same
+ * `walletCookieIsSecure()` gate). Forces the browser to HTTPS so the session
+ * cookie can never ride an induced plain-HTTP request. `preload` is omitted
+ * deliberately — enrolling in the browser preload list is a deploy decision,
+ * not app code. The TLS-terminating edge remains the primary place to set this
+ * (docs/launch-readiness.md); the app-tier header is defence in depth.
+ */
+export const WALLET_HSTS_VALUE = 'max-age=31536000; includeSubDomains';
+
+/**
+ * Serialise the session cookie with hardened attributes. One place builds the
+ * Set-Cookie header for both mint and clear (Max-Age=0) so the attributes —
+ * and the env-gated `Secure` — stay identical, which browsers require to match
+ * a deletion cookie to the one it replaces.
+ */
+export const serializeSessionCookie = (value: string, opts: { maxAge?: number } = {}): string => {
+  const parts = [`${WALLET_SESSION_COOKIE}=${value}`, 'HttpOnly', 'SameSite=Lax', 'Path=/'];
+  if (walletCookieIsSecure()) parts.push('Secure');
+  if (opts.maxAge !== undefined) parts.push(`Max-Age=${opts.maxAge}`);
+  return parts.join('; ');
+};
+
 export interface SessionOptions {
   pool: pg.Pool;
   clock: { now(): Date };

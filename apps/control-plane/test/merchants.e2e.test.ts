@@ -153,6 +153,9 @@ describe('merchant onboarding through the UI alone (MER-8 accept)', () => {
   it('issues a webhook secret shown EXACTLY once, never retrievable again', async () => {
     const issue = await request(`/api/merchants/${merchantId}/webhook-secret`, { method: 'POST' });
     expect(issue.status).toBe(200);
+    // W8/#31: the one-time reveal must never be cached or leaked via Referer.
+    expect(issue.headers.get('cache-control')).toBe('no-store');
+    expect(issue.headers.get('referrer-policy')).toBe('no-referrer');
     const html = await issue.text();
     const match = /<code[^>]*>(whsec_[A-Za-z0-9_-]+)<\/code>/.exec(html);
     expect(match).toBeTruthy();

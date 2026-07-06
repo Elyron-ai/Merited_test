@@ -322,3 +322,57 @@ build + all tests + lint green.
 plain-HTTP cookie-leak vector noted for W6/W8) is a response-header / edge-proxy concern rather than
 a Fastify constructor option, and is tracked for W8's transport-confidentiality work and
 `docs/launch-readiness.md` deploy wiring.
+
+---
+
+## W8 — Transport & cache confidentiality · ✅ 2026-07-06 (findings #15/#19, #31 + HSTS)
+
+**Issue A (#15/#19, medium — session-cookie leak):** the wallet set its 30-day session cookie with
+`HttpOnly; SameSite=Lax; Path=/` but **no `Secure` flag in any environment** (`wallet/src/server.ts`
+verify + logout), unlike the control-plane which already gates `Secure` on production. With no HSTS
+either, a single induced plain-HTTP request (a mixed-content beacon, a downgraded link) would put
+the session cookie on the wire in cleartext for a network attacker.
+
+**Issue B (#31, low — secret responses cacheable):** the two "shown exactly once" webhook-secret
+responses — the control-plane HTML reveal page (`api/merchants/[id]/webhook-secret/route.ts`) and the
+self-serve signup JSON (`api/signup/route.ts`, which embeds `webhook_secret`) — carried the plaintext
+secret with no `Cache-Control: no-store` and no `Referrer-Policy`, so a shared/browser cache or a proxy
+could retain it and an outbound navigation could carry the URL on the Referer header.
+
+**Fix:**
+- *Secure cookie (wallet):* a single `serializeSessionCookie()` in `auth/session.ts` builds the
+  Set-Cookie header for both mint and clear, appending `Secure` when `walletCookieIsSecure()`
+  (`NODE_ENV==='production' && MERITED_ENV!=='dev'` — byte-for-byte the control-plane's gate). Using one
+  serialiser for set and clear keeps the attributes identical, which browsers require to match a
+  deletion cookie to the one it replaces.
+- *HSTS (both cookie-issuing hosts):* production-gated `Strict-Transport-Security:
+  max-age=31536000; includeSubDomains`, paired with each Secure cookie — control-plane via
+  `applyHsts()` on every middleware response, wallet via a Fastify `onSend` hook registered only when
+  `walletCookieIsSecure()`. `preload` is deliberately omitted (enrolling in the browser preload list is
+  an irreversible deploy commitment, not app code). The TLS-terminating edge remains the primary place
+  to set HSTS; the app-tier header is defence in depth (recorded in `docs/launch-readiness.md`).
+- *No-store on secrets (control-plane):* both secret-bearing responses now send `Cache-Control:
+  no-store` and `Referrer-Policy: no-referrer` (unconditional — the secret is confidential in every
+  environment).
+
+**Tests:**
+- `apps/wallet/src/auth/session.test.ts` (4) — `Secure` absent in dev/test, present in production,
+  suppressed by `MERITED_ENV=dev`, and the clear cookie carries `Max-Age=0` with matching attributes.
+- `apps/control-plane/test/security-headers.test.ts` (3) — HSTS off outside prod, on in prod with the
+  exact value (one-year max-age + includeSubDomains, no preload), suppressed by `MERITED_ENV=dev`.
+- E2E (against a real `next start` under `NODE_ENV=production`): the signup 201 carries `no-store`,
+  `no-referrer` and HSTS (`signup.e2e.test.ts`); the webhook-secret reveal carries `no-store` +
+  `no-referrer` (`merchants.e2e.test.ts`).
+- Full workspace: build + lint clean; wallet 95→99, control-plane 59→65.
+
+**Security self-review (transport-confidentiality zone):** *Does the cookie ever leave over plain
+HTTP in prod?* No — `Secure` is set whenever we are in production, and HSTS forces the browser to HTTPS
+before it would even attempt an http request, so both the transmit-time and the downgrade vectors are
+closed. *Dev breakage?* None — the gate is identical to the control-plane's existing, tested one;
+dev/test over http keeps working (browsers ignore HSTS received over http anyway). *Secret exposure
+window closed?* The plaintext secret still appears once in the response body by design (it is never
+stored retrievably), but it can no longer be cached by a proxy/browser or leaked via Referer.
+*Deletion correctness?* The clear cookie shares the serialiser, so its attributes (incl. `Secure`)
+match the set cookie — a partial-attribute mismatch that leaves a stale cookie is avoided. *Residual:*
+HTTPS wiring and edge-level HSTS/CSP remain founder/deploy work (`docs/launch-readiness.md`); no keys
+or secrets are logged by any of these paths.

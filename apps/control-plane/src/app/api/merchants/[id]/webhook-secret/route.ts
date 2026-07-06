@@ -20,5 +20,15 @@ export const POST = async (
   <p>It will appear in the list as <code>…${issued.secret_last4}</code>.</p>
   <p><a href="/merchants/${id}">Back to the merchant</a></p>
 </body></html>`;
-  return new NextResponse(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  // W8/#31: the plaintext secret appears in this body exactly once. Forbid any
+  // shared/browser cache from retaining it, and strip the Referer so the secret
+  // (or the merchant id) never rides an outbound navigation to a third party.
+  return new NextResponse(html, {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'referrer-policy': 'no-referrer',
+    },
+  });
 };

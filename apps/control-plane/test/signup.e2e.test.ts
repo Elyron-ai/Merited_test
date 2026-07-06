@@ -151,6 +151,12 @@ describe('self-serve merchant onboarding (PH3-6 gate clause)', () => {
       redirect: 'manual',
     });
     expect(response.status).toBe(201);
+    // W8/#31: this response carries the plaintext webhook_secret exactly once —
+    // it must not be cached and must not leak on the Referer header.
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    // W8/#15/#19: HSTS is emitted in production (this server runs NODE_ENV=production).
+    expect(response.headers.get('strict-transport-security')).toContain('max-age=31536000');
     signup = await response.json();
 
     expect(signup.merchant.merchant_id).toMatch(/^mer_/);

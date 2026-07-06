@@ -97,7 +97,9 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
           status: 'live',
         },
       },
-      { status: 201 },
+      // W8/#31: this JSON carries the plaintext webhook_secret exactly once —
+      // keep it out of any shared/browser cache and off the Referer header.
+      { status: 201, headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } },
     );
   } catch (error) {
     return NextResponse.json(
