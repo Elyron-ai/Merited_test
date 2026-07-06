@@ -641,3 +641,50 @@ resolve-then-check / egress allowlist is required before real Web Push goes live
 `docs/launch-readiness.md` A16 (gated on A5). *Legit traffic?* All real push endpoints are public https, so
 no legitimate subscription is refused; the test fixtures (`https://push.example/…`) still pass. **W11 fully
 complete (parts 1–3).**
+
+---
+
+## W12 — Reference verifier trust anchor (a forged pack can no longer self-certify) · ✅ 2026-07-06 (finding #3) · **P2 COMPLETE**
+
+**Issue (#3, high — pre-launch/latent, but defeats the PH3-8 gate claim):** the offline reference verifier
+(`packages/verifier`) anchored the ledger slice to `pack.heads` — a field of the SAME untrusted pack — and
+verified the platform COR countersign + token mint with `pack.keys.*`, also from the pack. So a fully
+self-consistent proof pack, with a chain the attacker re-hashed themselves, its own computed head in
+`pack.heads`, and every signature made with the attacker's OWN keys (whose publics they put in `pack.keys`),
+reported **VERIFIED**. The verifier's entire purpose — letting a third party confirm a conversion WITHOUT
+trusting Merited — was void. (The trio's live verify path is unaffected: it uses its custodied mint key, not
+pack-supplied keys.)
+
+**Fix — the trust anchor is a SEPARATE, caller-supplied input:**
+- `verifyProofPack(input, trust: TrustAnchor)` gains a required `TrustAnchor = { heads[], platform:
+  { commitment_public_key, mint_public_key } }`. It is validated and **fail-closed**: a missing/empty anchor
+  is `INVALID` before any pack check.
+- The slice must anchor to `trust.heads` (the auditor's head from the trusted append-only heads store), NOT
+  `pack.heads`. A forged chain cannot match a head it does not control.
+- The platform COR countersign and the PASETO mint verify against `trust.platform.*` (the out-of-band key
+  manifest), never the pack's copies — so attacker keys cannot self-certify. (The merchant key stays
+  pack-carried: it is cross-checked by the platform countersign + byte-equal anchoring in the trusted chain.)
+- `cli.ts` now requires `--trust <anchor.json>` (heads + platform keys); without it the CLI refuses (exit 1).
+  `index.ts` exports `TrustAnchor`. The PH3-8 clean-container evidence doc is updated to mount + pass it.
+
+**Tests (`verifier.integration.test.ts`, 8→9 + reshaped):**
+- **FULL FORGERY (new):** a self-consistent slice that re-chains its own events, points `heads` at its
+  forged tip and swaps in a freshly-generated attacker Ed25519 key for all three key slots → `INVALID`
+  (`chain`, "not anchored") when verified against the auditor's real anchor. This is the exact attack #3
+  described, now provably closed.
+- **No trusted anchor (new):** empty heads, and calling without the anchor, → `INVALID` (fail closed).
+- The genuine gate clause still `VERIFIED`; byte-tamper, forged-amount, swapped-merchant-key, dev-fake-token
+  and the REJECTED-verdict cases all still fail/report correctly, now threaded through the real anchor. CLI:
+  `--trust` → exit 0 VERIFIED; no `--trust` → exit 1. Full workspace build + lint clean.
+
+**Security self-review (HIGH-SCRUTINY — the verifier).** *Forgery closed?* Yes — a self-consistent pack with
+its own head + attacker keys is rejected at the anchor step; the new test proves it. *Trust model correct?*
+The verifier now trusts ONLY two out-of-band inputs (published head + platform keys) and derives everything
+else from the pack, pinned to the trusted chain by hash. *Fail closed?* A missing/malformed anchor is
+`INVALID`, never a pass. *Residual pack-supplied trust?* Only the merchant public key — and it is constrained
+by the platform countersign (trusted key) and byte-equal anchoring of the COR/claim in the trusted chain, so
+it cannot forge a verdict. *False negatives on genuine packs?* None — a real pack whose slice anchors to the
+real head and whose sigs match the real platform keys still `VERIFIED` (gate clause + CLI green). *Offline
+invariant kept?* The verifier still imports nothing from core/trio/events and makes no network calls; the
+anchor is supplied as data. *Live path?* Unchanged — this is the offline reference verifier only. **P2
+(W8–W12) is complete; P3 (accessibility) and P4 (CI) remain.**

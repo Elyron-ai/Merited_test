@@ -24,9 +24,23 @@ import { systemClock } from '../../../apps/trio/src/shared/clock.js';
 import { FixtureDirectory, VerifiedDirectory } from '../../../apps/trio/src/shared/ports/directory.js';
 import { InMemoryReplayCache } from '../../../apps/trio/src/shared/replay-cache.js';
 import { claimSignaturePayload, MintSimulator, VerifySimulator } from '../../../apps/trio/src/verification/simulator.js';
+import { createHash, generateKeyPairSync } from 'node:crypto';
+import { canonicalize } from 'json-canonicalize';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { verifyProofPack } from '../src/verify.js';
+import { verifyProofPack, type TrustAnchor } from '../src/verify.js';
+
+/** The auditor's out-of-band trust anchor (W12/#3): the REAL published head +
+ * the REAL platform keys. In production these come from the trusted heads store
+ * and the key manifest; here the genuine pack IS the real ledger, so deriving
+ * the anchor from it models exactly what the auditor would have fetched. */
+const trustFor = (pack: ProofPack): TrustAnchor => ({
+  heads: pack.heads.map((h) => ({ seq: h.seq, head_hash: h.head_hash })),
+  platform: {
+    commitment_public_key: pack.keys.platform_commitment_public_key,
+    mint_public_key: pack.keys.platform_mint_public_key,
+  },
+});
 
 /**
  * PH3-8 accept: a REAL conversion (real Ed25519 COR signatures, real PASETO
@@ -181,45 +195,81 @@ afterAll(async () => {
 describe('reference verifier (PH3-8 accept)', () => {
   it('GATE CLAUSE: a real conversion verifies OFFLINE from heads + COR + proof pack', async () => {
     const pack = buildPackCache ?? (buildPackCache = await buildPack());
-    const result = await verifyProofPack(pack);
+    const result = await verifyProofPack(pack, trustFor(pack));
     expect(result).toMatchObject({ outcome: 'VERIFIED', claim_id: pack.claim.claim_id });
+  });
+
+  it('W12/#3: NO trusted anchor → INVALID (fail closed — the pack cannot self-certify)', async () => {
+    const pack = buildPackCache ?? (buildPackCache = await buildPack());
+    // an empty/absent anchor is refused before any pack check
+    const noHeads = await verifyProofPack(pack, { heads: [], platform: trustFor(pack).platform });
+    expect(noHeads).toMatchObject({ outcome: 'INVALID', step: 'pack' });
+    // @ts-expect-error — deliberately calling without the required anchor
+    const missing = await verifyProofPack(pack);
+    expect(missing.outcome).toBe('INVALID');
+  });
+
+  it('W12/#3 FULL FORGERY: a self-consistent slice with its OWN head + attacker keys is INVALID', async () => {
+    const pack = buildPackCache ?? (buildPackCache = await buildPack());
+    const jcs = (v: unknown) => canonicalize(v);
+    const sha = (s: string) => createHash('sha256').update(s, 'utf8').digest('hex');
+
+    // The attacker rewrites the ledger, RE-CHAINS it so the slice is internally
+    // consistent, points the pack's own `heads` at its forged tip, and swaps in
+    // their own platform keys. Under the old verifier (anchor = pack.heads, sigs
+    // = pack.keys) this self-certified as VERIFIED.
+    const forged = clone(pack);
+    (forged.events[0]!.body as { data: Record<string, unknown> }).data.forged = true;
+    let prev = forged.events[0]!.prev_hash;
+    for (const ev of forged.events) {
+      ev.prev_hash = prev;
+      ev.this_hash = sha(prev + jcs(ev.body));
+      prev = ev.this_hash;
+    }
+    const tip = forged.events[forged.events.length - 1]!;
+    forged.heads = [{ date: pack.heads[0]!.date, seq: tip.seq, head_hash: tip.this_hash }];
+    const attacker = generateKeyPairSync('ed25519');
+    const attackerSpki = (attacker.publicKey.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
+    forged.keys = {
+      platform_mint_public_key: attackerSpki,
+      platform_commitment_public_key: attackerSpki,
+      merchant_public_key: attackerSpki,
+    };
+
+    // Verified against the AUDITOR's out-of-band anchor (the REAL head + keys),
+    // the forgery cannot anchor — its tip is not a trusted head.
+    const result = await verifyProofPack(forged, trustFor(pack));
+    expect(result).toMatchObject({ outcome: 'INVALID', step: 'chain' });
+    expect((result as { detail: string }).detail).toContain('not anchored');
   });
 
   it('TAMPER: mutating ANY single event byte fails verification', async () => {
     const pack = buildPackCache ?? (buildPackCache = await buildPack());
+    const trust = trustFor(pack);
     // flip one byte in EVERY event body in turn — each mutation must fail
     for (let i = 0; i < pack.events.length; i += 1) {
       const tampered = clone(pack);
       const body = tampered.events[i]!.body as { v: number };
       body.v = 2; // one changed byte in the hashed body
-      const result = await verifyProofPack(tampered);
+      const result = await verifyProofPack(tampered, trust);
       expect(result.outcome).toBe('INVALID');
       expect((result as { step: string }).step).toBe('chain');
     }
-  });
-
-  it('TAMPER: a rewritten-but-self-consistent slice fails the head anchor', async () => {
-    const pack = buildPackCache ?? (buildPackCache = await buildPack());
-    const tampered = clone(pack);
-    tampered.heads[0]!.head_hash = 'a'.repeat(64); // externally-held head disagrees
-    const result = await verifyProofPack(tampered);
-    expect(result).toMatchObject({ outcome: 'INVALID', step: 'chain' });
-    expect((result as { detail: string }).detail).toContain('not anchored');
   });
 
   it('TAMPER: a forged claim amount fails the merchant signature', async () => {
     const pack = buildPackCache ?? (buildPackCache = await buildPack());
     const tampered = clone(pack);
     tampered.claim.order.gross_value.amount = 1; // £84.50 → 1p
-    const result = await verifyProofPack(tampered);
+    const result = await verifyProofPack(tampered, trustFor(pack));
     expect(result).toMatchObject({ outcome: 'INVALID', step: 'claim' });
   });
 
-  it('TAMPER: swapped keys fail — pack-carried keys cannot forge anchored artefacts', async () => {
+  it('TAMPER: swapped merchant key fails — pack-carried keys cannot forge anchored artefacts', async () => {
     const pack = buildPackCache ?? (buildPackCache = await buildPack());
     const tampered = clone(pack);
     tampered.keys.merchant_public_key = tampered.keys.platform_mint_public_key; // wrong key
-    const result = await verifyProofPack(tampered);
+    const result = await verifyProofPack(tampered, trustFor(pack));
     expect(result).toMatchObject({ outcome: 'INVALID', step: 'cor' });
   });
 
@@ -227,7 +277,7 @@ describe('reference verifier (PH3-8 accept)', () => {
     const pack = buildPackCache ?? (buildPackCache = await buildPack());
     const tampered = clone(pack);
     tampered.claim.attribution_token = 'v4.public.fake.eyJqdGkiOiJ4In0.sig';
-    const result = await verifyProofPack(tampered);
+    const result = await verifyProofPack(tampered, trustFor(pack));
     expect(result).toMatchObject({ outcome: 'INVALID', step: 'token' });
     expect((result as { detail: string }).detail).toContain('dev formats');
   });
@@ -283,7 +333,7 @@ describe('reference verifier (PH3-8 accept)', () => {
         this_hash: row.this_hash,
       })),
     };
-    const result = await verifyProofPack(rejectedPack);
+    const result = await verifyProofPack(rejectedPack, trustFor(rejectedPack));
     expect(result).toMatchObject({
       outcome: 'REJECTED',
       claim_id: replayClaim.claim_id,
@@ -291,15 +341,21 @@ describe('reference verifier (PH3-8 accept)', () => {
     });
   });
 
-  it('CLI: `merited-verify <pack>` exits 0 and prints VERIFIED — file in, verdict out', async () => {
+  it('CLI: `merited-verify <pack> --trust <anchor>` exits 0 and prints VERIFIED', async () => {
     const pack = buildPackCache ?? (buildPackCache = await buildPack());
     const dir = mkdtempSync(path.join(tmpdir(), 'merited-pack-'));
     const packPath = path.join(dir, 'pack.json');
+    const trustPath = path.join(dir, 'trust.json');
     writeFileSync(packPath, JSON.stringify(pack));
+    writeFileSync(trustPath, JSON.stringify(trustFor(pack)));
     const cliPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/cli.js');
-    const run = spawnSync('node', [cliPath, packPath], { encoding: 'utf-8' });
+    const run = spawnSync('node', [cliPath, packPath, '--trust', trustPath], { encoding: 'utf-8' });
     expect(run.status).toBe(0);
     expect(run.stdout).toContain('"VERIFIED"');
+
+    // and WITHOUT the trust anchor the CLI refuses (usage error, exit 1)
+    const noTrust = spawnSync('node', [cliPath, packPath], { encoding: 'utf-8' });
+    expect(noTrust.status).toBe(1);
   });
 });
 

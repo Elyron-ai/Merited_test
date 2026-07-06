@@ -21,6 +21,36 @@ export type VerifierResult =
   | { outcome: 'REJECTED'; claim_id: string; reason_code: string }
   | { outcome: 'INVALID'; step: 'pack' | 'chain' | 'cor' | 'token' | 'claim' | 'verdict'; detail: string };
 
+/**
+ * W12/#3: the anchor the verifier trusts, supplied by the AUDITOR out-of-band —
+ * never taken from the proof pack. Without it the verifier anchored the slice to
+ * `pack.heads` and verified the platform signatures with `pack.keys`, both fields
+ * of the SAME untrusted pack — so a self-consistent pack signed with attacker
+ * keys and its own computed head reported VERIFIED. The head must come from the
+ * trusted append-only heads store and the platform keys from the published key
+ * manifest; the pack is then pinned to a chain the auditor already trusts.
+ */
+export interface TrustAnchor {
+  /** Published head(s) from the trusted heads store. The slice MUST anchor to
+   * one of these — the pack's own `heads` field is ignored. */
+  heads: ReadonlyArray<{ seq: number; head_hash: string }>;
+  /** The platform's well-known public keys (out-of-band key manifest). The COR
+   * countersign and the token mint verify against THESE, not the pack's copies. */
+  platform: {
+    commitment_public_key: string;
+    mint_public_key: string;
+  };
+}
+
+const trustIsWellFormed = (t: TrustAnchor): boolean =>
+  Array.isArray(t?.heads) &&
+  t.heads.length > 0 &&
+  t.heads.every((h) => Number.isInteger(h?.seq) && /^[0-9a-f]{64}$/.test(h?.head_hash ?? '')) &&
+  typeof t.platform?.commitment_public_key === 'string' &&
+  t.platform.commitment_public_key.length > 0 &&
+  typeof t.platform?.mint_public_key === 'string' &&
+  t.platform.mint_public_key.length > 0;
+
 // ——— spec §2 primitives, reimplemented from the doc ————————————————————————
 
 const sha256hex = (input: string): string =>
@@ -81,8 +111,18 @@ interface EventRow {
 const eventData = (row: EventRow): Record<string, unknown> =>
   ((row.body as { data?: Record<string, unknown> }).data ?? {});
 
-export const verifyProofPack = async (input: unknown): Promise<VerifierResult> => {
-  // step 0 — the pack itself
+export const verifyProofPack = async (input: unknown, trust: TrustAnchor): Promise<VerifierResult> => {
+  // step 0a — the out-of-band trust anchor (W12/#3). Fail closed: no trusted
+  // head + platform keys means nothing can be anchored, so nothing is trusted.
+  if (!trust || !trustIsWellFormed(trust)) {
+    return {
+      outcome: 'INVALID',
+      step: 'pack',
+      detail: 'no trusted anchor supplied — an out-of-band head + platform keys are required',
+    };
+  }
+
+  // step 0b — the pack itself
   const parsed = ProofPack.safeParse(input);
   if (!parsed.success) {
     return { outcome: 'INVALID', step: 'pack', detail: parsed.error.issues[0]?.message ?? 'malformed pack' };
@@ -118,12 +158,15 @@ export const verifyProofPack = async (input: unknown): Promise<VerifierResult> =
     }
   }
   const last = events[events.length - 1]!;
-  const anchored = pack.heads.some((head) => head.seq === last.seq && head.head_hash === last.this_hash);
+  // W12/#3: anchor to the CALLER'S trusted head, NOT pack.heads. A self-consistent
+  // forged slice can put its own tip in pack.heads, but it cannot match a head the
+  // auditor obtained from the trusted append-only store.
+  const anchored = trust.heads.some((head) => head.seq === last.seq && head.head_hash === last.this_hash);
   if (!anchored) {
     return {
       outcome: 'INVALID',
       step: 'chain',
-      detail: `slice ends at seq ${last.seq} / ${last.this_hash} but no published head matches — not anchored`,
+      detail: `slice ends at seq ${last.seq} / ${last.this_hash} but no TRUSTED head matches — not anchored`,
     };
   }
 
@@ -133,12 +176,14 @@ export const verifyProofPack = async (input: unknown): Promise<VerifierResult> =
   }
   if (
     !signatureVerifies(
-      pack.keys.platform_commitment_public_key,
+      // W12/#3: the platform COUNTERSIGN verifies against the TRUSTED key, never
+      // the pack's copy — otherwise an attacker presents their own platform key.
+      trust.platform.commitment_public_key,
       corMerchantSignedPayload(pack.cor),
       pack.cor.platform_sig,
     )
   ) {
-    return { outcome: 'INVALID', step: 'cor', detail: 'platform_sig (countersign) does not verify' };
+    return { outcome: 'INVALID', step: 'cor', detail: 'platform_sig (countersign) does not verify against the trusted platform key' };
   }
   const corEvent = events.find(
     (row) =>
@@ -157,7 +202,9 @@ export const verifyProofPack = async (input: unknown): Promise<VerifierResult> =
   }
   let mc: AttributionTokenClaims;
   try {
-    const payload = (await V4.verify(token, keyFromSpkiBase64(pack.keys.platform_mint_public_key))) as {
+    // W12/#3: the mint signature verifies against the TRUSTED mint key, not the
+    // pack's copy — so a token minted with an attacker key cannot self-certify.
+    const payload = (await V4.verify(token, keyFromSpkiBase64(trust.platform.mint_public_key))) as {
       mc: unknown;
     };
     mc = AttributionTokenClaims.parse(payload.mc);
