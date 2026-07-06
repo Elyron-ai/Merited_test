@@ -688,3 +688,30 @@ real head and whose sigs match the real platform keys still `VERIFIED` (gate cla
 invariant kept?* The verifier still imports nothing from core/trio/events and makes no network calls; the
 anchor is supplied as data. *Live path?* Unchanged — this is the offline reference verifier only. **P2
 (W8–W12) is complete; P3 (accessibility) and P4 (CI) remain.**
+
+---
+
+## W13 (part 1) — Accessible error announcement: login + wallet linking · ✅ 2026-07-06 (findings #7, #9)
+
+**Issue (SC 3.3.1 Error Identification / SC 4.1.3 Status Messages):** two failure paths redirected with a
+query flag that the page then dropped on the floor — a sighted user saw an unchanged form, a screen-reader
+user got nothing at all. #7: control-plane `/login` did `void searchParams`, discarding `?failed=1` from the
+login route's uniform-refusal redirect. #9: the wallet `/accounts` page ignored `?link_failed=1` set by the
+link-start route when the brand sign-in cannot begin.
+
+**Fix:** each page now reads the flag and renders an in-page `role="alert"` region (announced by assistive
+tech) that identifies the problem in TEXT (a bold lead-in + guidance), not by colour alone:
+- `login/page.tsx` (control-plane, light theme) — `?failed=1` → "Sign-in failed. Check your email, password
+  and one-time code…". Credentials are never echoed back (the refusal stays uniform; no field is preserved
+  in the URL — a deliberate non-regression of the security posture).
+- `accounts/page.tsx` (wallet-ui, dark theme) — `?link_failed=1` → "Couldn't start linking. Check the
+  merchant id and programme…". Alert colours chosen for AA contrast on each theme (dark-red on pink /
+  light-pink on dark-red).
+
+**Tests:** `routes.e2e.test.ts` (+1) — `GET /login?failed=1` contains `role="alert"` + "Sign-in failed",
+and the clean `/login` has no alert. `ui.e2e.test.ts` (+1) — `GET /accounts?link_failed=1` (authenticated)
+contains `role="alert"` + "start linking", and the clean page has none. Full workspace build + lint clean.
+
+**Note:** #8 (signup validation errors rendered as raw JSON on a separate URL) is W13 part 2 — it needs a
+client-side presentation layer because the `/api/signup` JSON contract is consumed verbatim by the PH3-6
+gate e2e (which must not change), so the accessible in-page error is added WITHOUT altering the API response.

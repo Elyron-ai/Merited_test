@@ -289,6 +289,14 @@ describe('PH2-3 slice 1: screens 1–3 over the wallet API alone', () => {
     expect((await get('/')).html).toContain('Nothing linked');
   });
 
+  it('W13/#9: a failed link start surfaces an in-page role="alert" (SC 3.3.1/4.1.3)', async () => {
+    const failed = await get('/accounts?link_failed=1');
+    expect(failed.html).toContain('role="alert"');
+    expect(failed.html).toContain('start linking');
+    // no flag → no alert
+    expect((await get('/accounts')).html).not.toContain('role="alert"');
+  });
+
   it('screen 3 (mandate): grant with pounds-only limits, then revoke — both through the public API', async () => {
     const agentId = newId('agt');
     const granted = await post('/api/mandates', {

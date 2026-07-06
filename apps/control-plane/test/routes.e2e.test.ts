@@ -90,6 +90,17 @@ describe('control-plane routes (MER-7 accept — no route renders without a vali
     expect(response.headers.get('location')).toContain('/login');
   });
 
+  it('W13/#7: a failed login surfaces an in-page role="alert" (SC 3.3.1/4.1.3)', async () => {
+    const failed = await get('/login?failed=1');
+    expect(failed.status).toBe(200);
+    const html = await failed.text();
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('Sign-in failed');
+    // the clean login page carries no alert (the region only appears on failure)
+    const clean = await get('/login');
+    expect(await clean.text()).not.toContain('role="alert"');
+  });
+
   it('the full login flow: credentials + live TOTP → session cookie → the dashboard renders', async () => {
     const form = new URLSearchParams({
       email: 'admin@merited.test',

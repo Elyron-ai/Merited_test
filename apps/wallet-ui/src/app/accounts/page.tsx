@@ -17,15 +17,38 @@ interface Links {
 /** Screen 2 — linked accounts (PH2-3): scopes visible, revoke button LIVE
  * (B23: revoke → T2/T3 on the next read; the CI round-trip lives in the
  * linking suite — this screen is its UI path). */
-export default async function Accounts() {
+export default async function Accounts({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const me = await apiGet<{ consumer_ref: string }>('/v1/me');
   if (!me) redirect('/login');
   const links = (await apiGet<Links>('/v1/links'))?.links ?? [];
+  // W13/#9 (SC 3.3.1 / 4.1.3): the link-start route redirects to ?link_failed=1
+  // when the brand sign-in cannot be started; surface it in a role="alert"
+  // region rather than dropping the flag silently.
+  const linkFailed = (await searchParams).link_failed === '1';
 
   return (
     <main>
       <p><a href="/">← Wallet</a></p>
       <h1>Linked accounts</h1>
+      {linkFailed && (
+        <p
+          role="alert"
+          style={{
+            color: '#fecaca',
+            background: '#2a1416',
+            border: '1px solid #f87171',
+            borderRadius: '0.3rem',
+            padding: '0.5rem 0.75rem',
+            maxWidth: '40rem',
+          }}
+        >
+          <strong>Couldn&rsquo;t start linking.</strong> Check the merchant id and programme, then try again.
+        </p>
+      )}
       <table cellPadding={6}>
         <thead>
           <tr>
