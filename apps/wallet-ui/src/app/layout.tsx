@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 
-export const metadata = { title: 'Merited Wallet' };
+// W15/#36 (SC 2.4.2): a title TEMPLATE so each route contributes its own name
+// ("Linked accounts · Merited Wallet") instead of every screen sharing one title.
+export const metadata = {
+  title: { default: 'Merited Wallet', template: '%s · Merited Wallet' },
+};
 
 /** Dark mode, green accent (PH2-3 row) — deliberately plain markup like the
  * control plane: every screen exists to PROVE one thing on camera. */
@@ -27,8 +31,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
              ~4.83:1 vs the page (measured), clearing the 3:1 non-text minimum. */
           input, select { background: #101613; color: #e6f2ea; border: 1px solid #5f8873; border-radius: 0.3rem; padding: 0.3rem; }
           code { color: #6ee7b7; }
+          /* W15 (SC 2.4.7/2.4.11): an explicit, high-contrast focus ring — the
+             UA default is unreliable on this dark theme. #6ee7b7 is bright green,
+             well over 3:1 against the page. */
+          :focus-visible { outline: 2px solid #6ee7b7; outline-offset: 2px; }
+          /* W15 (SC 2.4.1): skip-to-content link — off-screen until focused. */
+          a.skip-link { position: absolute; left: -9999px; top: 0; background: #065f46; color: #e6f2ea; padding: 0.5rem 0.75rem; border: 1px solid #34d399; border-radius: 0 0 0.3rem 0; z-index: 1000; }
+          a.skip-link:focus { left: 0; }
         `}</style>
-        {children}
+        <a className="skip-link" href="#main-content">Skip to content</a>
+        <div id="main-content" tabIndex={-1}>{children}</div>
       </body>
     </html>
   );

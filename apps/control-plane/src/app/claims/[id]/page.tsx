@@ -51,12 +51,14 @@ export default async function ClaimDetail({ params }: { params: Promise<{ id: st
 
       <h2>Audit path</h2>
       <p>The B24 promise made visible: every hop from the claim back to the committed offer.</p>
+      {/* W15/#17 (SC 1.3.1): each row's label is a ROW HEADER — th scope="row" —
+          so assistive tech associates the value cell with its name. */}
       <table cellPadding={6}>
         <tbody>
-          <tr><td>Claim</td><td><code>{claim.claim_id}</code></td></tr>
-          <tr><td>Attribution token (jti)</td><td><code>{claim.jti ?? '— token did not decode'}</code></td></tr>
-          <tr><td>Quote (qid)</td><td><code>{claim.qid ?? '—'}</code></td></tr>
-          <tr><td>Commitment (cid)</td><td><code>{claim.cid ?? '—'}</code></td></tr>
+          <tr><th scope="row" align="left">Claim</th><td><code>{claim.claim_id}</code></td></tr>
+          <tr><th scope="row" align="left">Attribution token (jti)</th><td><code>{claim.jti ?? '— token did not decode'}</code></td></tr>
+          <tr><th scope="row" align="left">Quote (qid)</th><td><code>{claim.qid ?? '—'}</code></td></tr>
+          <tr><th scope="row" align="left">Commitment (cid)</th><td><code>{claim.cid ?? '—'}</code></td></tr>
         </tbody>
       </table>
 

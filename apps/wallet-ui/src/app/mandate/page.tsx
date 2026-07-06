@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { apiGet, pounds } from '../../lib/api';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Valet mandate' }; // W15/#36 (SC 2.4.2)
 
 interface Mandates {
   mandates: Array<{

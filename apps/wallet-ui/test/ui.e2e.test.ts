@@ -220,6 +220,17 @@ describe('PH2-3 slice 1: screens 1–3 over the wallet API alone', () => {
     expect(html).not.toMatch(/input, select \{[^}]*#1f2a24/);
   });
 
+  it('W15/#36: each screen has its OWN <title>, plus a skip link (SC 2.4.2/2.4.1)', async () => {
+    const accounts = await get('/accounts');
+    expect(accounts.html).toContain('Linked accounts · Merited Wallet');
+    expect(accounts.html).toContain('Skip to content');
+    expect(accounts.html).toContain('id="main-content"');
+    const offers = await get('/offers');
+    expect(offers.html).toContain('Offers for you · Merited Wallet');
+    // titles differ per route — not every screen sharing one title
+    expect(accounts.html).not.toContain('Offers for you · Merited Wallet');
+  });
+
   it('screen 4 (offers for you): T1 quotes through the ORDINARY agent read API — P5, no backdoor', async () => {
     const { status, html } = await get('/offers');
     expect(status).toBe(200);

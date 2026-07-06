@@ -1,3 +1,5 @@
+export const metadata = { title: 'Sign in' }; // W15/#36 (SC 2.4.2)
+
 export default function Login({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
   return <LoginInner searchParams={searchParams} />;
 }

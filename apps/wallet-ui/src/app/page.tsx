@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { apiGet, pounds } from '../lib/api';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Your wallet' }; // W15/#36 (SC 2.4.2)
 
 interface Links {
   links: Array<{ link_id: string; programme: string; member_ref: string; status: string }>;

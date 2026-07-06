@@ -3,6 +3,7 @@ import { apiGet, pounds } from '../../lib/api';
 import { readOffersAsAgent } from '../../lib/agent';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Offers for you' }; // W15/#36 (SC 2.4.2)
 
 interface Links {
   links: Array<{ programme: string; sub_hash: string; status: string }>;

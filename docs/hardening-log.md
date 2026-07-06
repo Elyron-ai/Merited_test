@@ -770,3 +770,26 @@ no change was required; a defensive test asserts the badge labels keep a non-col
 (computed in-test), and every label carries an emoji + words. `ui.e2e.test.ts` (strengthened) — a rendered
 page's layout `<style>` uses the AA input border `#5f8873` and no longer the old `#1f2a24`. Full workspace
 build + lint clean. **Remaining P3: W15 (structure & wayfinding).**
+
+---
+
+## W15 — Structure & wayfinding (WCAG AA) · ✅ 2026-07-06 (findings #17, #36 + focus-ring + skip-link) · **P3 COMPLETE**
+
+**Fixes:**
+- **#17 (SC 1.3.1):** the claim "Audit path" table used `<td>` for the row LABELS (Claim / jti / qid / cid),
+  so assistive tech couldn't associate each value with its name. Each label is now `<th scope="row">`.
+- **#36 (SC 2.4.2):** every wallet-ui screen shared the single layout title "Merited Wallet". The layout now
+  defines a title TEMPLATE (`%s · Merited Wallet`) and each of the 8 routes exports its own `metadata.title`
+  ("Your wallet", "Linked accounts", "Offers for you", "Approve payment", "Valet mandate", "Valet errands",
+  "Activity & settlement", "Sign in") — distinct, descriptive per-page titles.
+- **Focus visibility (SC 2.4.7 / 2.4.11):** both apps now set an explicit `:focus-visible` outline (2px,
+  offset) — `#6ee7b7` on the wallet-ui dark theme and `#1d4ed8` (6.5:1) on the control-plane light theme —
+  instead of relying on the unreliable UA default.
+- **Skip link (SC 2.4.1):** both layouts render an off-screen "Skip to content" link (revealed on focus)
+  that jumps to a `#main-content` wrapper around the page — keyboard users bypass the repeated nav.
+
+**Tests:** `claims.e2e.test.ts` (strengthened) — the audit rows render `<th scope="row">…</th>` for the
+labels, and the skip link + `#main-content` are present. `ui.e2e.test.ts` (+1) — `/accounts` and `/offers`
+carry DISTINCT `<title>`s ("Linked accounts · Merited Wallet" vs "Offers for you · Merited Wallet"), and the
+skip link + `#main-content` ship on the page; plus the W14 border assertion. Full workspace build + lint
+clean. **P3 (W13–W15) complete; only P4 (W16 CI supply-chain) remains.**

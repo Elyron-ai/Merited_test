@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { apiGet } from '../../lib/api';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Linked accounts' }; // W15/#36 (SC 2.4.2)
 
 interface Links {
   links: Array<{

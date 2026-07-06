@@ -146,6 +146,12 @@ describe('claims viewer (MER-10 accept — merchants see why, from this screen a
     expect(html).toContain('com_00TESTC0000000000000000001'); // cid
     expect(html).toContain('This attribution token has already been redeemed.');
     expect(html).toContain('List £84.50 → final £84.50 at tier T1');
+    // W15/#17 (SC 1.3.1): the audit rows use th scope="row", not td, for labels
+    expect(html).toMatch(/<th scope="row"[^>]*>Claim<\/th>/);
+    expect(html).toMatch(/<th scope="row"[^>]*>Commitment \(cid\)<\/th>/);
+    // W15 (SC 2.4.1): the skip-to-content link ships on every control-plane page
+    expect(html).toContain('Skip to content');
+    expect(html).toContain('id="main-content"');
   });
 
   it('a verified claim reads clean — no reason code, no explanation', async () => {

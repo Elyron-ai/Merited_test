@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { apiGet, pounds } from '../../lib/api';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Activity & settlement' }; // W15/#36 (SC 2.4.2)
 
 interface Activity {
   credits: Array<{ claim_id: string; programme: string; points: number; quote_id: string; credited_at: string }>;
