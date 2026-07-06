@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { bountyFrom } from '../offers/bounty-form';
 import { offerFields } from '../offers/offer-form';
 import { getMerchantsService, getOffersStack, intField } from '../../../lib/platform';
+import { allowSignup, clientIp } from '../../../lib/rate-limit';
 
 /**
  * Self-serve merchant onboarding (PH3-6, §11's Phase-3 unlock): ONE public
@@ -11,29 +12,18 @@ import { getMerchantsService, getOffersStack, intField } from '../../../lib/plat
  * secret store, different intake endpoint) → first offer authored and
  * published (COR countersigned by the trio). The response is the merchant's
  * complete integration sheet; the webhook secret appears EXACTLY once, here.
+ *
+ * §8: limits on every public surface. Per-IP AND a global ceiling (see
+ * lib/rate-limit) so a spoofed X-Forwarded-For flood cannot drive unbounded
+ * merchant/keypair/offer creation.
  */
-
-// §8: limits on every public surface — a fixed-window per-IP cap. In-memory
-// is honest for a single control-plane node; the CORE public surfaces carry
-// the real Redis-backed limiters.
-const WINDOW_MS = 3_600_000;
-const MAX_SIGNUPS_PER_WINDOW = 20;
-const signupWindows = new Map<string, { windowStart: number; count: number }>();
-
-const allowSignup = (ip: string, now: number): boolean => {
-  const window = signupWindows.get(ip);
-  if (!window || now - window.windowStart >= WINDOW_MS) {
-    signupWindows.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-  window.count += 1;
-  return window.count <= MAX_SIGNUPS_PER_WINDOW;
-};
-
 export const POST = async (request: NextRequest): Promise<NextResponse> => {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
-  if (!allowSignup(ip, Date.now())) {
-    return NextResponse.json({ error: { code: 'RATE_LIMITED' } }, { status: 429 });
+  const verdict = await allowSignup(clientIp(request.headers));
+  if (!verdict.allowed) {
+    return NextResponse.json(
+      { error: { code: 'RATE_LIMITED' } },
+      { status: 429, headers: { 'retry-after': String(verdict.retryAfterS) } },
+    );
   }
 
   const form = await request.formData();

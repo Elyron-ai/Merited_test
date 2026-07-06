@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { authenticate } from '../../../lib/auth';
 import { SESSION_COOKIE, sessionSecret, signSessionId } from '../../../lib/cookie-sign';
 import { getPool } from '../../../lib/db';
+import { allowLogin, clientIp } from '../../../lib/rate-limit';
 import { createSession } from '../../../lib/session';
 
 export const POST = async (request: NextRequest): Promise<NextResponse> => {
@@ -9,6 +10,17 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
   const email = String(form.get('email') ?? '');
   const password = String(form.get('password') ?? '');
   const totp = String(form.get('totp') ?? '');
+
+  // §8 / audit W4: throttle BEFORE the memory-hard argon2id verify — per-IP
+  // (flood) and per-email (credential/TOTP brute force). A denied attempt
+  // never reaches authenticate(), so it costs no argon2 work.
+  const verdict = await allowLogin(clientIp(request.headers), email);
+  if (!verdict.allowed) {
+    return NextResponse.json(
+      { error: { code: 'RATE_LIMITED' } },
+      { status: 429, headers: { 'retry-after': String(verdict.retryAfterS) } },
+    );
+  }
 
   const pool = getPool();
   const user = await authenticate(pool, { email, password, totp });

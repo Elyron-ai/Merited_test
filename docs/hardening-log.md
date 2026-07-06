@@ -155,3 +155,46 @@ member-tier pricing and mandate-gated pd ranking without proof of the agent↔co
 sound under the current walletless trust model, but worth an explicit product ruling before real-money,
 real-merchant exposure (the same gate as SYN-32's LEAD-5 external audit). No code changed; full workspace
 was green as of W2 (unchanged since).
+
+---
+
+## W4 (part 1) — Rate-limiting & DoS: control-plane public surfaces + bounded limiter · ✅ 2026-07-06 (findings #2/#4, #11, #12/#22)
+
+**Issue:** the control plane's public POST surfaces had spoofable / missing / unbounded abuse controls.
+- **#2/#4 (high)** `/api/signup`'s only control was an in-memory per-IP cap keyed on the *leftmost*
+  `X-Forwarded-For` value — fully attacker-controlled, so rotating the header per request bypassed the
+  cap entirely and drove unbounded merchant + trio-keypair + published-offer creation.
+- **#11 (medium)** that map (and the core `InMemoryRateLimiter`) had no eviction — a rotating-key flood
+  grew the heap without bound (OOM).
+- **#12/#22 (medium)** `/api/login` had NO limiter — every request forced a ~64 MiB argon2id verify
+  (even for unknown emails), a cheap CPU/memory DoS, and TOTP/password were unthrottled.
+
+**Fix:**
+- Bounded the core `InMemoryRateLimiter` (`maxKeys`, default 50_000): a new key at the cap sweeps expired
+  windows first, then evicts the oldest — memory can no longer be grown by rotating keys.
+- New `apps/control-plane/src/lib/rate-limit.ts`: `clientIp()` takes the `X-Forwarded-For` entry
+  `CONTROL_PLANE_TRUSTED_PROXY_HOPS`-from-the-**right** (the value the outermost trusted proxy appends —
+  an attacker can only prepend on the left), and bounded per-process limiters. Signup = per-IP (20/h)
+  **and a global 200/h ceiling** that header rotation cannot bypass (the spoof-proof backstop for the
+  expensive path). Login = per-IP (30/5m) **and per-email (10/15m)**, checked BEFORE argon2 so a denied
+  attempt costs no hashing. Both return 429 + `Retry-After`. Replaced signup's ad-hoc spoofable map.
+
+**Tests:** core limiter bound test — 10_000 rotating keys keep the map ≤ maxKeys, expired windows swept
+(core 256→257). Control-plane `rate-limit.test.ts` (6) — `clientIp` takes the rightmost/trusted-hop entry
+and ignores spoofed-left values; per-email login cap throttles one email across varying IPs; **the signup
+global ceiling denies even when every request uses a distinct (spoofed) IP** (control-plane 45→51). All
+six control-plane e2e suites (login + signup flows) stay green under the new caps. Full workspace: build +
+lint clean, all suites pass.
+
+**Security self-review (public-surface abuse controls):**
+- *Spoofing?* The per-IP key no longer derives from the attacker-controlled leftmost XFF; the global
+  signup ceiling is IP-independent, so header rotation cannot bypass the expensive-path limit.
+- *DoS/OOM?* The limiter map is bounded; login throttles precede the memory-hard argon2 verify.
+- *Availability trade-off?* Login uses per-IP + per-email (no global cap) so one attacker cannot lock out
+  all operators; signup uses a global cap because onboarding is rare and the resource cost is high.
+- *Fail-safe?* Limiters are per-process/bounded; a Redis-backed cross-instance limiter is the documented
+  production upgrade (launch-readiness A9). No secret or PII enters a limiter key.
+
+**Remaining W4 items (next iteration, part 2):** #23 — throttle the wallet's public magic-link request
+endpoint (email bombing); #34 — reject missing-signature webhook deliveries on the cheap header check and
+move the per-merchant rate-limit ahead of the secret decrypt (latent until the KMS crypter is wired).
