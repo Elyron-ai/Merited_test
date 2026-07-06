@@ -53,6 +53,17 @@ const perEmailLogin = new InMemoryRateLimiter({ limit: 10, windowS: 900 });
 export const allowSignup = async (ip: string): Promise<LimitVerdict> =>
   worst(await perIpSignup.allow(`ip:${ip}`), await globalSignup.allow('global'));
 
+/**
+ * Operator kill-switch for public self-serve onboarding (audit W5). Signup is
+ * an INTENTIONAL zero-step feature (PH3-6) — rate-limiting (above) is its
+ * standing abuse control — but a single env flag lets an operator disable the
+ * public surface entirely during an incident without a deploy of new code.
+ * Default (unset / anything but "false") keeps signup enabled. Read at call
+ * time so it can be flipped by restart/config, not baked in at module load.
+ */
+export const signupEnabled = (): boolean =>
+  process.env['CONTROL_PLANE_SIGNUP_ENABLED'] !== 'false';
+
 export const allowLogin = async (ip: string, email: string): Promise<LimitVerdict> =>
   worst(
     await perIpLogin.allow(`ip:${ip}`),

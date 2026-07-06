@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { allowLogin, allowSignup, clientIp } from '../src/lib/rate-limit';
+import { afterEach, describe, expect, it } from 'vitest';
+import { allowLogin, allowSignup, clientIp, signupEnabled } from '../src/lib/rate-limit';
 
 /**
  * Audit W4 (#2/#4/#11/#12/#22): the control-plane public-surface abuse
@@ -46,6 +46,20 @@ describe('allowLogin (per-email brute-force cap, argon2-DoS throttle)', () => {
   it('a different email is unaffected (per-email isolation)', async () => {
     const fresh = `fresh-${Math.random().toString(36).slice(2)}@ops.test`;
     expect((await allowLogin('some-ip', fresh)).allowed).toBe(true);
+  });
+});
+
+describe('signupEnabled (operator kill-switch, W5)', () => {
+  afterEach(() => {
+    delete process.env['CONTROL_PLANE_SIGNUP_ENABLED'];
+  });
+
+  it('defaults enabled (unset) and honours an explicit off/on', () => {
+    expect(signupEnabled()).toBe(true); // unset → zero-step onboarding stays live (PH3-6)
+    process.env['CONTROL_PLANE_SIGNUP_ENABLED'] = 'false';
+    expect(signupEnabled()).toBe(false); // incident kill-switch, no redeploy
+    process.env['CONTROL_PLANE_SIGNUP_ENABLED'] = 'true';
+    expect(signupEnabled()).toBe(true);
   });
 });
 

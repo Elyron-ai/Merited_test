@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { bountyFrom } from '../offers/bounty-form';
 import { offerFields } from '../offers/offer-form';
 import { getMerchantsService, getOffersStack, intField } from '../../../lib/platform';
-import { allowSignup, clientIp } from '../../../lib/rate-limit';
+import { allowSignup, clientIp, signupEnabled } from '../../../lib/rate-limit';
 
 /**
  * Self-serve merchant onboarding (PH3-6, §11's Phase-3 unlock): ONE public
@@ -18,6 +18,9 @@ import { allowSignup, clientIp } from '../../../lib/rate-limit';
  * merchant/keypair/offer creation.
  */
 export const POST = async (request: NextRequest): Promise<NextResponse> => {
+  if (!signupEnabled()) {
+    return NextResponse.json({ error: { code: 'SIGNUP_DISABLED' } }, { status: 403 });
+  }
   const verdict = await allowSignup(clientIp(request.headers));
   if (!verdict.allowed) {
     return NextResponse.json(
