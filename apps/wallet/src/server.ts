@@ -340,7 +340,9 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       });
       return reply.send(result);
     } catch (error) {
-      return reply.code(400).send({ error: { code: 'LINK_START_FAILED', message: (error as Error).message } });
+      // W9/#30: never echo the internal message to the client — log it server-side.
+      req.log.error({ err: error }, 'link start failed');
+      return reply.code(400).send({ error: { code: 'LINK_START_FAILED' } });
     }
   });
 
@@ -357,7 +359,10 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       // never echo tokens — only the link record (which carries none)
       return reply.send({ link });
     } catch (error) {
-      return reply.code(401).send({ error: { code: 'LINK_CALLBACK_FAILED', message: (error as Error).message } });
+      // W9/#30: a uniform code — the message split "not yours" vs "invalid state"
+      // was a consumer-ownership oracle. Detail stays server-side only.
+      req.log.error({ err: error }, 'link callback failed');
+      return reply.code(401).send({ error: { code: 'LINK_CALLBACK_FAILED' } });
     }
   });
 
@@ -410,7 +415,9 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       const mandate = await mandates.grant({ consumerRef: req.consumerRef, request: parsed.data });
       return reply.code(201).send({ mandate });
     } catch (error) {
-      return reply.code(400).send({ error: { code: 'MANDATE_GRANT_FAILED', message: (error as Error).message } });
+      // W9/#30: opaque code out; the internal reason is logged, never echoed.
+      req.log.error({ err: error }, 'mandate grant failed');
+      return reply.code(400).send({ error: { code: 'MANDATE_GRANT_FAILED' } });
     }
   });
 
@@ -432,7 +439,9 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
       if (error instanceof MandateWideningError) {
         return reply.code(422).send({ error: { code: 'MANDATE_WOULD_WIDEN', violations: error.violations } });
       }
-      return reply.code(400).send({ error: { code: 'MANDATE_ATTENUATE_FAILED', message: (error as Error).message } });
+      // W9/#30: opaque code out; the internal reason is logged, never echoed.
+      req.log.error({ err: error }, 'mandate attenuate failed');
+      return reply.code(400).send({ error: { code: 'MANDATE_ATTENUATE_FAILED' } });
     }
   });
 

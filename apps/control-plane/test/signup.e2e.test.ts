@@ -252,5 +252,11 @@ describe('self-serve merchant onboarding (PH3-6 gate clause)', () => {
       redirect: 'manual',
     });
     expect(response.status).toBe(400);
+    // W9/#29: a caller-input error surfaces a coded, useful message — never a
+    // raw Postgres/trio string. The bare `{ error: { message } }` shape is gone.
+    const body = (await response.json()) as { error: { code: string; message?: string } };
+    expect(body.error.code).toBe('INVALID_INPUT');
+    expect(body.error.message).toBeTruthy();
+    expect(body.error.message).not.toMatch(/postgres|relation|syntax|constraint|ECONNREFUSED|at Object/i);
   });
 });

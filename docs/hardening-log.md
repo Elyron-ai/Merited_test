@@ -376,3 +376,52 @@ stored retrievably), but it can no longer be cached by a proxy/browser or leaked
 match the set cookie — a partial-attribute mismatch that leaves a stale cookie is avoided. *Residual:*
 HTTPS wiring and edge-level HSTS/CSP remain founder/deploy work (`docs/launch-readiness.md`); no keys
 or secrets are logged by any of these paths.
+
+---
+
+## W9 — Error-message redaction (no internal-detail / oracle leaks) · ✅ 2026-07-06 (findings #29, #30)
+
+**Issue (#29, low — public signup echoes internals):** the anonymous `/api/signup` catch returned
+`error.message` verbatim, so a Postgres constraint string or a trio RPC error reached an unauthenticated
+caller. **Issue (#30, low — wallet + MCP echo internals; callback oracle):** four wallet handlers
+(`link start`, `link callback`, `mandate grant`, `mandate attenuate`) returned `(error as Error).message`,
+and the MCP tool wrapper forwarded any error's message. Worse, the link-callback split its message —
+"invalid or expired link state" vs "link state does not belong to this session" — into a **consumer-
+ownership oracle**: a caller could tell a valid-but-not-theirs `state` from a bogus one.
+
+**Fix — reuse the safe pattern (core `validation.ts`: known typed error keeps a clean message, unknown →
+opaque + logged):**
+- *Signup:* split the handler into an **input phase** and a **provisioning phase**. All form parsing runs
+  first; its throws are re-tagged `SignupInputError` (they describe the caller's OWN submission, safe to
+  surface). Every service call (`merchants.create`, `requestSigningKey`, `issueWebhookSecret`,
+  `createDraft`, `publish`) runs after — any throw there is a Postgres/trio internal, redacted to
+  `ONBOARDING_FAILED` (500) and `console.error`-logged server-side. Input errors return
+  `{ code: 'INVALID_INPUT', message }` (400) — coded, useful, and never an internal string.
+- *Wallet (4 handlers):* drop the `message` field entirely; return the code only and `req.log.error` the
+  detail server-side. The callback is now uniform (`{ code: 'LINK_CALLBACK_FAILED' }` for both failure
+  reasons), closing the oracle. The mandate-attenuate `MANDATE_WOULD_WIDEN` branch keeps its structured
+  `violations` (that is intended, safe consent feedback — not an internal error).
+- *MCP:* forward a `MeritedApiError` (it carries Core's already-redacted `status + code` — useful for the
+  agent to react) but redact any OTHER throw to `"Merited error: an unexpected error occurred"` and
+  `console.error` it. The MCP caller owns the agent key, but its LLM context should never see infra detail.
+
+**Tests (negatives alongside each change):**
+- `linking.integration.test.ts` (+1) — a failed callback under a valid session returns 401 with
+  `code: 'LINK_CALLBACK_FAILED'` and **no `message`** (oracle closed).
+- `signup.e2e.test.ts` (strengthened) — a bad input returns `code: 'INVALID_INPUT'` with a message that
+  matches **none** of `postgres|relation|syntax|constraint|ECONNREFUSED|at Object` (no internals).
+- `apps/mcp-server/test/error-redaction.test.ts` (new) — a dead-port SDK client forces a non-API network
+  error; the tool result is exactly the generic line, leaking no host/port/`ECONNREFUSED`/stack.
+- Full workspace: build + lint clean; wallet 99→100, mcp-server 5→6, control-plane 65 (assertions
+  strengthened in place).
+
+**Security self-review (multiple surfaces).** *Anonymous surface (signup):* an unauthenticated caller can
+no longer read a Postgres/trio internal — only a message describing their own input, and only for errors
+we explicitly classify as input errors. *Oracle (link callback):* the two failure reasons are now
+byte-identical responses, so an attacker cannot distinguish "state exists but isn't yours" from "no such
+state"; the W2 ownership check still rejects both. *Useful-feedback preserved:* API-shaped errors that are
+already redacted upstream (MCP `MeritedApiError`, mandate widening `violations`) still reach the caller, so
+this does not blind legitimate clients. *Server-side visibility:* every redaction path logs the full error
+(`console.error` / `req.log.error`) so operability is unchanged — detail moves from the wire to the log,
+it is not discarded. *No secrets logged:* the logged errors are exceptions from service calls; none of
+these paths touch keys or tokens.

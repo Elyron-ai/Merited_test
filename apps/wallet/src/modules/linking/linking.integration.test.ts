@@ -256,6 +256,19 @@ describe('account linking round-trip (PH1-13)', () => {
     expect((await fetch(`${walletUrl}/v1/links/callback?state=x&code=y`)).status).toBe(401);
   });
 
+  it('W9/#30: a failed callback returns a uniform code with NO message (no ownership oracle)', async () => {
+    // With a valid session but a bogus state the handler catch runs. Previously
+    // it echoed error.message — "invalid or expired" vs "does not belong to this
+    // session" — a consumer-ownership oracle. Now the body is code-only.
+    const res = await fetch(`${walletUrl}/v1/links/callback?state=nonexistent-state&code=whatever`, {
+      headers: { cookie },
+    });
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: { code: string; message?: string } };
+    expect(body.error.code).toBe('LINK_CALLBACK_FAILED');
+    expect(body.error.message).toBeUndefined();
+  });
+
   it('W6: a cross-site state-changing POST is refused (CSRF)', async () => {
     // browser cross-origin POST → 403 before any handler runs; a same-origin /
     // no-Origin caller (the tests, valet, wallet-ui proxy) is unaffected

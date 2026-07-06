@@ -1,4 +1,4 @@
-import { MeritedClient } from '@merited/sdk';
+import { MeritedApiError, MeritedClient } from '@merited/sdk';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { TOOLS } from './tools.js';
@@ -36,14 +36,20 @@ export const buildMcpServer = (options: McpServerOptions): McpServer => {
         try {
           return await tool.handler(args, client);
         } catch (error) {
+          // W9/#30: a MeritedApiError carries Core's already-redacted envelope
+          // (status + code) — safe and useful for the agent to react to. Any
+          // OTHER throw is unexpected (a network/internal failure whose message
+          // could leak infra detail) → redact to a generic line, log server-side.
+          if (!(error instanceof MeritedApiError)) {
+            console.error('mcp tool handler failed', error);
+          }
+          const text =
+            error instanceof MeritedApiError
+              ? `Merited error ${error.status}: ${error.code}${error.reasonCode ? ` (${error.reasonCode})` : ''}`
+              : 'Merited error: an unexpected error occurred';
           return {
             isError: true,
-            content: [
-              {
-                type: 'text' as const,
-                text: `Merited error: ${error instanceof Error ? error.message : String(error)}`,
-              },
-            ],
+            content: [{ type: 'text' as const, text }],
           };
         }
       },
