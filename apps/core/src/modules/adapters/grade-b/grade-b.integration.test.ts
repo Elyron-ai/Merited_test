@@ -207,6 +207,34 @@ describe('Grade-B webhook endpoint (MER-3 accept)', () => {
     expect(processed).toHaveLength(1); // the side-effecting funnel ran exactly once
   });
 
+  it('W11/#35: a SUSPENDED merchant’s webhook is refused (suspension bites the webhook rail)', async () => {
+    const m = await merchants.create({ name: 'Suspended Co', commercial });
+    const sec = (await merchants.issueWebhookSecret(m.merchant_id)).secret;
+    const raw = JSON.stringify(orderPayload(9020));
+    const url = `${baseUrl}/v1/merchants/${m.slug}/webhooks/order-confirmed`;
+    const hdrs = (idemKey: string) => {
+      const ts = Math.floor(Date.now() / 1000);
+      return {
+        'content-type': 'application/json',
+        [WEBHOOK_TIMESTAMP_HEADER]: String(ts),
+        [WEBHOOK_SIGNATURE_HEADER]: createHmac('sha256', sec)
+          .update(webhookSignaturePayload(ts, raw), 'utf8')
+          .digest('hex'),
+        [IDEMPOTENCY_KEY_HEADER]: idemKey,
+      };
+    };
+    // active → the correctly-signed delivery is accepted
+    const active = await fetch(url, { method: 'POST', headers: hdrs('suspend-active'), body: raw });
+    expect(active.status).toBe(200);
+
+    // suspend → the SAME correctly-signed delivery is now refused, with the
+    // uniform 401 an unknown slug gets (getBySlug filters status='active')
+    await merchants.update(m.merchant_id, { status: 'suspended' });
+    const refused = await fetch(url, { method: 'POST', headers: hdrs('suspend-refused'), body: raw });
+    expect(refused.status).toBe(401);
+    expect((await refused.json()).error.code).toBe('WEBHOOK_AUTH_FAILED');
+  });
+
   it('secret rotation: the OLD secret keeps verifying until revoked (SYN-39 overlap)', async () => {
     const merchant = await merchants.getBySlug(slug);
     const rotated = await merchants.issueWebhookSecret(merchant.merchant_id);

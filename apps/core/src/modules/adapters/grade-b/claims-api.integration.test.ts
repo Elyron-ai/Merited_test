@@ -265,12 +265,16 @@ describe('claims API (MER-5 accept)', () => {
     const anonymous = await app.inject({ method: 'GET', url: `/v1/claims/${claim.claim_id}` });
     expect(anonymous.statusCode).toBe(401);
 
+    // W11/#33: an UNKNOWN claim (even with a valid merchant key) is
+    // indistinguishable from an existing-but-not-yours one — uniform 401, no
+    // existence oracle. (Previously this leaked a 404.)
     const missing = await app.inject({
       method: 'GET',
       url: `/v1/claims/${newId('clm')}`,
       headers: { 'x-merited-merchant-key': merchantKey },
     });
-    expect(missing.statusCode).toBe(404);
+    expect(missing.statusCode).toBe(401);
+    expect(missing.json()).toEqual(anonymous.json()); // byte-identical refusal
   });
 
   it('every §3 reason code surfaces verbatim through the GET', async () => {

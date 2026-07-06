@@ -101,26 +101,30 @@ export const registerClaimsRoutes = (app: FastifyInstance, deps: ClaimsApiDeps):
       [claimId],
     );
     const row = rows[0];
-    if (!row) return reply.code(404).send({ error: { code: 'CLAIM_NOT_FOUND' } });
 
     // ownership: the claiming merchant, or the agent the token's quote was issued to
     let authorised = false;
-    const merchantKey = req.headers[MERCHANT_KEY_HEADER];
-    if (typeof merchantKey === 'string' && merchantKey.length > 0) {
-      authorised = (await deps.merchants.authenticate(merchantKey)) === row.merchant_id;
-    }
-    const agentKey = req.headers[AGENT_KEY_HEADER];
-    if (!authorised && typeof agentKey === 'string' && agentKey.length > 0 && row.qid) {
-      const agentId = await deps.agents.authenticate(agentKey);
-      if (agentId) {
-        const quote = await deps.pool.query<{ agent_id: string | null }>(
-          `SELECT agent_id FROM core.quotes WHERE quote_id = $1`,
-          [row.qid],
-        );
-        authorised = quote.rows[0]?.agent_id === agentId;
+    if (row) {
+      const merchantKey = req.headers[MERCHANT_KEY_HEADER];
+      if (typeof merchantKey === 'string' && merchantKey.length > 0) {
+        authorised = (await deps.merchants.authenticate(merchantKey)) === row.merchant_id;
+      }
+      const agentKey = req.headers[AGENT_KEY_HEADER];
+      if (!authorised && typeof agentKey === 'string' && agentKey.length > 0 && row.qid) {
+        const agentId = await deps.agents.authenticate(agentKey);
+        if (agentId) {
+          const quote = await deps.pool.query<{ agent_id: string | null }>(
+            `SELECT agent_id FROM core.quotes WHERE quote_id = $1`,
+            [row.qid],
+          );
+          authorised = quote.rows[0]?.agent_id === agentId;
+        }
       }
     }
-    if (!authorised) return reply.code(401).send({ error: { code: 'CLAIM_ACCESS_DENIED' } });
+    // W11/#33: uniform 401 for BOTH an unknown claim AND an existing-but-not-yours
+    // claim — the platform's uniform-401 convention. A 404-vs-401 split let a
+    // caller probe which claim_ids exist without owning them.
+    if (!row || !authorised) return reply.code(401).send({ error: { code: 'CLAIM_ACCESS_DENIED' } });
 
     return {
       claim_id: row.claim_id,

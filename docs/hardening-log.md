@@ -530,3 +530,41 @@ counter write survives. *Oracle/leak?* The converged responses are the winner's 
 consumer/key — no cross-tenant data crosses (the wallet re-read is `consumer_ref`-scoped). *Replay
 semantics?* Sequential replay and the 422 conflict are preserved and retested. *Secrets/keys?* None read or
 logged on these paths. **W10 complete.**
+
+---
+
+## W11 (part 1) — Consistency: suspension bites the webhook rail + uniform claim-refusal · ✅ 2026-07-06 (findings #35, #33)
+
+**Issue (#35, low — suspension didn't bite the webhook path):** `authenticate()` filters `m.status =
+'active'`, so a suspended merchant's agent/merchant API access stops. But the webhook-intake rails resolve
+the merchant via `getBySlug`, which had no status filter — so a suspended merchant's `order-confirmed`
+deliveries were still accepted and funnelled into claims. **Issue (#33, low — claim existence oracle):**
+`GET /v1/claims/:id` returned 404 `CLAIM_NOT_FOUND` for an unknown id but 401 `CLAIM_ACCESS_DENIED` for an
+existing-but-not-yours one, letting a caller probe which `claim_id`s exist without owning them — unlike the
+platform's uniform-401 convention.
+
+**Fix:**
+- #35: `getBySlug` now selects `WHERE slug = $1 AND status = 'active'`. Its only callers are the three
+  webhook rails (grade-B, commerce, protocol), so a suspended merchant's deliveries now 404 inside the
+  handler → the existing `deny('merchant_unknown')` → uniform 401, identical to an unknown slug (suspension
+  is not distinguishable from non-existence either).
+- #33: the claims GET computes ownership only when the row exists, then returns a single `401
+  CLAIM_ACCESS_DENIED` for BOTH `!row` and `!authorised` — unknown and unauthorised are byte-identical.
+
+**Tests:**
+- `grade-b.integration.test.ts` (+1) — a fresh merchant's correctly-signed webhook is accepted (200) while
+  active, then the SAME signed delivery is refused (401 `WEBHOOK_AUTH_FAILED`) once suspended.
+- `claims-api.integration.test.ts` (updated) — an unknown claim with a valid merchant key now returns 401
+  and the body is byte-identical to the anonymous refusal (the old test asserted 404 — updated to lock in
+  the closed oracle, not weakened).
+- Full workspace: build + lint clean.
+
+**Security self-review (webhook rails + claim access).** *#35 — does suspension now bite everywhere?* Yes —
+both the API path (`authenticate`) and all three webhook rails (`getBySlug`) require `status = 'active'`; a
+suspended merchant can neither call the API nor deliver webhooks. *Any legitimate caller broken?* No —
+`getBySlug` is used only by webhook intake, which should reject suspended merchants; admin/dashboard reads
+use `get(merchantId)`/`list()`, which are unchanged. *#33 — oracle fully closed?* Unknown and
+not-yours now return the same status AND the same body; a residual *timing* difference remains (an existing
+claim runs the ownership queries) — noted as acceptable, matching the platform's other uniform-401 surfaces,
+and far weaker than the removed status split. *Secrets/keys?* None read or logged. **Remaining W11:**
+dev-secret fail-fast + web-push SSRF (contracts-first) — same tick.

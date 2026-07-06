@@ -125,9 +125,14 @@ export class MerchantsService {
   }
 
   async getBySlug(slug: string): Promise<Merchant> {
+    // W11/#35: only ACTIVE merchants resolve by slug. Every caller is a webhook
+    // intake rail (grade-B / commerce / protocol), so filtering here makes
+    // suspension bite the webhook path exactly as `authenticate()` (m.status =
+    // 'active') already makes it bite the agent/merchant API path. A suspended
+    // merchant's deliveries now 404, identical to an unknown slug — no oracle.
     const { rows } = await this.pool.query<MerchantRow>(
       `SELECT merchant_id, name, slug, status, commercial, signing_key_ref, created_at
-         FROM core.merchants WHERE slug = $1`,
+         FROM core.merchants WHERE slug = $1 AND status = 'active'`,
       [slug],
     );
     if (!rows[0]) throw new CoreHttpError(404, 'MERCHANT_NOT_FOUND');
