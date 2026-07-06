@@ -190,6 +190,23 @@ describe('Grade-B webhook endpoint (MER-3 accept)', () => {
     expect((await conflict.json()).error.code).toBe('IDEMPOTENCY_CONFLICT');
   });
 
+  it('W10/#26: two CONCURRENT deliveries with the same key run the processor EXACTLY once', async () => {
+    // reserve-before-work: before the key was reserved ahead of work(), both of
+    // two simultaneous duplicates ran the funnel (duplicate ConversionClaimed +
+    // claims_intake). Now the loser converges on the winner's stored response.
+    const raw = JSON.stringify(orderPayload(9010));
+    const headers = { ...signedHeaders(raw), [IDEMPOTENCY_KEY_HEADER]: 'concurrent-key' };
+    const [a, b] = await Promise.all([
+      fetch(webhookUrl(), { method: 'POST', headers, body: raw }),
+      fetch(webhookUrl(), { method: 'POST', headers, body: raw }),
+    ]);
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    const [textA, textB] = [await a.text(), await b.text()];
+    expect(textA).toBe(textB); // both converge on identical bytes
+    expect(processed).toHaveLength(1); // the side-effecting funnel ran exactly once
+  });
+
   it('secret rotation: the OLD secret keeps verifying until revoked (SYN-39 overlap)', async () => {
     const merchant = await merchants.getBySlug(slug);
     const rotated = await merchants.issueWebhookSecret(merchant.merchant_id);

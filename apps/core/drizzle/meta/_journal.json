@@ -92,6 +92,13 @@
       "when": 1783450003000,
       "tag": "0012_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783450004000,
+      "tag": "0013_idempotency_reserve",
+      "breakpoints": true
     }
   ]
 }

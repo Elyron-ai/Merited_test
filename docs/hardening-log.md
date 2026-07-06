@@ -425,3 +425,50 @@ this does not blind legitimate clients. *Server-side visibility:* every redactio
 (`console.error` / `req.log.error`) so operability is unchanged — detail moves from the wire to the log,
 it is not discarded. *No secrets logged:* the logged errors are exceptions from service calls; none of
 these paths touch keys or tokens.
+
+---
+
+## W10 (part 1) — Reserve-before-work idempotency: core `withIdempotency` · ✅ 2026-07-06 (finding #26)
+
+**Issue (#26, low):** `withIdempotency` ran `work()` — the grade-B/UCP/ACP claim funnel that appends a
+`ConversionClaimed` ledger event and inserts a `claims_intake` row — BEFORE it reserved the idempotency
+key. Two concurrent deliveries of the same key both passed the initial "does the key exist?" check, both
+executed the funnel (each with a fresh `claim_id`, `newId('clm')`, so no natural PK dedup), and only then
+did one win the `INSERT … ON CONFLICT DO NOTHING`. The response already converged, but the **side-effects
+duplicated**: two ledger events + two intake rows for one logical delivery. (Money remained safe — the
+trio's jti/qid single-use constraints reject the duplicate downstream — so this was a ledger-integrity
+defect, not a money defect.)
+
+**Why not the obvious advisory-lock fix:** serialising with `pg_advisory_xact_lock` would mean holding a
+pooled connection across `work()`, and `work()` itself needs pool connections (its `inTx` + the trio HTTP
+call). With the core pool capped at 10, ~10 concurrent distinct-key deliveries would each hold a lock
+connection and all wait for a work connection that can never free — a self-inflicted deadlock/DoS. Rejected.
+
+**Fix — a genuine reservation row (no held connection, no deadlock):**
+- Migration `0013_idempotency_reserve.sql`: make `response_status`/`response_body` nullable (NULL = a
+  pending reservation) and `GRANT UPDATE, DELETE` on `core.idempotency_keys` to `merited_app`.
+- `withIdempotency` now loops: **reserve** the key first (`INSERT (…request_hash) ON CONFLICT DO NOTHING
+  RETURNING`). The winner runs `work()` exactly once, then `UPDATE`s the row with its response. A
+  concurrent loser reads the row: a different `request_hash` → 422 `IDEMPOTENCY_CONFLICT`; a completed row
+  → converge on the winner's exact stored bytes; a still-pending row → poll (25 ms, ≤10 s) then re-read,
+  returning a retryable 409 `IDEMPOTENCY_IN_PROGRESS` only if the winner never finishes in time. If the
+  winner's `work()` throws, its pending reservation is `DELETE`d (scoped to `response_status IS NULL`) so a
+  retry proceeds — exactly the pre-reservation "failed delivery leaves no key" behaviour.
+
+**Tests:** `grade-b.integration.test.ts` (+1) — two **simultaneous** `Promise.all` deliveries with the same
+key both return 200 with byte-identical bodies AND the processor runs **exactly once** (`processed` length
+1). The existing contract is unchanged: sequential replay → byte-identical 200, processor once; same key +
+different body → 422. The shared helper is exercised by all four adapters — grade-B (6), UCP (9), ACP (9),
+under-reporting (3) all green. Full workspace: build + lint clean.
+
+**Security self-review (high-scrutiny zone — adapter claim intake).** *Double side-effect closed?* Yes —
+`work()` runs only for the reservation winner, so concurrent duplicates can no longer each append a ledger
+event / intake row. *Money-safety unchanged?* The trio's jti/qid dedup still backs this; the fix removes a
+ledger-integrity duplicate, it does not relax any settlement check. *Replay/idempotency semantics
+preserved?* Byte-identical replay and the same-key-different-body 422 are unchanged and retested. *New
+failure modes?* A failed `work()` releases its reservation (DELETE scoped to pending rows only), so a stuck
+pending row cannot wedge future deliveries; the 409 in-progress path is retryable and bounded (10 s).
+*Privilege expansion?* `merited_app` gains UPDATE/DELETE on `idempotency_keys` only — a non-sensitive table
+(request hashes + response bodies); the code only ever UPDATEs its own reservation or DELETEs a row it left
+pending. *Secrets/keys?* None are read or logged on this path. **Remaining W10:** wallet approve (#27) and
+trio verify (#28) — next tick.
