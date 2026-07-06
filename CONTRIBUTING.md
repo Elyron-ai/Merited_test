@@ -21,7 +21,8 @@ PR template asks you to confirm this on every PR.
   The task ID is a `BUILD-PLAN.md` row; task IDs are immutable and never
   renumbered.
 - **Commits:** `feat(TASK-ID): summary` (XC.9). One task per commit. Never
-  commit secrets.
+  commit secrets. Post-build security/accessibility remediation uses the
+  `HARDEN-Wn` id (e.g. `fix(HARDEN-W2): …`), logged in `docs/hardening-log.md`.
 - **PRs:** the template's Task-ID field is mandatory, as is the
   "touches contracts first?" answer. A task is **done** when its Accept
   clause is green in CI-equivalent local runs — not when the code merges.

@@ -62,14 +62,15 @@ export class LinkService {
   }
 
   /**
-   * Complete a link from the IdP callback. `sessionConsumerRef`, when given,
-   * must match the attempt's consumer (defence in depth — the same browser
-   * that started the link finishes it).
+   * Complete a link from the IdP callback. `sessionConsumerRef` is REQUIRED and
+   * must match the attempt's consumer — the same session that started the link
+   * finishes it, so a leaked single-use `state` cannot be redeemed elsewhere to
+   * bind a brand account to the wrong consumer.
    */
   async callback(input: {
     state: string;
     code: string;
-    sessionConsumerRef?: string;
+    sessionConsumerRef: string;
   }): Promise<IdentityLink> {
     // atomic single-use consume of the attempt
     const consumed = await this.deps.pool.query<{
@@ -85,7 +86,11 @@ export class LinkService {
     );
     const attempt = consumed.rows[0];
     if (!attempt) throw new Error('invalid or expired link state');
-    if (input.sessionConsumerRef && input.sessionConsumerRef !== attempt.consumer_ref) {
+    // SECURITY — the callback MUST run under the session that started the link
+    // and must own the attempt. Requiring (not just opportunistically checking)
+    // the session ref stops a leaked single-use `state` being redeemed from
+    // another browser to bind a brand account to the wrong consumer.
+    if (!input.sessionConsumerRef || input.sessionConsumerRef !== attempt.consumer_ref) {
       throw new Error('link state does not belong to this session');
     }
     const adapter = this.deps.resolveAdapter(attempt.programme);
@@ -120,16 +125,21 @@ export class LinkService {
   /** Revoke a link — wallet- or brand-initiated. Status flips LIVE (the next
    * read sees 'revoked', no cache), the IdP's refresh token is revoked, the
    * sealed tokens are dropped, and `AccountUnlinked` is appended. */
-  async revoke(input: { linkId: string; revokedBy: 'wallet' | 'brand' }): Promise<boolean> {
+  async revoke(input: { linkId: string; revokedBy: 'wallet' | 'brand'; consumerRef: string }): Promise<boolean> {
+    // SECURITY — scope to the owning consumer. link_id is a non-secret ULID
+    // returned by /v1/links, so without the consumer_ref predicate any
+    // authenticated session could unlink another consumer's brand account
+    // (IDOR) — which also revokes the victim's IdP refresh token. Idempotent:
+    // a mismatch or already-revoked link returns false.
     const { rows } = await this.deps.pool.query<{
       consumer_ref: string;
       merchant_id: string;
       programme: string;
     }>(
       `UPDATE wallet.identity_links SET status = 'revoked'
-        WHERE link_id = $1 AND status = 'active'
+        WHERE link_id = $1 AND consumer_ref = $2 AND status = 'active'
       RETURNING consumer_ref, merchant_id, programme`,
-      [input.linkId],
+      [input.linkId, input.consumerRef],
     );
     const link = rows[0];
     if (!link) return false; // unknown or already revoked — idempotent

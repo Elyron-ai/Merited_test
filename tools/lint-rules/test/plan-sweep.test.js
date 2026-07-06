@@ -27,8 +27,9 @@ describe('plan maintenance (XC-11)', () => {
       .split('\n')
       .filter(Boolean);
     expect(subjects.length).toBeGreaterThan(50);
+    // HARDEN-Wn: post-build security/accessibility remediation (docs/hardening-log.md)
     const isTaskCommit = (s) =>
-      /^(feat|fix|chore|docs)\((?:FND|TRIO|CORE|MER|VAL|XC|PH\d|LEAD|M\d)[-0-9/+…a-z ]*\)/i.test(s);
+      /^(feat|fix|chore|docs)\((?:FND|TRIO|CORE|MER|VAL|XC|PH\d|LEAD|M\d|HARDEN)[-0-9/+…a-z ]*\)/i.test(s);
     // newest-first: the oldest contiguous run of non-matching subjects is
     // the pre-process planning era (spec, plan, harness) — everything after
     // the first task commit must carry an ID

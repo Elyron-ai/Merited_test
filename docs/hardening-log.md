@@ -59,3 +59,56 @@ already recorded in `docs/build-log.md` as a LEAD-5 candidate ("binding pickup t
 agent's API key"). Impact is bounded by the trio (single-use per qid, live limit re-checks, bounty
 attributed to the minted agent, not the presenter). Carried as **W1-residual** for the auth-plumbing
 follow-up.
+
+---
+
+## W2 — Consumer-scope every wallet mutation (IDOR sweep) · ✅ 2026-07-06 (findings #1, #10/#14, #24 + callback gap)
+
+**Issue:** several wallet mutation routes acted on a caller-supplied object id with no ownership
+predicate, so any authenticated consumer who learned another consumer's id (all non-secret ULIDs
+that circulate in tokens, ledger events, `/v1/links` responses) could act on it:
+- **#1 (high)** `POST /v1/mandates/:id/revoke` → `MandateService.revoke` UPDATE was `WHERE mandate_id = $1
+  AND status='active'` — cross-consumer revoke, instantly stripping the victim's agent of checkout
+  authority.
+- **#10/#14 (medium)** `POST /v1/links/:id/revoke` → `LinkService.revoke` UPDATE was `WHERE link_id = $1
+  AND status='active'` — cross-consumer unlink that ALSO revokes the victim's IdP refresh token and
+  writes a false `AccountUnlinked`.
+- **#24 (low)** `POST /v1/quotes/:id/decline` → `ApprovalsService.decline` wrote `ApprovalDeclined` for a
+  caller-supplied quote with no ownership check, and its idempotency guard was global on `quote_id`,
+  so an attacker could poison a victim's quote and short-circuit the owner's later decline.
+- **OAuth callback (critic gap)** `LinkService.callback` enforced the session↔attempt binding only
+  `if (sessionConsumerRef)` — a latent footgun (the route is session-gated today, so not live).
+
+**Fix (one shared pattern):** thread `req.consumerRef` from each route and scope the write:
+`AND consumer_ref = $2` on the mandate-revoke and link-revoke UPDATEs (returning false on no match —
+idempotent, no oracle); in `decline`, resolve the quote and require `quote.consumer_ref === consumerRef`
+before any ledger write (so only the owning consumer can ever write for a globally-unique quote_id —
+the global idempotency guard is then safe as-is); make `callback`'s `sessionConsumerRef` **required**
+and unconditionally matched. This mirrors the ownership checks already in `MandateService.attenuate`
+and `approveExplicitForQuote`. **PD store verified already tenant-scoped** (`WHERE consumer_ref = $1`
+on every `list/read/put/remove`) — that critic gap is refuted, no change.
+
+**Tests (3 new negatives + regressions):** mandate revoke — a second consumer cannot revoke the
+victim's mandate (returns false, mandate stays `active`), the owner still can (mandates suite 8→10);
+link revoke — a second HTTP session cannot unlink the first's link (false, link stays `active`,
+sealed tokens survive), the owner still can (linking suite 5→6); decline — a non-owner cannot decline
+the victim's quote (false, no `ApprovalDeclined` written), the owner still can (approvals e2e 8→9).
+The valet `wallet-approval.e2e` §6.1 mid-session-revocation path (real route, owner session) stays
+green. Full workspace: build + lint clean, wallet 84→87, all suites pass.
+
+**Security self-review (consent/linking-path — high-scrutiny):**
+- *Authority verified before trust?* Yes — every destructive wallet mutation now requires the row to
+  belong to the session consumer; a mismatch is a no-op (`false`), not an error, matching the existing
+  idempotent-revoke contract and avoiding an existence oracle.
+- *Inputs validated?* The scoping predicate uses the server-side session `consumer_ref`, never a
+  client-supplied identity; ids remain the only caller input.
+- *Destructive side-effects gated?* Yes — the IdP refresh-token revoke and `AccountUnlinked` in
+  link-revoke, and the `ApprovalDeclined` ledger write in decline, now only fire for the owner.
+- *No new oracle / no regression?* Uniform `false` on mismatch or missing; legitimate owner flows and
+  the valet e2e revocation path unchanged.
+- *Idempotency/replay?* Unchanged — revokes stay idempotent (`status='active'` guard); decline's
+  once-per-quote guard is now unreachable cross-tenant.
+
+**Convention note:** extended the XC-11 plan-sweep commit-id allow-list to recognise the `HARDEN-Wn`
+prefix and documented it in `CONTRIBUTING.md` (post-build remediation is a distinct work category, not
+a BUILD-PLAN task).

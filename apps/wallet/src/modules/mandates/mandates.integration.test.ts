@@ -160,7 +160,7 @@ describe('consent & mandate service (PH1-16)', () => {
     ).toBe('pre_authorised');
 
     // the consumer revokes mid-session
-    expect(await mandates.revoke({ mandateId: mandate.mandate_id })).toBe(true);
+    expect(await mandates.revoke({ mandateId: mandate.mandate_id, consumerRef })).toBe(true);
     const status = await pool.query<{ status: string }>(`SELECT status FROM wallet.mandates WHERE mandate_id = $1`, [mandate.mandate_id]);
     expect(status.rows[0]!.status).toBe('revoked'); // LIVE flip
     const revokedEvent = await pool.query(
@@ -179,7 +179,24 @@ describe('consent & mandate service (PH1-16)', () => {
     expect(afterRevoke.outcome).toBe('MANDATE_REVOKED');
 
     // revoke is idempotent
-    expect(await mandates.revoke({ mandateId: mandate.mandate_id })).toBe(false);
+    expect(await mandates.revoke({ mandateId: mandate.mandate_id, consumerRef })).toBe(false);
+  });
+
+  it('SECURITY: revoke is consumer-scoped — another consumer cannot revoke this mandate (IDOR)', async () => {
+    const mandate = await mandates.grant({ consumerRef, request: grantReq() });
+    const attacker = newId('usr');
+    await pool.query(`INSERT INTO wallet.consumers (consumer_ref, email) VALUES ($1, 'mnd-attacker@test.co.uk')`, [attacker]);
+
+    // the attacker (own session) cannot revoke the victim's mandate
+    expect(await mandates.revoke({ mandateId: mandate.mandate_id, consumerRef: attacker })).toBe(false);
+    const status = await pool.query<{ status: string }>(
+      `SELECT status FROM wallet.mandates WHERE mandate_id = $1`,
+      [mandate.mandate_id],
+    );
+    expect(status.rows[0]!.status).toBe('active'); // untouched — no cross-tenant revoke
+
+    // the owner still can
+    expect(await mandates.revoke({ mandateId: mandate.mandate_id, consumerRef })).toBe(true);
   });
 
   it('the hash chain verifies over all mandate/approval events', async () => {

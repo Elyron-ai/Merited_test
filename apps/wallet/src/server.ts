@@ -331,7 +331,7 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
 
   app.post('/v1/links/:id/revoke', async (req, reply) => {
     const linkId = (req.params as { id: string }).id;
-    const revoked = await linkService.revoke({ linkId, revokedBy: 'wallet' });
+    const revoked = await linkService.revoke({ linkId, revokedBy: 'wallet', consumerRef: req.consumerRef });
     return reply.send({ revoked });
   });
 
@@ -405,7 +405,10 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   });
 
   app.post('/v1/mandates/:id/revoke', async (req, reply) => {
-    const revoked = await mandates.revoke({ mandateId: (req.params as { id: string }).id });
+    const revoked = await mandates.revoke({
+      mandateId: (req.params as { id: string }).id,
+      consumerRef: req.consumerRef,
+    });
     return reply.send({ revoked });
   });
 

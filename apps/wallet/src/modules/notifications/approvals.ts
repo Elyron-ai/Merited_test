@@ -176,6 +176,15 @@ export class ApprovalsService {
     quoteId: string;
     mandateId: string;
   }): Promise<{ declined: boolean }> {
+    // SECURITY — the caller may decline ONLY their own quote. Without this an
+    // authenticated consumer who learns another's quote_id could write a
+    // spurious ApprovalDeclined into the ledger and, via the global
+    // idempotency guard below, short-circuit the owner's later decline. Once
+    // ownership is enforced, only the owning consumer can ever write for a
+    // given (globally-unique) quote_id, so the guard stays keyed on quote_id.
+    const quote = await this.deps.quotes.getQuote(input.quoteId);
+    if (!quote || quote.consumer_ref !== input.consumerRef) return { declined: false };
+
     const already = await this.deps.pool.query(
       `SELECT 1 FROM events.events
         WHERE type = 'ApprovalDeclined' AND body->'data'->>'quote_id' = $1`,

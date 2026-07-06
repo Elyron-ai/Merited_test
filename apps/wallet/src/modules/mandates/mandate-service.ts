@@ -119,13 +119,17 @@ export class MandateService {
   }
 
   /** Revoke LIVE — the next status read (eligibility, checkout:execute) sees
-   * 'revoked'. Idempotent: a second revoke is a no-op. */
-  async revoke(input: { mandateId: string }): Promise<boolean> {
+   * 'revoked'. Idempotent: a second revoke is a no-op. Scoped to the owning
+   * consumer (SECURITY): a mandate_id is a non-secret ULID that circulates as
+   * `mandate_ref`, so without the consumer_ref predicate any authenticated
+   * wallet session could revoke another consumer's mandate (IDOR) and instantly
+   * strip that consumer's agent of checkout authority. */
+  async revoke(input: { mandateId: string; consumerRef: string }): Promise<boolean> {
     const { rows } = await this.deps.pool.query<{ consumer_ref: string }>(
       `UPDATE wallet.mandates SET status = 'revoked'
-        WHERE mandate_id = $1 AND status = 'active'
+        WHERE mandate_id = $1 AND consumer_ref = $2 AND status = 'active'
       RETURNING consumer_ref`,
-      [input.mandateId],
+      [input.mandateId, input.consumerRef],
     );
     const row = rows[0];
     if (!row) return false;

@@ -278,7 +278,7 @@ describe('B26 approvals — §6.4 accepts against the simulator (PH1-18)', () =>
     const approved = await approvals.approve({ consumerRef, quoteId, mandateId: mandate.mandate_id });
     if (approved.outcome !== 'approved') throw new Error('approve failed');
     await publishToDirectory(mandate.mandate_id, quoteId);
-    await mandateService.revoke({ mandateId: mandate.mandate_id });
+    await mandateService.revoke({ mandateId: mandate.mandate_id, consumerRef });
     trio.directory.revokeMandate(mandate.mandate_id);
 
     const verdict = await verifyClaim(await signedClaim(approved.token));
@@ -330,6 +330,26 @@ describe('B26 approvals — §6.4 accepts against the simulator (PH1-18)', () =>
       [quoteId],
     );
     expect((events.rows[0] as { n: number }).n).toBe(1);
+  });
+
+  it('SECURITY: decline is consumer-scoped — another consumer cannot decline this quote (IDOR)', async () => {
+    const mandate = await mandateService.grant({ consumerRef, request: grantReq() });
+    const quoteId = await insertQuote(); // belongs to `consumerRef`
+    const attacker = newId('usr');
+    await pool.query(`INSERT INTO wallet.consumers (consumer_ref, email) VALUES ($1, 'decline-attacker@test.co.uk')`, [attacker]);
+
+    // the attacker cannot decline the victim's quote — nothing written to the ledger
+    const spurious = await approvals.decline({ consumerRef: attacker, quoteId, mandateId: mandate.mandate_id });
+    expect(spurious.declined).toBe(false);
+    const noEvent = await pool.query(
+      `SELECT count(*)::int AS n FROM events.events WHERE type = 'ApprovalDeclined' AND body->'data'->>'quote_id' = $1`,
+      [quoteId],
+    );
+    expect((noEvent.rows[0] as { n: number }).n).toBe(0);
+
+    // the owner can still decline — not short-circuited by the attacker
+    const owner = await approvals.decline({ consumerRef, quoteId, mandateId: mandate.mandate_id });
+    expect(owner.declined).toBe(true);
   });
 
   it('ApprovalGranted events landed for every approval and the hash chain verifies', async () => {

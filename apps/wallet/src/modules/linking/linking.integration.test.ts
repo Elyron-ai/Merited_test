@@ -44,6 +44,26 @@ const freePort = async (): Promise<number> =>
     });
   });
 
+/** Magic-link round-trip → a wallet session cookie for `email`. */
+const loginAs = async (email: string): Promise<string> => {
+  await fetch(`${walletUrl}/v1/auth/request`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const list = (await (
+    await fetch(`${MAILPIT_API}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`)
+  ).json()) as { messages: Array<{ ID: string }> };
+  const full = (await (await fetch(`${MAILPIT_API}/api/v1/message/${list.messages[0]!.ID}`)).json()) as { Text: string };
+  const token = new URL(full.Text.match(/https?:\/\/\S+/)![0]).searchParams.get('token')!;
+  const verified = await fetch(`${walletUrl}/v1/auth/verify`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return verified.headers.get('set-cookie')!.split(';')[0]!;
+};
+
 beforeAll(async () => {
   admin = new pg.Client({ connectionString: ADMIN });
   await admin.connect();
@@ -174,6 +194,24 @@ describe('account linking round-trip (PH1-13)', () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]!.body).not.toMatch(/refresh_token|access_token/); // the event carries the link only
+  });
+
+  it('SECURITY: revoke is consumer-scoped — another session cannot unlink this link (IDOR)', async () => {
+    // a second consumer (own session) tries to revoke consumer 1's still-active link
+    const attackerCookie = await loginAs('link-attacker@example.co.uk');
+    const attempt = (await (
+      await fetch(`${walletUrl}/v1/links/${linkId}/revoke`, { method: 'POST', headers: { cookie: attackerCookie } })
+    ).json()) as { revoked: boolean };
+    expect(attempt.revoked).toBe(false); // refused — not the owner
+
+    // the victim's link is untouched and its sealed tokens survive
+    const status = await pool.query<{ status: string }>(
+      `SELECT status FROM wallet.identity_links WHERE link_id = $1`,
+      [linkId],
+    );
+    expect(status.rows[0]!.status).toBe('active');
+    const tokens = await pool.query(`SELECT 1 FROM wallet.link_tokens WHERE link_id = $1`, [linkId]);
+    expect(tokens.rowCount).toBe(1);
   });
 
   it('revoke: status flips LIVE (no cache), AccountUnlinked emitted, chain verifies', async () => {
