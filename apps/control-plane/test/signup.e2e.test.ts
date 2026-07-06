@@ -116,7 +116,12 @@ describe('self-serve merchant onboarding (PH3-6 gate clause)', () => {
   it('the signup page is public; the operator dashboard stays locked', async () => {
     const page = await fetch(`${BASE}/signup`, { redirect: 'manual' });
     expect(page.status).toBe(200);
-    expect(await page.text()).toContain('Sell to agents on Merited');
+    const html = await page.text();
+    expect(html).toContain('Sell to agents on Merited');
+    // W13/#8: the client form is server-rendered (fields present in the initial
+    // HTML); on submit it posts via fetch and shows errors/success in-page
+    expect(html).toContain('Trading name');
+    expect(html).toContain('Go live');
 
     for (const guarded of ['/merchants', '/offers', '/dashboard', '/claims']) {
       const locked = await fetch(`${BASE}${guarded}`, { redirect: 'manual' });

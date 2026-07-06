@@ -715,3 +715,31 @@ contains `role="alert"` + "start linking", and the clean page has none. Full wor
 **Note:** #8 (signup validation errors rendered as raw JSON on a separate URL) is W13 part 2 — it needs a
 client-side presentation layer because the `/api/signup` JSON contract is consumed verbatim by the PH3-6
 gate e2e (which must not change), so the accessible in-page error is added WITHOUT altering the API response.
+
+---
+
+## W13 (part 2) — Accessible signup errors (in-page, not raw JSON) · ✅ 2026-07-06 (finding #8) · **W13 COMPLETE**
+
+**Issue (SC 3.3.1 / 4.1.3):** the signup form POSTed straight to `/api/signup` and the browser NAVIGATED to
+the raw JSON response — a validation failure showed `{"error":{...}}` on a bare URL with no heading, no field
+association, and every entered value lost; a screen reader announced nothing useful.
+
+**Constraint:** the `/api/signup` JSON response is consumed verbatim by the PH3-6 gate e2e (fresh signup →
+201 with the integration sheet, bad input → 400 `INVALID_INPUT`), so the API must NOT change. The fix is a
+PRESENTATION layer only.
+
+**Fix:** the form is now a client component (`SignupForm.tsx`) that submits via `fetch`, keeping the API and
+its W8 `no-store` headers intact:
+- On failure it renders an in-page `role="alert"` with a human message and the form still visible — entered
+  values are preserved (uncontrolled inputs, no navigation). The message comes from a pure, unit-tested
+  `messageForError` (`signup-error.ts`): `INVALID_INPUT` surfaces its own already-redacted (W9) message;
+  every other code maps to a safe sentence; unknown/`ONBOARDING_FAILED` internals are never echoed.
+- On success it renders the one-time integration sheet in-page (`role="status"`) — merchant id, webhook
+  endpoint, and the secret shown exactly once — instead of dumping JSON.
+- Date defaults are computed server-side and passed as props (no `Date.now()` hydration mismatch).
+
+**Tests:** `signup-error.test.ts` (3) — `INVALID_INPUT` message surfaced verbatim; each coded failure → a
+safe sentence; unknown code / null / an `ONBOARDING_FAILED` internal string → generic, never leaked.
+`signup.e2e.test.ts` (strengthened) — the page SSRs the form ("Trading name"/"Go live" in the initial HTML);
+the API's 201/400/no-store behaviour is unchanged (the gate posts to it directly). Full workspace build +
+lint clean. **W13 complete (#7, #8, #9).**
