@@ -378,6 +378,29 @@ describe('verification pipeline (TRIO-8 accept) — all 12 reason codes via publ
     await expect(verify(other, key)).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
   });
 
+  it('W10/#28: two CONCURRENT verifies with the same key converge on one verdict — no 500, no spurious event', async () => {
+    const cid = (await commitments.create(draft())).commitment.commitment_id;
+    const minted = await mintFor(cid);
+    const claim = await signedClaim(minted.token);
+    const key = newId('clm');
+
+    const countOf = async (type: string): Promise<number> =>
+      Number(
+        (await pool.query(`SELECT count(*) FROM events.events WHERE type = $1`, [type])).rows[0].count,
+      );
+    const verifiedBefore = await countOf('ConversionVerified');
+    const rejectedBefore = await countOf('ConversionRejected');
+
+    // Before the fix, the loser hit the idempotency PK (no ON CONFLICT) and 500'd
+    // — and its transaction would have committed a spurious ConversionRejected.
+    const [a, b] = await Promise.all([verify(claim, key), verify(claim, key)]);
+    expect(a).toEqual(b); // both converge on the winner's stored verdict
+    expect(a.verdict).toBe('verified');
+
+    expect(await countOf('ConversionVerified')).toBe(verifiedBefore + 1); // posted exactly once
+    expect(await countOf('ConversionRejected')).toBe(rejectedBefore); // loser wrote nothing
+  });
+
   it('every verdict lands in the hash-chained ledger', async () => {
     const rejectedEvents = await pool.query(
       `SELECT count(*), count(DISTINCT body->'data'->>'reason_code') AS codes

@@ -472,3 +472,61 @@ pending row cannot wedge future deliveries; the 409 in-progress path is retryabl
 (request hashes + response bodies); the code only ever UPDATEs its own reservation or DELETEs a row it left
 pending. *Secrets/keys?* None are read or logged on this path. **Remaining W10:** wallet approve (#27) and
 trio verify (#28) — next tick.
+
+---
+
+## W10 (parts 2 & 3) — Idempotency convergence: wallet approve + trio verify · ✅ 2026-07-06 (findings #27, #28)
+
+Completes W10 (part 1 was core `withIdempotency`/#26). Both remaining layers were check-then-act with no
+convergence on a lost race; neither needed a migration.
+
+### Part 2 — wallet `approve` (#27)
+
+**Issue:** `ApprovalsService.approve` checked `wallet.idempotency_keys`, ran `approveOnce()` (which
+re-**mints** a fresh jti/token for the qid), then `INSERT … ON CONFLICT (idem_key) DO NOTHING` — but
+**returned its own result**. Two concurrent same-key calls therefore each minted a token and returned a
+DIFFERENT token for one approval, breaking the single-token invariant. (The approval itself is already
+qid-idempotent — `wallet.approvals` has `UNIQUE(quote_id)` and `recordApproval` re-reads the winner's
+approval — so only the re-mint/response diverged.)
+
+**Fix (convergence — the plan's sanctioned minimum):** on a lost insert race (`rowCount === 0`), re-read
+the stored response (scoped to `consumer_ref`) and return **that**, so both callers converge on one token.
+The loser's re-minted token is orphaned but harmless: SYN-9 + the trio's jti/qid single-use consumption
+(hardened in part 3) guarantee exactly one token per qid ever converts, so the wasted mint can never
+double-spend. Reserve-before-work would additionally suppress the orphaned mint, but the re-mint is an
+un-rollbackable trio HTTP call, so preventing it would need the full pending-reservation machinery for a
+purely cosmetic gain — disproportionate given SYN-9 already neutralises the money risk.
+
+### Part 3 — trio `verify` (#28)
+
+**Issue:** the verdict transaction ended with a bare `INSERT INTO trio.idempotency_keys …` (no
+`ON CONFLICT`). A concurrent same-key verify — serialised on the commitment counter lock — would find the
+token already consumed, compute `TOKEN_REPLAYED`, append a `ConversionRejected`, then hit the idempotency
+PK → throw → **500**. A naive `ON CONFLICT DO NOTHING` would have been worse: the loser's transaction would
+COMMIT, leaving a **spurious `ConversionRejected`** alongside the winner's `ConversionVerified`, and would
+return its own wrong verdict.
+
+**Fix:** store the verdict via `INSERT … ON CONFLICT (scope, key) DO NOTHING` inside the verdict tx; if it
+inserts 0 rows a concurrent winner already stored the verdict, so throw a private `IdempotencyRaceLost` —
+`inTx` rolls the transaction back (discarding the loser's events), and the caller re-reads and returns the
+**winner's** stored verdict (or 422 on a genuine hash mismatch). Only the winner reaches the post-commit
+replay-cache mark. No migration; the frozen trio contract suite (packages/contracts) is untouched.
+
+**Tests (concurrency negatives):**
+- `approvals.e2e.test.ts` (+1) — two `Promise.all` approves with one key both return `approved` with the
+  **same** `token`, equal to the single stored response.
+- `verify.integration.test.ts` (+1) — two `Promise.all` verifies with one key converge on one verdict
+  (`verified`), post **exactly one** `ConversionVerified` and **zero** new `ConversionRejected`.
+- Sequential idempotency contracts (byte-identical replay, same-key-different-body 422) unchanged and still
+  green. Wallet 100→101, trio 16→17 in the touched suites; full workspace build + lint clean.
+
+**Security self-review (high-scrutiny — wallet consent + trio verify).** *Single-token invariant restored?*
+Yes — concurrent approves return one token; concurrent verifies return one verdict. *Money-safety
+unchanged?* The trio's counter lock + jti single-use consumption still decide verified-vs-replayed; the fix
+only changes what a *duplicate* caller receives (the winner's verdict) and removes a spurious rejection
+event — it never relaxes a settlement check or lets a second token convert. *Rollback correctness?* The
+loser's `inTx` fully rolls back on `IdempotencyRaceLost`, so no partial/duplicate `ConversionRejected` or
+counter write survives. *Oracle/leak?* The converged responses are the winner's own bytes for the same
+consumer/key — no cross-tenant data crosses (the wallet re-read is `consumer_ref`-scoped). *Replay
+semantics?* Sequential replay and the 422 conflict are preserved and retested. *Secrets/keys?* None read or
+logged on these paths. **W10 complete.**

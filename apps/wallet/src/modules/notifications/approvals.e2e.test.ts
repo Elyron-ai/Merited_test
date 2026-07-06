@@ -236,6 +236,30 @@ describe('B26 approvals — §6.4 accepts against the simulator (PH1-18)', () =>
     expect(replayFresh).toMatchObject({ verdict: 'rejected', reason_code: 'TOKEN_REPLAYED' });
   });
 
+  it('W10/#27: two CONCURRENT approves with the same idempotency key return ONE token', async () => {
+    const mandate = await mandateService.grant({ consumerRef, request: grantReq() });
+    const quoteId = await insertQuote();
+    const key = newId('clm');
+
+    // Before the fix each concurrent call minted its own fresh jti for the qid
+    // and returned its OWN token — two different tokens for one approval. Now the
+    // loser converges on the winner's stored response.
+    const [a, b] = await Promise.all([
+      approvals.approve({ consumerRef, quoteId, mandateId: mandate.mandate_id, idempotencyKey: key }),
+      approvals.approve({ consumerRef, quoteId, mandateId: mandate.mandate_id, idempotencyKey: key }),
+    ]);
+    expect(a.outcome).toBe('approved');
+    expect(b.outcome).toBe('approved');
+    if (a.outcome !== 'approved' || b.outcome !== 'approved') throw new Error('unreachable');
+    expect(a.token).toBe(b.token); // both callers converge on the SAME single token
+    // and it is exactly the one stored under the key
+    const stored = await pool.query<{ response: { token?: string } }>(
+      `SELECT response FROM wallet.idempotency_keys WHERE idem_key = $1`,
+      [key],
+    );
+    expect(stored.rows[0]?.response.token).toBe(a.token);
+  });
+
   it('(2) execute-without-approval on a wallet-path claim → APPROVAL_MISSING', async () => {
     const mandate = await mandateService.grant({ consumerRef, request: grantReq() });
     // a wallet-path token (mandate snapshot set) minted WITHOUT any approval

@@ -113,11 +113,24 @@ export class ApprovalsService {
 
     const result = await this.approveOnce(input);
     if (input.idempotencyKey) {
-      await this.deps.pool.query(
+      const inserted = await this.deps.pool.query(
         `INSERT INTO wallet.idempotency_keys (idem_key, consumer_ref, quote_id, response)
          VALUES ($1, $2, $3, $4::jsonb) ON CONFLICT (idem_key) DO NOTHING`,
         [input.idempotencyKey, input.consumerRef, input.quoteId, JSON.stringify(result)],
       );
+      if ((inserted.rowCount ?? 0) === 0) {
+        // W10/#27: a CONCURRENT call with the same key won the insert. Return
+        // ITS stored response so both callers converge on ONE token — before
+        // this, each returned its own freshly re-minted token for the same qid,
+        // breaking the single-token invariant. Any token this call re-minted is
+        // orphaned and can never convert (SYN-9: the trio burns exactly one jti
+        // per qid), so no double-spend results from the wasted mint.
+        const stored = await this.deps.pool.query<{ response: ApproveResult }>(
+          `SELECT response FROM wallet.idempotency_keys WHERE idem_key = $1 AND consumer_ref = $2`,
+          [input.idempotencyKey, input.consumerRef],
+        );
+        if (stored.rows[0]) return stored.rows[0].response;
+      }
     }
     return result;
   }

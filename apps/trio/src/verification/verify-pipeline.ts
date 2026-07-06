@@ -54,6 +54,14 @@ interface MintedRow {
 type Rejection = { verdict: 'rejected'; reason: RejectionReasonCode; jti?: string };
 
 /**
+ * W10/#28: thrown inside the verdict transaction when a CONCURRENT same-key
+ * verify has already stored its verdict. It aborts (rolls back) this request's
+ * transaction — so any events it wrote are discarded — and the caller converges
+ * on the winner's stored verdict instead of 500-ing on the idempotency PK.
+ */
+class IdempotencyRaceLost extends Error {}
+
+/**
  * Conversion Verification SIMULATOR (TRIO-8, §7.2) — the six-stage pipeline
  * in the spec's exact order, first-failure-wins. Fake signature primitives
  * (FakeSigner) are the ONLY simulated part; replay, window, quote, terms and
@@ -103,7 +111,23 @@ export class VerifySimulator {
 
     const outcome = await this.pipeline(claim);
 
-    return inTx(this.deps.pool, async (tx) => {
+    let settled: VerifyResponse;
+    try {
+      settled = await inTx(this.deps.pool, async (tx) => {
+      // W10/#28: store the verdict under the idempotency key WITHIN the verdict
+      // transaction. ON CONFLICT DO NOTHING → a concurrent winner already stored
+      // it → abort so this request's events roll back and we converge on theirs
+      // (previously a bare INSERT hit the PK and 500'd, and would have committed
+      // a spurious event alongside the winner's).
+      const storeVerdict = async (r: VerifyResponse): Promise<void> => {
+        const ins = await tx.query(
+          `INSERT INTO trio.idempotency_keys (scope, key, request_hash, response)
+             VALUES ('claims/verify', $1, $2, $3::jsonb)
+             ON CONFLICT (scope, key) DO NOTHING`,
+          [options.idempotencyKey, requestHash, canonicalJson(r)],
+        );
+        if ((ins.rowCount ?? 0) === 0) throw new IdempotencyRaceLost();
+      };
       let response: VerifyResponse;
       if (outcome.verdict === 'verified') {
         // PH1-26: lock + re-check the commitment counters FIRST — the row
@@ -125,11 +149,7 @@ export class VerifySimulator {
             reason_code: counters.reason,
             rejected_at: this.now(),
           });
-          await tx.query(
-            `INSERT INTO trio.idempotency_keys (scope, key, request_hash, response)
-             VALUES ('claims/verify', $1, $2, $3::jsonb)`,
-            [options.idempotencyKey, requestHash, canonicalJson(response)],
-          );
+          await storeVerdict(response);
           return response;
         }
         // Consume + post + counters in ONE transaction with the verdict.
@@ -179,21 +199,33 @@ export class VerifySimulator {
           rejected_at: this.now(),
         });
       }
-      await tx.query(
-        `INSERT INTO trio.idempotency_keys (scope, key, request_hash, response)
-         VALUES ('claims/verify', $1, $2, $3::jsonb)`,
-        [options.idempotencyKey, requestHash, canonicalJson(response)],
-      );
+      await storeVerdict(response);
       return response;
-    }).then(async (response) => {
-      // cache mark AFTER commit; failures ignored — Redis is never a
-      // source of truth and never blocks a verdict
-      if (response.verdict === 'verified' && outcome.verdict === 'verified' && this.replayCache) {
-        const ttl = 2 * 24 * 3600; // covers the attribution window comfortably
-        await this.replayCache.seenBefore(`jti:${outcome.minted.jti}`, ttl).catch(() => {});
+      });
+    } catch (error) {
+      // W10/#28: a concurrent same-key verify won the idempotency race — our
+      // transaction rolled back (no duplicate/spurious events), so return the
+      // winner's stored verdict verbatim instead of surfacing a 500.
+      if (error instanceof IdempotencyRaceLost) {
+        const stored = await this.deps.pool.query<{ request_hash: string; response: VerifyResponse }>(
+          `SELECT request_hash, response FROM trio.idempotency_keys WHERE scope = 'claims/verify' AND key = $1`,
+          [options.idempotencyKey],
+        );
+        const row = stored.rows[0];
+        if (!row) throw error; // winner's row vanished — genuinely exceptional
+        if (row.request_hash !== requestHash) throw new TrioHttpError(422, 'IDEMPOTENCY_CONFLICT');
+        return row.response;
       }
-      return response;
-    });
+      throw error;
+    }
+
+    // cache mark AFTER commit; failures ignored — Redis is never a source of
+    // truth and never blocks a verdict. Only the winner reaches here for a key.
+    if (settled.verdict === 'verified' && outcome.verdict === 'verified' && this.replayCache) {
+      const ttl = 2 * 24 * 3600; // covers the attribution window comfortably
+      await this.replayCache.seenBefore(`jti:${outcome.minted.jti}`, ttl).catch(() => {});
+    }
+    return settled;
   }
 
   private now(): string {
