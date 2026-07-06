@@ -16,6 +16,7 @@ import type pg from 'pg';
 import { MagicLinkAuth } from './auth/magic-link.js';
 import { SessionStore, WALLET_SESSION_COOKIE } from './auth/session.js';
 import { allowMagicLink } from './lib/rate-limit.js';
+import { isCrossSite, UNSAFE_METHODS } from './lib/csrf.js';
 import { LinkService } from './modules/linking/link-service.js';
 import { HostedLinkService } from './modules/linking/hosted/hosted-link-service.js';
 import { LinkTokenStore } from './modules/linking/link-token-store.js';
@@ -144,6 +145,15 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
   const app = Fastify();
   void app.register(formbody);
   const PUBLIC = new Set(['/healthz', '/v1/auth/request', '/v1/auth/verify']);
+
+  // W6: refuse provably cross-site state-changing requests (runs before the
+  // session preHandler). Defence-in-depth over SameSite=Lax; covers the
+  // no-cookie magic-link request too.
+  app.addHook('onRequest', async (req, reply) => {
+    if (UNSAFE_METHODS.has(req.method) && isCrossSite(req.headers)) {
+      await reply.code(403).send({ error: { code: 'CSRF_BLOCKED' } });
+    }
+  });
 
   app.addHook('preHandler', async (req, reply) => {
     // TRIO-17: internal directory routes carry their own service-token guard

@@ -234,3 +234,59 @@ consuming the per-merchant rate budget on bad auth (the limiter stays post-verif
 flood cannot throttle a merchant's legitimate deliveries). *No behaviour change on the happy path* — the
 precheck is the same checks verifyWebhookSignature already did, merely hoisted ahead of the decrypt.
 **W4 (rate-limiting overhaul) is now complete** across control-plane, wallet, and core.
+
+---
+
+## W5 — Self-serve signup: privileged side-effects · ✅ 2026-07-06 (product decision + operator kill-switch)
+
+**Assessment (confirm-then-act):** the critic flagged that public `/api/signup` lets an anonymous caller
+create a merchant, request a custodied trio keypair, issue a webhook secret and publish a LIVE offer with
+zero auth. This is the *intended* PH3-6 feature — "self-serve, zero manual steps," whose accept clause
+REQUIRES the offer live in the read path immediately. Requiring pre-verification (email confirm / manual
+review) would either break that shipped, gated flow and its tests, or need a new schema+dashboard+email
+feature — a product decision, not a security bug. W4 already gives it the proportionate abuse control
+(per-IP + spoof-proof global cap on the expensive path).
+
+**Concrete hardening (non-breaking):** added an operator **kill-switch** — `signupEnabled()` reads
+`CONTROL_PLANE_SIGNUP_ENABLED`; when set to `"false"` the public surface returns `403 SIGNUP_DISABLED`
+before any work. Default (unset / anything else) keeps signup enabled, so PH3-6 and every test are
+unchanged. This gives incident response a lever to shut off self-serve onboarding under attack without a
+redeploy. Test: `signupEnabled` defaults on and honours explicit off/on (control-plane suite +1).
+
+**Recommendation (product, for LEAD-5 / founder):** if self-serve onboarding should be gated before real
+merchants transact, add email-verification or an operator-review state (self-serve merchants land
+`unverified`, visible in the dashboard, before their offers enter the read path). Recorded as a product
+decision; not silently changed.
+
+---
+
+## W6 — CSRF on state-changing POSTs · ✅ 2026-07-06 (finding #16 + operator-mutation surface)
+
+**Issue (#16, medium):** `/api/login` (and signup, and the ~15 operator mutation routes) took a form POST
+with no CSRF token and no Origin/Referer check. SameSite=Lax protects cookie-bearing mutations, but login
+needs NO pre-existing cookie — an attacker's auto-submitting cross-site form could silently log an operator
+into the ATTACKER's tenant (forced login), after which the operator's work lands in the attacker's account.
+
+**Fix:** an Origin / `Sec-Fetch-Site` check on all state-changing methods (POST/PUT/PATCH/DELETE), applied
+in ONE place per app:
+- Control-plane: `lib/csrf.ts` `isCrossSite()` in the edge middleware, BEFORE the public-path carve-out —
+  so it covers `/api/login`, `/api/signup` AND every guarded operator mutation route at once.
+- Wallet: the same check as a global `onRequest` hook (defence-in-depth over SameSite; also covers the
+  no-cookie magic-link request).
+Policy: reject only on POSITIVE cross-site evidence — `Sec-Fetch-Site: cross-site`, or an `Origin` whose
+host ≠ the target host, or a malformed Origin. A non-browser caller (the tests, the valet, the wallet-ui
+server-side proxy) sends neither header and passes, so nothing legitimate breaks. Cross-site → `403
+CSRF_BLOCKED`.
+
+**Tests:** `csrf.test.ts` in both apps (9) — cross-site / Origin-mismatch / malformed → blocked;
+same-origin and no-Origin → allowed. End-to-end: a cross-site `POST /api/login` with `Origin:
+https://evil.example` returns 403 and sets no session cookie (control-plane routes e2e); a cross-site
+`POST /v1/auth/request` returns 403 while a no-Origin one returns 202 (wallet linking e2e). Full workspace:
+build + lint clean, control-plane 51→59, wallet 91→95.
+
+**Security self-review (auth-surface):** *Forced login closed?* Yes — a browser cross-site login POST is
+rejected before `authenticate()` runs, so no attacker-tenant session is minted. *False positives?* None on
+the happy path — same-origin form posts carry a matching Origin; server-to-server and test clients send no
+Origin/Sec-Fetch-Site and are allowed (the documented trade-off — this is Origin-based CSRF, not a
+synchroniser token). *Layering:* complements SameSite=Lax (which still covers cookie-bearing mutations) and
+the W4 rate limits. HSTS (so the edge upgrades http→https) remains an edge/deploy concern, tracked for W8.

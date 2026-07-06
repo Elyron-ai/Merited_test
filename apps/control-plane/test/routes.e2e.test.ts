@@ -125,6 +125,19 @@ describe('control-plane routes (MER-7 accept — no route renders without a vali
     expect(login.headers.get('set-cookie') ?? '').not.toContain('merited_cp_session=');
   });
 
+  it('W6/#16: a cross-site login POST is refused (CSRF / forced-login blocked)', async () => {
+    const form = new URLSearchParams({ email: 'admin@merited.test', password: 'correct-horse', totp: '000000' });
+    // an attacker's auto-submitting form carries a cross-origin Origin header
+    const crossSite = await fetch(`${BASE}/api/login`, {
+      method: 'POST',
+      body: form,
+      headers: { origin: 'https://evil.example' },
+      redirect: 'manual',
+    });
+    expect(crossSite.status).toBe(403);
+    expect(crossSite.headers.get('set-cookie') ?? '').not.toContain('merited_cp_session=');
+  });
+
   it('secrets are absent from the CLIENT bundles (build-output grep)', () => {
     const staticDir = path.join(appRoot, '.next', 'static');
     const offenders: string[] = [];

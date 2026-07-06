@@ -255,4 +255,21 @@ describe('account linking round-trip (PH1-13)', () => {
     expect((await fetch(`${walletUrl}/v1/links/start`, { method: 'POST' })).status).toBe(401);
     expect((await fetch(`${walletUrl}/v1/links/callback?state=x&code=y`)).status).toBe(401);
   });
+
+  it('W6: a cross-site state-changing POST is refused (CSRF)', async () => {
+    // browser cross-origin POST → 403 before any handler runs; a same-origin /
+    // no-Origin caller (the tests, valet, wallet-ui proxy) is unaffected
+    const blocked = await fetch(`${walletUrl}/v1/auth/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+      body: JSON.stringify({ email: 'x@example.co.uk' }),
+    });
+    expect(blocked.status).toBe(403);
+    const ok = await fetch(`${walletUrl}/v1/auth/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' }, // no Origin → allowed
+      body: JSON.stringify({ email: 'x@example.co.uk' }),
+    });
+    expect(ok.status).toBe(202);
+  });
 });
