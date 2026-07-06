@@ -112,3 +112,46 @@ green. Full workspace: build + lint clean, wallet 84→87, all suites pass.
 **Convention note:** extended the XC-11 plan-sweep commit-id allow-list to recognise the `HARDEN-Wn`
 prefix and documented it in `CONTRIBUTING.md` (post-build remediation is a distinct work category, not
 a BUILD-PLAN task).
+
+---
+
+## W3 — Read/quote-path consumer-identity binding · ✅ VERIFY-ONLY 2026-07-06 (critic gap — no code change)
+
+**Investigated (the full trace):** MCP `consumerFrom()` (`apps/mcp-server/src/tools.ts`) forwards caller-supplied
+`consumer_ref`/`sub_hash`/`member_ref`/`hashed_email` → the SDK sends them as `GET /v1/offers` query params
+(and `/v1/eligibility` body), agent-authenticated → the core route (`routes/v1/index.ts` `consumerFrom`)
+builds `ConsumerCtx` from them verbatim, with NO agent↔consumer authorization → `resolve()`
+(`identity/resolve.ts`) maps a matching ACTIVE member (by consumer_ref/sub_hash/member_ref) to **T1
+member tier** + `identity_ref = member.member_ref`, independent of any mandate → the quote stage prices
+T1 member pricing and mints a token bound to that identity. Separately, PH2-9 pd enrichment
+(`PgPdReader.pdFor(mandateRef)`) gates on `mandate_id` + `status='active'` + `data_sharing`, but does
+**not** check `mandate.agent_id === the reading agent`.
+
+**Verdict — REFUTED as a code vulnerability; this is intended, documented, tested design:**
+- **Architecture §147 (canon):** *"on the walletless path [`apr`] is null and consumer consent is the
+  calling agent's own responsibility."* Agent-asserted consumer identity on the read path is a
+  deliberate design decision; authorization/value-binding is enforced at **conversion**, not at read.
+- **The PH2-9 test encodes the intent:** `pd-reader.integration.test.ts` reads `/v1/offers` with
+  `agent: { agent_id: newId('agt') }` — a FRESH agent that is deliberately NOT the mandate's agent —
+  and asserts pd enrichment still flows. mandate_ref alone (not the reading agent) gates it, by design;
+  the wallet-UI offers screen relies on the same cross-agent pattern (build-log slice 2a).
+- **The security-critical properties hold regardless of asserted identity:** (1) no personal-data
+  disclosure — pd never enters any response (`no-1pd-leak` lint rule + the PH2-9 "response carries NONE
+  of it" test); it only influences internal `DecisionCtx` ranking. (2) No unauthorised value — bounty
+  is attributed to the agent's own `minted.aid` at the trio, wallet-path conversions require
+  mandate+approval and the trio re-verifies mandate/limits/approval live at claim time, and a walletless
+  conversion charges no consumer. (3) The strongest "leak" is a membership-existence oracle for an
+  already-known `sub_hash` via `check_eligibility` — low value.
+
+**Why NOT a same-turn code fix:** a naive binding (require `mandate.agent_id === reading agent`, or
+require a verified link for T1) would break the documented walletless model (§147), the tested wallet-UI
+cross-agent offers read, and the PH2-9 accept test — i.e. it would change intended behaviour, not close
+a bug. That is a product/architecture decision, not a hardening patch.
+
+**Residual → LEAD-5 / product design question (W3-residual, recorded not dropped):** *should member-tier
+PRICING and 1pd ranking-enrichment require a verified link (or an agent-bound mandate) rather than pure
+agent assertion?* Today a registered agent that asserts a member's identity signal is extended
+member-tier pricing and mandate-gated pd ranking without proof of the agent↔consumer relationship —
+sound under the current walletless trust model, but worth an explicit product ruling before real-money,
+real-merchant exposure (the same gate as SYN-32's LEAD-5 external audit). No code changed; full workspace
+was green as of W2 (unchanged since).
