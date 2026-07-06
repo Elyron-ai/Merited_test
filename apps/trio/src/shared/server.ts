@@ -24,7 +24,9 @@ export interface TrioServerOptions {
  */
 export const createTrioServer = (options: TrioServerOptions): FastifyInstance => {
   if (!options.serviceToken) throw new Error('trio requires MERITED_TRIO_SERVICE_TOKEN');
-  const app = Fastify();
+  // W7/#25: finite request + connection timeouts (Fastify defaults are 0 =
+  // disabled) so a stalled connection cannot hold a socket open indefinitely.
+  const app = Fastify({ requestTimeout: 30_000, connectionTimeout: 30_000 });
   registerTracing(app, 'merited-trio');
 
   app.addHook('onRequest', async (req, reply) => {

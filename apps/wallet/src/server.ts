@@ -142,7 +142,10 @@ export const buildWalletServer = (options: WalletServerOptions): FastifyInstance
     ...(options.quoteCopyFor ? { quoteCopyFor: options.quoteCopyFor } : {}),
   });
 
-  const app = Fastify();
+  // W7/#25: finite request + connection timeouts (Fastify defaults are 0 =
+  // disabled) — a stalled slow-body connection cannot hold a socket open
+  // indefinitely (slowloris).
+  const app = Fastify({ requestTimeout: 30_000, connectionTimeout: 30_000 });
   void app.register(formbody);
   const PUBLIC = new Set(['/healthz', '/v1/auth/request', '/v1/auth/verify']);
 

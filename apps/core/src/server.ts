@@ -12,7 +12,15 @@ export type CoreServer = FastifyInstance;
  * surface).
  */
 export const createCoreServer = (): CoreServer => {
-  const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
+  // W7/#25: finite request + connection timeouts (Fastify defaults to 0 =
+  // disabled) so a slow-body / stalled connection cannot hold a socket open
+  // indefinitely (slowloris / R-U-Dead-Yet). Generous enough for any real
+  // request; the bodyLimit (1 MiB default) bounds size separately.
+  const app = Fastify({
+    logger: false,
+    requestTimeout: 30_000,
+    connectionTimeout: 30_000,
+  }).withTypeProvider<ZodTypeProvider>();
   registerTracing(app, 'merited-core');
   registerValidation(app);
 

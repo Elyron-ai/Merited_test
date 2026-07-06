@@ -290,3 +290,35 @@ the happy path — same-origin form posts carry a matching Origin; server-to-ser
 Origin/Sec-Fetch-Site and are allowed (the documented trade-off — this is Origin-based CSRF, not a
 synchroniser token). *Layering:* complements SameSite=Lax (which still covers cookie-bearing mutations) and
 the W4 rate limits. HSTS (so the edge upgrades http→https) remains an edge/deploy concern, tracked for W8.
+
+---
+
+## W7 — Finite server timeouts (slowloris / slow-body DoS) · ✅ 2026-07-06 (finding #25)
+
+**Issue (#25, low):** Fastify's `requestTimeout` and `connectionTimeout` both default to `0`
+(disabled) on all three Node HTTP hosts — core (`apps/core/src/server.ts`), wallet
+(`apps/wallet/src/server.ts`) and trio (`apps/trio/src/shared/server.ts`). With no ceiling, a
+client that opens a socket and dribbles headers/body a byte at a time (slowloris / R-U-Dead-Yet)
+holds a connection — and a server-side request slot — open indefinitely. Enough slow connections
+exhaust the socket/handler pool and starve legitimate traffic, with no code path ever completing to
+release the resource.
+
+**Fix:** set finite `requestTimeout: 30_000` and `connectionTimeout: 30_000` (30s each) on every
+Fastify instantiation:
+- `apps/core/src/server.ts` — alongside the existing `logger`/type-provider options.
+- `apps/wallet/src/server.ts` — the wallet host.
+- `apps/trio/src/shared/server.ts` — the trio host.
+30s is generous for any legitimate request (the largest real payloads here are webhook bodies and
+mint requests, all sub-second) while decisively bounding a stalled connection. Size is bounded
+separately by Fastify's 1 MiB default `bodyLimit`, so this closes the *time* axis specifically.
+
+**Test:** `apps/core/src/server.test.ts` asserts `createCoreServer().initialConfig.connectionTimeout
+=== 30_000` and `.requestTimeout === 30_000` — a regression guard that both timeouts stay finite
+(Fastify surfaces both in `initialConfig`, so the assertion is exact, not a proxy). Full workspace:
+build + all tests + lint green.
+
+**Note — HSTS (edge concern):** finite timeouts close the slow-request DoS at the app tier;
+`Strict-Transport-Security` (which forces the browser to upgrade http→https and thus stops the
+plain-HTTP cookie-leak vector noted for W6/W8) is a response-header / edge-proxy concern rather than
+a Fastify constructor option, and is tracked for W8's transport-confidentiality work and
+`docs/launch-readiness.md` deploy wiring.
