@@ -59,6 +59,15 @@ export class ApprovalRequestsService {
     const mandate = await this.deps.mandates.get(input.mandateId);
     if (!mandate) return null;
 
+    // SECURITY — the mandate may authorise ONLY quotes that belong to its own
+    // agent (and consumer). Without this binding an unauthenticated caller who
+    // learns any quote_id + any mandate_id could drive an implicit approval
+    // against a DIFFERENT consumer's mandate and receive the convertible
+    // re-minted token. A mismatch is a uniform not-found (404) — no
+    // cross-tenant existence oracle, and no row is persisted for the pair.
+    if (quote.agent_id !== mandate.agent_id) return null;
+    if (quote.consumer_ref !== null && quote.consumer_ref !== mandate.consumer_ref) return null;
+
     if (Date.parse(quote.expires_at) <= this.deps.clock.now().getTime()) {
       return this.persist(input, mandate.consumer_ref, {
         status: 'expired',
